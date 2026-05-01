@@ -4,6 +4,8 @@ node_modules/
 # Rust build artifacts
 core/target/
 
+dist/
+
 # wasm-pack output
 core/pkg/
 

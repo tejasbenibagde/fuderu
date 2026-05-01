@@ -1,0 +1,16 @@
+{
+  "name": "fuderu",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "High-performance canvas drawing library with Rust-powered brush engine",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}

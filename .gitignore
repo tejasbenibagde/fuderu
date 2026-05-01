@@ -1,0 +1,25 @@
+# Node.js dependencies
+node_modules/
+
+# Rust build artifacts
+core/target/
+
+# wasm-pack output
+core/pkg/
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+*.log
+
+# Environment files
+.env
+.env.local
+
+# Optional package manager lockfiles if you don't want them tracked
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# VS Code settings
+.vscode/

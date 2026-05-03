@@ -1,3 +1,5 @@
+// core/src/lib.rs
+
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

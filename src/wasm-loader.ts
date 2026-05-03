@@ -1,23 +1,19 @@
-// src/wasm-loader.ts
+import init, { BrushEngine } from '../pkg/core.js';
 
-import initWasmModule from '../core/pkg/core.js';
-
-let wasmReady = false;
-let brushRenderer: any = null;
+let initialized = false;
 
 export async function initWasm(): Promise<void> {
-  if (!wasmReady) {
-    const wasmModule = await initWasmModule();
-    // Use the factory function instead of 'new BrushRenderer()'
-    brushRenderer = wasmModule.brushrenderer_new();
-    wasmReady = true;
-    console.log('WASM module loaded');
+  if (!initialized) {
+    await init();
+    initialized = true;
+    console.log('WASM initialized');
   }
 }
 
-export function getBrushRenderer(): any {
-  if (!brushRenderer) {
+export function createBrushEngine(brushType: string = "dip-pen-soft") {
+  if (!initialized) {
     throw new Error('WASM not initialized. Call initWasm() first.');
   }
-  return brushRenderer;
+
+  return new BrushEngine(brushType);
 }

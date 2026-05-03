@@ -68,6 +68,28 @@
       box-shadow: 0 0 10px rgba(233,69,96,0.5);
     }
     
+    .brush-selector {
+      display: flex;
+      gap: 8px;
+      background: #1a5276;
+      padding: 6px 12px;
+      border-radius: 8px;
+    }
+    
+    .brush-selector button {
+      padding: 8px 16px;
+      font-size: 12px;
+      background: transparent;
+      border: 1px solid #4c9aff;
+      color: #4c9aff;
+    }
+    
+    .brush-selector button.active {
+      background: #4c9aff;
+      color: white;
+      border-color: #4c9aff;
+    }
+    
     .control-group {
       display: flex;
       align-items: center;
@@ -124,6 +146,11 @@
       <button id="eraseBtn">🗑️ Erase</button>
       <button id="clearBtn">🧹 Clear</button>
       
+      <div class="brush-selector">
+        <button id="dipPenBtn" class="active">🖊️ Dip Pen</button>
+        <button id="airbrushBtn">💨 Airbrush</button>
+      </div>
+      
       <div class="control-group">
         <label>🎨 Color:</label>
         <input type="color" id="colorPicker" value="#000000">
@@ -139,6 +166,12 @@
         <label>🔮 Opacity:</label>
         <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="1">
         <span id="opacityValue" class="value-display">100%</span>
+      </div>
+      
+      <div class="control-group">
+        <label>🌊 Smoothing:</label>
+        <input type="range" id="smoothingSlider" min="0" max="1" step="0.01" value="0.5">
+        <span id="smoothingValue" class="value-display">50%</span>
       </div>
       
       <div class="status" id="status">Loading WASM...</div>
@@ -186,11 +219,15 @@
     const drawBtn = document.getElementById('drawBtn');
     const eraseBtn = document.getElementById('eraseBtn');
     const clearBtn = document.getElementById('clearBtn');
+    const dipPenBtn = document.getElementById('dipPenBtn');
+    const airbrushBtn = document.getElementById('airbrushBtn');
     const colorPicker = document.getElementById('colorPicker');
     const sizeSlider = document.getElementById('sizeSlider');
     const opacitySlider = document.getElementById('opacitySlider');
+    const smoothingSlider = document.getElementById('smoothingSlider');
     const sizeValue = document.getElementById('sizeValue');
     const opacityValue = document.getElementById('opacityValue');
+    const smoothingValue = document.getElementById('smoothingValue');
     
     // Helper to wait for painter
     function withPainter(callback) {
@@ -220,6 +257,19 @@
       withPainter(p => p.clear());
     });
     
+    // Brush selection
+    dipPenBtn.addEventListener('click', () => {
+      withPainter(p => p.useBrush('dip-pen-soft'));
+      dipPenBtn.classList.add('active');
+      airbrushBtn.classList.remove('active');
+    });
+    
+    airbrushBtn.addEventListener('click', () => {
+      withPainter(p => p.useBrush('airbrush-normal'));
+      airbrushBtn.classList.add('active');
+      dipPenBtn.classList.remove('active');
+    });
+    
     // Color picker
     colorPicker.addEventListener('input', (e) => {
       withPainter(p => p.setColor(e.target.value));
@@ -237,6 +287,13 @@
       const opacity = parseFloat(e.target.value);
       withPainter(p => p.setOpacity(opacity));
       opacityValue.textContent = `${Math.round(opacity * 100)}%`;
+    });
+    
+    // Smoothing slider
+    smoothingSlider.addEventListener('input', (e) => {
+      const smoothing = parseFloat(e.target.value);
+      withPainter(p => p.setSmoothing(smoothing));
+      smoothingValue.textContent = `${Math.round(smoothing * 100)}%`;
     });
     
     console.log('Test page ready! Try drawing on the canvas');

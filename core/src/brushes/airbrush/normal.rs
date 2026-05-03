@@ -11,13 +11,16 @@ impl AirbrushNormal {
         y: f64,
         pressure: f64,
         speed: f64,
+        size: f64,
+        opacity: f64,
     ) -> Vec<f64> {
-        let size = 10.0 + 60.0 * pressure.powf(1.2);
+        let final_size = size * (0.5 + 0.5 * pressure.powf(1.2));
 
-        let opacity =
-            pressure.powf(1.2) * 0.2 + (1.0 - speed.min(1.0)) * 0.1;
+        let final_opacity = opacity * (
+            pressure.powf(1.2) * 0.2 + (1.0 - speed.min(1.0)) * 0.1
+        );
 
-        vec![x, y, size, opacity]
+        vec![x, y, final_size, final_opacity]
     }
 
     pub fn reset(&mut self) {}

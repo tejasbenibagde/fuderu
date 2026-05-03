@@ -6,8 +6,17 @@
   "main": "./dist/index.umd.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
-  "keywords": ["canvas", "drawing", "brush", "painting", "wasm", "rust"],
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "canvas",
+    "drawing",
+    "brush",
+    "painting",
+    "wasm",
+    "rust"
+  ],
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
@@ -19,12 +28,16 @@
     "build": "vite build && tsc --emitDeclarationOnly",
     "dev": "vite",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage"
   },
   "author": "tejasbenibagde",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "jsdom": "^24.0.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.10",
     "vitest": "^4.1.5"

@@ -10,6 +10,10 @@ export async function initWasm(): Promise<void> {
   }
 }
 
+export function isWasmInitialized(): boolean {
+  return initialized;
+}
+
 export function createBrushEngine(brushType: string = "dip-pen-soft") {
   if (!initialized) {
     throw new Error('WASM not initialized. Call initWasm() first.');

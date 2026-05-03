@@ -19,6 +19,8 @@ impl DipPenSoft {
         y: f64,
         pressure: f64,
         _speed: f64,
+        size: f64,
+        opacity: f64,
     ) -> Vec<f64> {
         let smooth_x = if self.last_x == 0.0 {
             x
@@ -32,13 +34,13 @@ impl DipPenSoft {
             y * (1.0 - self.smoothing) + self.last_y * self.smoothing
         };
 
-        let size = 2.0 + 40.0 * pressure.powf(1.5);
-        let opacity = 0.6 + pressure.powf(1.5) * 0.4;
+        let final_size = size * (0.2 + 0.8 * pressure.powf(1.5));
+        let final_opacity = opacity * (0.6 + pressure.powf(1.5) * 0.4);
 
         self.last_x = smooth_x;
         self.last_y = smooth_y;
 
-        vec![smooth_x, smooth_y, size, opacity]
+        vec![smooth_x, smooth_y, final_size, final_opacity]
     }
 
     pub fn reset(&mut self) {

@@ -1,5 +1,5 @@
 import type { Point, BrushOptions } from '../types';
-import { createBrushEngine } from '../wasm-loader';
+import { createBrushEngine, isWasmInitialized } from '../wasm-loader';
 
 export class BrushEngine {
   private currentOptions: BrushOptions = {
@@ -23,7 +23,7 @@ export class BrushEngine {
   }
 
   private ensureRenderer(): void {
-    if (!this.renderer) {
+    if (!this.renderer && isWasmInitialized()) {
       this.renderer = createBrushEngine(this.currentBrushType);
     }
   }
@@ -88,7 +88,7 @@ export class BrushEngine {
     // 🧽 Eraser mode
     if (this.currentOptions.invert) {
       ctx.globalCompositeOperation = 'destination-out';
-      ctx.globalAlpha = 1.0;
+      ctx.globalAlpha = finalOpacity;
       ctx.strokeStyle = 'rgba(0,0,0,1)';
     } else {
       ctx.globalCompositeOperation = 'source-over';
@@ -132,10 +132,18 @@ export class BrushEngine {
 
   setSize(size: number): void {
     this.currentOptions.size = Math.max(1, size);
+    this.ensureRenderer();
+    if (this.renderer && this.renderer.set_size) {
+      this.renderer.set_size(size);
+    }
   }
 
   setOpacity(opacity: number): void {
     this.currentOptions.opacity = Math.min(1, Math.max(0, opacity));
+    this.ensureRenderer();
+    if (this.renderer && this.renderer.set_opacity) {
+      this.renderer.set_opacity(opacity);
+    }
   }
 
   setInvert(invert: boolean): void {

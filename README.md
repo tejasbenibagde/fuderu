@@ -233,6 +233,18 @@ npm run build
 npm run dev
 ```
 
+## 🧪 Testing
+
+```bash
+# Run tests
+npm test
+
+# Run tests once (not in watch mode)
+npm run test:run
+```
+
+The test suite includes basic functionality verification to ensure the library loads correctly and has the expected API.
+
 ## Known Issues
 
 - **Opacity overlap**: When drawing with opacity < 100%, you may see darker spots where lines intersect within a single stroke. This will be improved in v0.2.0.

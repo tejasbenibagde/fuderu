@@ -11,6 +11,8 @@ enum BrushType {
 #[wasm_bindgen]
 pub struct BrushEngine {
     brush: BrushType,
+    size: f64,
+    opacity: f64,
 }
 
 #[wasm_bindgen]
@@ -23,7 +25,11 @@ impl BrushEngine {
             _ => panic!("Unknown brush type"),
         };
 
-        BrushEngine { brush }
+        BrushEngine { 
+            brush,
+            size: 10.0,
+            opacity: 1.0,
+        }
     }
 
     pub fn process(
@@ -34,9 +40,17 @@ impl BrushEngine {
         speed: f64,
     ) -> Vec<f64> {
         match &mut self.brush {
-            BrushType::DipPenSoft(b) => b.process(x, y, pressure, speed),
-            BrushType::AirbrushNormal(b) => b.process(x, y, pressure, speed),
+            BrushType::DipPenSoft(b) => b.process(x, y, pressure, speed, self.size, self.opacity),
+            BrushType::AirbrushNormal(b) => b.process(x, y, pressure, speed, self.size, self.opacity),
         }
+    }
+
+    pub fn set_size(&mut self, size: f64) {
+        self.size = size;
+    }
+
+    pub fn set_opacity(&mut self, opacity: f64) {
+        self.opacity = opacity;
     }
 
     pub fn reset(&mut self) {

@@ -13,11 +13,13 @@ export class BrushEngine {
   private isDrawing: boolean = false;
   private lastPoint: Point | null = null;
   private lastTimestamp: number = 0;
+  private pathStarted: boolean = false; // Track if we've started the path
   
   startStroke(point: Point): void {
     this.isDrawing = true;
     this.lastPoint = point;
     this.lastTimestamp = point.timestamp || Date.now();
+    this.pathStarted = false; // Reset path for new stroke
     
     const renderer = getBrushRenderer();
     if (renderer && renderer.reset_stroke) {
@@ -45,7 +47,7 @@ export class BrushEngine {
     let smoothX = point.x;
     let smoothY = point.y;
     
-    if (renderer) {
+    if (renderer && renderer.process_stroke) {
       try {
         const pressure = point.pressure || 0.5;
         
@@ -72,27 +74,30 @@ export class BrushEngine {
     // Apply eraser mode if invert is true
     if (this.currentOptions.invert) {
       ctx.globalCompositeOperation = 'destination-out';
+      ctx.globalAlpha = 1.0;
       ctx.strokeStyle = 'rgba(0,0,0,1)';
     } else {
       ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = this.getColorWithOpacity(this.currentOptions.color, finalOpacity);
+      ctx.globalAlpha = finalOpacity; // Use globalAlpha for consistent opacity
+      ctx.strokeStyle = this.currentOptions.color;
     }
     
     ctx.lineWidth = finalSize;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     
-    ctx.beginPath();
-    
-    if (!this.lastPoint) {
+    // Start the path once, then keep adding to it
+    if (!this.pathStarted) {
+      ctx.beginPath();
       ctx.moveTo(smoothX, smoothY);
-      ctx.lineTo(smoothX + 0.1, smoothY + 0.1);
+      this.pathStarted = true;
     } else {
-      ctx.moveTo(this.lastPoint.x, this.lastPoint.y);
       ctx.lineTo(smoothX, smoothY);
+      ctx.stroke(); // This still strokes from last point
+      // Reset path to continue smoothly
+      ctx.beginPath();
+      ctx.moveTo(smoothX, smoothY);
     }
-    
-    ctx.stroke();
     
     this.lastPoint = { x: smoothX, y: smoothY, pressure: point.pressure };
     this.lastTimestamp = now;
@@ -101,6 +106,7 @@ export class BrushEngine {
   endStroke(): void {
     this.isDrawing = false;
     this.lastPoint = null;
+    this.pathStarted = false;
   }
   
   setColor(color: string): void {
@@ -131,6 +137,8 @@ export class BrushEngine {
   }
   
   private getColorWithOpacity(color: string, opacity: number): string {
+    // We're now using globalAlpha, so this method might not be needed
+    // But keeping for backward compatibility
     if (color.startsWith('rgba')) {
       return color.replace(/rgba?\(([^,]+),([^,]+),([^,]+)(?:,([^)]+))?\)/, 
         `rgba($1,$2,$3,${opacity})`);

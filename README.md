@@ -53,6 +53,11 @@ npm run build
 npm run dev
 ```
 
+## Known Issues
+
+- **Opacity overlap**: When drawing with opacity < 100%, you may see darker spots where lines intersect within a single stroke. This will be improved in v0.2.0.
+- **Brush variety**: Currently only round brush available. More brushes coming soon.
+
 ## Building Rust WASM Module
 The brush engine is written in Rust. To rebuild the WASM module:
 

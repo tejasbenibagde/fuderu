@@ -14,10 +14,17 @@ export default defineConfig({
       }
     },
     rollupOptions: {
-      external: [], // Keep empty for now
+      external: [],
       output: {
-        globals: {}
+        globals: {},
+        exports: 'named'
       }
     }
+  },
+  define: {
+    'import.meta.url': 'import.meta.url'
+  },
+   server: {
+    open: '/test.html'  
   }
 })

@@ -26,13 +26,15 @@
   },
   "scripts": {
     "build": "vite build && tsc --emitDeclarationOnly",
+    "typecheck": "tsc --noEmit",
     "dev": "vite",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
-    "prepare": "husky"
+    "prepare": "husky",
+    "prepublishOnly": "npm run build"
   },
   "author": "tejasbenibagde",
   "license": "MIT",

@@ -25,3 +25,7 @@ yarn-error.log*
 
 # VS Code settings
 .vscode/
+
+
+# Lock Files
+Cargo.lock

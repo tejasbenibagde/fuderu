@@ -31,12 +31,14 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:watch": "vitest --watch",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "prepare": "husky"
   },
   "author": "tejasbenibagde",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "husky": "^9.1.7",
     "jsdom": "^24.0.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.10",

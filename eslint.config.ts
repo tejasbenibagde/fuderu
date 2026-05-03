@@ -10,6 +10,7 @@ export default [
       'node_modules/**',
       'test/**',
       'pkg/**',
+      'playgrounds/**',
     ],
   },
   js.configs.recommended,

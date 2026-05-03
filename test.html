@@ -2,301 +2,162 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fuderu - Brush Test</title>
+
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      font-family: sans-serif;
+      background: #111;
+      color: white;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
-      padding: 20px;
+      height: 100vh;
     }
-    
+
     .container {
-      background: #0f3460;
-      border-radius: 16px;
+      background: #222;
       padding: 20px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      border-radius: 12px;
     }
-    
+
     canvas {
-      display: block;
-      margin: 0 auto;
-      cursor: crosshair;
       background: white;
       border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      display: block;
+      margin-bottom: 10px;
     }
-    
+
     .toolbar {
       display: flex;
-      gap: 12px;
-      margin-top: 16px;
       flex-wrap: wrap;
+      gap: 10px;
       align-items: center;
-      justify-content: center;
     }
-    
+
     button {
-      background: #1a5276;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      transition: all 0.2s;
-    }
-    
-    button:hover {
-      background: #e94560;
-      transform: translateY(-2px);
-    }
-    
-    button.active {
-      background: #e94560;
-      box-shadow: 0 0 10px rgba(233,69,96,0.5);
-    }
-    
-    .brush-selector {
-      display: flex;
-      gap: 8px;
-      background: #1a5276;
-      padding: 6px 12px;
-      border-radius: 8px;
-    }
-    
-    .brush-selector button {
-      padding: 8px 16px;
-      font-size: 12px;
-      background: transparent;
-      border: 1px solid #4c9aff;
-      color: #4c9aff;
-    }
-    
-    .brush-selector button.active {
-      background: #4c9aff;
-      color: white;
-      border-color: #4c9aff;
-    }
-    
-    .control-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: #1a5276;
-      padding: 6px 12px;
-      border-radius: 8px;
-    }
-    
-    .control-group label {
-      color: white;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    
-    input {
-      padding: 6px;
-      border-radius: 6px;
-      border: none;
+      padding: 8px 12px;
       cursor: pointer;
     }
-    
-    input[type="range"] {
-      width: 120px;
-      cursor: pointer;
-    }
-    
-    .value-display {
+
+    .active {
+      background: red;
       color: white;
-      font-size: 12px;
-      background: #0f3460;
-      padding: 4px 8px;
-      border-radius: 4px;
-      min-width: 40px;
-      text-align: center;
-    }
-    
-    .status {
-      color: #4c9aff;
-      font-size: 12px;
-      margin-left: auto;
-      padding: 4px 12px;
-      background: #1a5276;
-      border-radius: 20px;
     }
   </style>
 </head>
+
 <body>
-  <div class="container">
-    <canvas id="canvas" width="800" height="500"></canvas>
-    
-    <div class="toolbar">
-      <button id="drawBtn" class="active">✏️ Draw</button>
-      <button id="eraseBtn">🗑️ Erase</button>
-      <button id="clearBtn">🧹 Clear</button>
-      
-      <div class="brush-selector">
-        <button id="dipPenBtn" class="active">🖊️ Dip Pen</button>
-        <button id="airbrushBtn">💨 Airbrush</button>
-      </div>
-      
-      <div class="control-group">
-        <label>🎨 Color:</label>
-        <input type="color" id="colorPicker" value="#000000">
-      </div>
-      
-      <div class="control-group">
-        <label>📏 Size:</label>
-        <input type="range" id="sizeSlider" min="1" max="50" value="10">
-        <span id="sizeValue" class="value-display">10px</span>
-      </div>
-      
-      <div class="control-group">
-        <label>🔮 Opacity:</label>
-        <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="1">
-        <span id="opacityValue" class="value-display">100%</span>
-      </div>
-      
-      <div class="control-group">
-        <label>🌊 Smoothing:</label>
-        <input type="range" id="smoothingSlider" min="0" max="1" step="0.01" value="0.5">
-        <span id="smoothingValue" class="value-display">50%</span>
-      </div>
-      
-      <div class="status" id="status">Loading WASM...</div>
-    </div>
+<div class="container">
+
+  <canvas id="canvas" width="800" height="500"></canvas>
+
+  <div class="toolbar">
+    <button id="drawBtn" class="active">Draw</button>
+    <button id="eraseBtn">Erase</button>
+    <button id="clearBtn">Clear</button>
+
+    <button id="dipPenBtn" class="active">Dip Pen</button>
+    <button id="airbrushBtn">Airbrush</button>
+
+    <input type="color" id="colorPicker" value="#000000">
+
+    Size <input type="range" id="size" min="1" max="50" value="10">
+    Opacity <input type="range" id="opacity" min="0" max="1" step="0.01" value="1">
+    Smooth <input type="range" id="smooth" min="0" max="1" step="0.01" value="0.5">
+
+    <span id="status">Loading...</span>
   </div>
 
-  <script type="module">
-    import Fuderu from './src/index.ts';
-    
-    let painter = null;
-    const statusDiv = document.getElementById('status');
-    
-    // Initialize Fuderu with WASM
-    async function init() {
-      try {
-        statusDiv.textContent = 'Loading WASM...';
-        
-        painter = new Fuderu({
-          canvas: '#canvas',
-          color: '#000000',
-          size: 10,
-          opacity: 1
-        });
-        
-        // Wait a bit for WASM to initialize
-        setTimeout(() => {
-          statusDiv.textContent = '✅ Ready to draw!';
-          statusDiv.style.color = '#4cff4c';
-        }, 500);
-        
-        console.log('Fuderu initialized');
-      } catch (error) {
-        console.error('Failed to initialize:', error);
-        statusDiv.textContent = '❌ Failed to load';
-        statusDiv.style.color = '#ff6b6b';
-      }
+</div>
+
+<script type="module">
+import Fuderu from './src/index.ts';
+
+let painter = null;
+let ready = false;
+
+const status = document.getElementById('status');
+
+async function init() {
+  painter = new Fuderu({
+    canvas: '#canvas',
+    color: '#000',
+    size: 10,
+    opacity: 1
+  });
+
+  // 🔥 wait until WASM is actually ready
+  const waitReady = () => {
+    if (painter.wasmReady) {
+      ready = true;
+      status.textContent = 'Ready';
+      status.style.color = 'lime';
+    } else {
+      requestAnimationFrame(waitReady);
     }
-    
-    // Wait for DOM to load
-    document.addEventListener('DOMContentLoaded', () => {
-      init();
-    });
-    
-    // Set up UI controls (will work once painter is ready)
-    const drawBtn = document.getElementById('drawBtn');
-    const eraseBtn = document.getElementById('eraseBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const dipPenBtn = document.getElementById('dipPenBtn');
-    const airbrushBtn = document.getElementById('airbrushBtn');
-    const colorPicker = document.getElementById('colorPicker');
-    const sizeSlider = document.getElementById('sizeSlider');
-    const opacitySlider = document.getElementById('opacitySlider');
-    const smoothingSlider = document.getElementById('smoothingSlider');
-    const sizeValue = document.getElementById('sizeValue');
-    const opacityValue = document.getElementById('opacityValue');
-    const smoothingValue = document.getElementById('smoothingValue');
-    
-    // Helper to wait for painter
-    function withPainter(callback) {
-      if (painter) {
-        callback(painter);
-      } else {
-        setTimeout(() => withPainter(callback), 100);
-      }
-    }
-    
-    // Draw mode
-    drawBtn.addEventListener('click', () => {
-      withPainter(p => p.setInvert(false));
-      drawBtn.classList.add('active');
-      eraseBtn.classList.remove('active');
-    });
-    
-    // Erase mode
-    eraseBtn.addEventListener('click', () => {
-      withPainter(p => p.setInvert(true));
-      eraseBtn.classList.add('active');
-      drawBtn.classList.remove('active');
-    });
-    
-    // Clear canvas
-    clearBtn.addEventListener('click', () => {
-      withPainter(p => p.clear());
-    });
-    
-    // Brush selection
-    dipPenBtn.addEventListener('click', () => {
-      withPainter(p => p.useBrush('dip-pen-soft'));
-      dipPenBtn.classList.add('active');
-      airbrushBtn.classList.remove('active');
-    });
-    
-    airbrushBtn.addEventListener('click', () => {
-      withPainter(p => p.useBrush('airbrush-normal'));
-      airbrushBtn.classList.add('active');
-      dipPenBtn.classList.remove('active');
-    });
-    
-    // Color picker
-    colorPicker.addEventListener('input', (e) => {
-      withPainter(p => p.setColor(e.target.value));
-    });
-    
-    // Size slider
-    sizeSlider.addEventListener('input', (e) => {
-      const size = parseInt(e.target.value);
-      withPainter(p => p.setSize(size));
-      sizeValue.textContent = `${size}px`;
-    });
-    
-    // Opacity slider
-    opacitySlider.addEventListener('input', (e) => {
-      const opacity = parseFloat(e.target.value);
-      withPainter(p => p.setOpacity(opacity));
-      opacityValue.textContent = `${Math.round(opacity * 100)}%`;
-    });
-    
-    // Smoothing slider
-    smoothingSlider.addEventListener('input', (e) => {
-      const smoothing = parseFloat(e.target.value);
-      withPainter(p => p.setSmoothing(smoothing));
-      smoothingValue.textContent = `${Math.round(smoothing * 100)}%`;
-    });
-    
-    console.log('Test page ready! Try drawing on the canvas');
-  </script>
+  };
+
+  waitReady();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+function safe(fn) {
+  if (!ready || !painter) return;
+  fn(painter);
+}
+
+// 🔹 modes
+drawBtn.onclick = () => {
+  safe(p => p.setInvert(false));
+  drawBtn.classList.add('active');
+  eraseBtn.classList.remove('active');
+};
+
+eraseBtn.onclick = () => {
+  safe(p => p.setInvert(true));
+  eraseBtn.classList.add('active');
+  drawBtn.classList.remove('active');
+};
+
+// 🔹 clear
+clearBtn.onclick = () => safe(p => p.clear());
+
+// 🔹 brushes
+dipPenBtn.onclick = () => {
+  safe(p => p.useBrush('dip-pen-soft'));
+  dipPenBtn.classList.add('active');
+  airbrushBtn.classList.remove('active');
+};
+
+airbrushBtn.onclick = () => {
+  safe(p => p.useBrush('airbrush-normal'));
+  airbrushBtn.classList.add('active');
+  dipPenBtn.classList.remove('active');
+};
+
+// 🔹 controls
+colorPicker.oninput = e =>
+  safe(p => p.setColor(e.target.value));
+
+size.oninput = e =>
+  safe(p => p.setSize(+e.target.value));
+
+opacity.oninput = e =>
+  safe(p => p.setOpacity(+e.target.value));
+
+// 🔥 IMPORTANT FIX
+smooth.oninput = e => {
+  safe(p => {
+    p.setSmoothing(+e.target.value);
+
+    // 💥 CRITICAL: reset stroke to avoid freeze
+    p.brushEngine?.endStroke?.();
+  });
+};
+
+</script>
 </body>
 </html>

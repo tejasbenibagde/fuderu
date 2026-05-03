@@ -34,15 +34,23 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "prepare": "husky",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "lint": "eslint ."
   },
   "author": "tejasbenibagde",
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^25.6.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.1",
+    "@typescript-eslint/parser": "^8.59.1",
+    "eslint": "^10.3.0",
+    "globals": "^17.6.0",
     "husky": "^9.1.7",
+    "jiti": "^2.6.1",
     "jsdom": "^24.0.0",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.1",
     "vite": "^8.0.10",
     "vitest": "^4.1.5"
   }

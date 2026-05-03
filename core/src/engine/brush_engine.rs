@@ -13,6 +13,7 @@ pub struct BrushEngine {
     brush: BrushType,
     size: f64,
     opacity: f64,
+    smoothing: f64,
 }
 
 #[wasm_bindgen]
@@ -29,6 +30,7 @@ impl BrushEngine {
             brush,
             size: 10.0,
             opacity: 1.0,
+            smoothing: 0.5,
         }
     }
 
@@ -51,6 +53,10 @@ impl BrushEngine {
 
     pub fn set_opacity(&mut self, opacity: f64) {
         self.opacity = opacity;
+    }
+
+    pub fn set_smoothing(&mut self, value: f64) {
+        self.smoothing = value;
     }
 
     pub fn reset(&mut self) {

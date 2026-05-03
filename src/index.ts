@@ -92,7 +92,7 @@ export class Fuderu {
       const touch = event.touches[0];
       clientX = touch.clientX;
       clientY = touch.clientY;
-      pressure = (touch as any).pressure || 0.5;
+      pressure = 'pressure' in touch ? (touch as Touch & { pressure: number }).pressure : 0.5;
       timestamp = event.timeStamp;
     }
 

@@ -1,5 +1,9 @@
 import type { Point, BrushOptions } from '../types';
-import { createBrushEngine, isWasmInitialized } from '../wasm-loader';
+import {
+  createBrushEngine,
+  isWasmInitialized,
+  type WasmBrushRenderer
+} from '../wasm-loader';
 
 export class BrushEngine {
   private currentOptions: BrushOptions = {
@@ -9,17 +13,16 @@ export class BrushEngine {
     invert: false
   };
 
-  private renderer: any;
+  private renderer: WasmBrushRenderer | null = null;
   private currentBrushType: string = "dip-pen-soft";
 
-  private isDrawing: boolean = false;
+  private isDrawing = false;
   private lastPoint: Point | null = null;
-  private lastTimestamp: number = 0;
-  private pathStarted: boolean = false;
+  private lastTimestamp = 0;
+  private pathStarted = false;
 
   constructor(brushType: string = "dip-pen-soft") {
     this.currentBrushType = brushType;
-    // Defer renderer creation until WASM is ready
   }
 
   private ensureRenderer(): void {
@@ -31,19 +34,21 @@ export class BrushEngine {
   // 🟢 Start stroke
   startStroke(point: Point): void {
     this.ensureRenderer();
+
     this.isDrawing = true;
     this.lastPoint = point;
     this.lastTimestamp = point.timestamp || Date.now();
     this.pathStarted = false;
 
-    if (this.renderer && this.renderer.reset) {
-      this.renderer.reset();
-    }
+    this.renderer?.reset();
   }
 
   // 🟢 Draw stroke
   drawStroke(ctx: CanvasRenderingContext2D, point: Point): void {
     if (!this.isDrawing) return;
+
+    this.ensureRenderer();
+    if (!this.renderer) return; // safety
 
     const now = point.timestamp || Date.now();
     const deltaTime = Math.max(1, now - this.lastTimestamp);
@@ -65,7 +70,6 @@ export class BrushEngine {
     try {
       const pressure = point.pressure || 0.5;
 
-      // 🔥 Single WASM call (clean + fast)
       const result = this.renderer.process(
         point.x,
         point.y,
@@ -73,19 +77,17 @@ export class BrushEngine {
         speed
       );
 
-      // Expected: [x, y, size, opacity]
       if (result && result.length >= 4) {
         smoothX = result[0];
         smoothY = result[1];
         finalSize = result[2];
         finalOpacity = result[3];
       }
-
     } catch (e) {
-      console.warn('WASM processing failed, using fallback:', e);
+      console.warn('WASM failed, fallback used:', e);
     }
 
-    // 🧽 Eraser mode
+    // 🎨 draw
     if (this.currentOptions.invert) {
       ctx.globalCompositeOperation = 'destination-out';
       ctx.globalAlpha = finalOpacity;
@@ -100,7 +102,6 @@ export class BrushEngine {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // 🧠 Smooth continuous stroke
     if (!this.pathStarted) {
       ctx.beginPath();
       ctx.moveTo(smoothX, smoothY);
@@ -109,7 +110,6 @@ export class BrushEngine {
       ctx.lineTo(smoothX, smoothY);
       ctx.stroke();
 
-      // continue path smoothly
       ctx.beginPath();
       ctx.moveTo(smoothX, smoothY);
     }
@@ -125,41 +125,43 @@ export class BrushEngine {
     this.pathStarted = false;
   }
 
-  // 🎨 Brush controls
+  // 🎨 Controls
   setColor(color: string): void {
     this.currentOptions.color = color;
   }
 
   setSize(size: number): void {
     this.currentOptions.size = Math.max(1, size);
+
     this.ensureRenderer();
-    if (this.renderer && this.renderer.set_size) {
-      this.renderer.set_size(size);
-    }
+    this.renderer?.set_size(size);
   }
 
   setOpacity(opacity: number): void {
     this.currentOptions.opacity = Math.min(1, Math.max(0, opacity));
+
     this.ensureRenderer();
-    if (this.renderer && this.renderer.set_opacity) {
-      this.renderer.set_opacity(opacity);
-    }
+    this.renderer?.set_opacity(opacity);
+  }
+
+  setSmoothing(value: number): void {
+    this.ensureRenderer();
+    this.renderer?.set_smoothing(value);
   }
 
   setInvert(invert: boolean): void {
     this.currentOptions.invert = invert;
   }
 
-  setSmoothing(value: number): void {
-    if (this.renderer && this.renderer.set_smoothing) {
-      this.renderer.set_smoothing(value);
-    }
-  }
-
-  // 🔁 Switch brush dynamically
+  // 🔁 Switch brush
   setBrush(brushType: string): void {
     this.currentBrushType = brushType;
-    this.renderer = createBrushEngine(brushType);
+
+    if (isWasmInitialized()) {
+      this.renderer = createBrushEngine(brushType);
+    } else {
+      this.renderer = null;
+    }
   }
 
   getOptions(): BrushOptions {

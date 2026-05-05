@@ -1,3 +1,4 @@
+// core/src/brushes/dip_pen/soft.rs
 pub struct DipPenSoft {
     last_x: f64,
     last_y: f64,

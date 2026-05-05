@@ -1,6 +1,9 @@
+// src/wasm-loader.ts
+
 import init, { BrushEngine as WasmBrushEngine } from '../pkg/core.js';
 
 let initialized = false;
+
 
 export async function initWasm(): Promise<void> {
   if (!initialized) {
@@ -14,7 +17,7 @@ export function isWasmInitialized(): boolean {
   return initialized;
 }
 
-// 🔥 Strong type (matches Rust)
+// Strong type (matches Rust)
 export interface WasmBrushRenderer {
   process(x: number, y: number, pressure: number, speed: number): number[];
   reset(): void;
@@ -23,13 +26,12 @@ export interface WasmBrushRenderer {
   set_smoothing(value: number): void;
 }
 
-// 🔥 Factory
+// Factory function to create a new brush engine
 export function createBrushEngine(
   brushType: string = "dip-pen-soft"
 ): WasmBrushRenderer {
   if (!initialized) {
-    throw new Error('WASM not initialized. Call initWasm() first.');
+    throw new Error('WASM not initialized.');
   }
-
   return new WasmBrushEngine(brushType) as unknown as WasmBrushRenderer;
 }

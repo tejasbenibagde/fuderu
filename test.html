@@ -79,6 +79,15 @@ let painter = null;
 let ready = false;
 
 const status = document.getElementById('status');
+const drawBtn = document.getElementById('drawBtn');
+const eraseBtn = document.getElementById('eraseBtn');
+const clearBtn = document.getElementById('clearBtn');
+const dipPenBtn = document.getElementById('dipPenBtn');
+const airbrushBtn = document.getElementById('airbrushBtn');
+const colorPicker = document.getElementById('colorPicker');
+const size = document.getElementById('size');
+const opacity = document.getElementById('opacity');
+const smooth = document.getElementById('smooth');
 
 async function init() {
   painter = new Fuderu({
@@ -92,8 +101,10 @@ async function init() {
   const waitReady = () => {
     if (painter.wasmReady) {
       ready = true;
-      status.textContent = 'Ready';
-      status.style.color = 'lime';
+      if (status) {
+        status.textContent = 'Ready';
+        status.style.color = 'lime';
+      }
     } else {
       requestAnimationFrame(waitReady);
     }
@@ -110,53 +121,63 @@ function safe(fn) {
 }
 
 // 🔹 modes
-drawBtn.onclick = () => {
-  safe(p => p.setInvert(false));
-  drawBtn.classList.add('active');
-  eraseBtn.classList.remove('active');
-};
+if (drawBtn && eraseBtn) {
+  drawBtn.onclick = () => {
+    safe(p => p.setInvert(false));
+    drawBtn.classList.add('active');
+    eraseBtn.classList.remove('active');
+  };
 
-eraseBtn.onclick = () => {
-  safe(p => p.setInvert(true));
-  eraseBtn.classList.add('active');
-  drawBtn.classList.remove('active');
-};
+  eraseBtn.onclick = () => {
+    safe(p => p.setInvert(true));
+    eraseBtn.classList.add('active');
+    drawBtn.classList.remove('active');
+  };
+}
 
 // 🔹 clear
-clearBtn.onclick = () => safe(p => p.clear());
+if (clearBtn) {
+  clearBtn.onclick = () => safe(p => p.clear());
+}
 
 // 🔹 brushes
-dipPenBtn.onclick = () => {
-  safe(p => p.useBrush('dip-pen-soft'));
-  dipPenBtn.classList.add('active');
-  airbrushBtn.classList.remove('active');
-};
+if (dipPenBtn && airbrushBtn) {
+  dipPenBtn.onclick = () => {
+    safe(p => p.useBrush('dip-pen-soft'));
+    dipPenBtn.classList.add('active');
+    airbrushBtn.classList.remove('active');
+  };
 
-airbrushBtn.onclick = () => {
-  safe(p => p.useBrush('airbrush-normal'));
-  airbrushBtn.classList.add('active');
-  dipPenBtn.classList.remove('active');
-};
+  airbrushBtn.onclick = () => {
+    safe(p => p.useBrush('airbrush-normal'));
+    airbrushBtn.classList.add('active');
+    dipPenBtn.classList.remove('active');
+  };
+}
 
 // 🔹 controls
-colorPicker.oninput = e =>
-  safe(p => p.setColor(e.target.value));
+if (colorPicker) {
+  colorPicker.oninput = e =>
+    safe(p => p.setColor(e.target.value));
+}
 
-size.oninput = e =>
-  safe(p => p.setSize(+e.target.value));
+if (size) {
+  size.oninput = e =>
+    safe(p => p.setSize(+e.target.value));
+}
 
-opacity.oninput = e =>
-  safe(p => p.setOpacity(+e.target.value));
+if (opacity) {
+  opacity.oninput = e =>
+    safe(p => p.setOpacity(+e.target.value));
+}
 
-// 🔥 IMPORTANT FIX
-smooth.oninput = e => {
-  safe(p => {
-    p.setSmoothing(+e.target.value);
-
-    // 💥 CRITICAL: reset stroke to avoid freeze
-    p.brushEngine?.endStroke?.();
-  });
-};
+if (smooth) {
+  smooth.oninput = e => {
+    safe(p => {
+      p.setSmoothing(+e.target.value);
+    });
+  };
+}
 
 </script>
 </body>

@@ -1,3 +1,5 @@
+// core/src/brushes/airbrush/normal.rs
+
 pub struct AirbrushNormal;
 
 impl AirbrushNormal {

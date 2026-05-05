@@ -10,15 +10,12 @@ export class Fuderu {
   private brushEngine: BrushEngine;
   private isDrawing: boolean = false;
   private wasmReady: boolean = false;
+  private initialOptions: Partial<FuderuOptions>;
 
   constructor(options: FuderuOptions) {
     this.canvasManager = new CanvasManager(options.canvas);
     this.brushEngine = new BrushEngine();
-
-    // Apply initial options if provided
-    if (options.color) this.brushEngine.setColor(options.color);
-    if (options.size) this.brushEngine.setSize(options.size);
-    if (options.opacity) this.brushEngine.setOpacity(options.opacity);
+    this.initialOptions = options;
 
     // Initialize WASM asynchronously
     this.init();
@@ -27,6 +24,12 @@ export class Fuderu {
   private async init(): Promise<void> {
     await initWasm();
     this.wasmReady = true;
+
+    // Apply initial options now that WASM is ready
+    if (this.initialOptions.color) this.brushEngine.setColor(this.initialOptions.color);
+    if (this.initialOptions.size) this.brushEngine.setSize(this.initialOptions.size);
+    if (this.initialOptions.opacity) this.brushEngine.setOpacity(this.initialOptions.opacity);
+
     this.setupEventListeners();
     console.log('Fuderu ready with WASM brush engine! 🚀');
   }

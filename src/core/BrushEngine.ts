@@ -15,12 +15,15 @@ export class BrushEngine {
   };
   private isDrawing: boolean = false;
   private lastPoint: Point | null = null;
-  private pathStarted: boolean = false;
+
+
+  constructor() {
+    this.setBrush(this.currentBrushType);
+  }
 
   startStroke(point: Point): void {
     this.isDrawing = true;
     this.lastPoint = point;
-    this.pathStarted = false;
 
     this.ensureRenderer();
     this.renderer!.reset();
@@ -58,11 +61,11 @@ export class BrushEngine {
     // Handle eraser vs draw mode
     if (this.currentOptions.invert) {
       ctx.globalCompositeOperation = 'destination-out';
-      ctx.globalAlpha = brushOpacity; 
+      ctx.globalAlpha = brushOpacity;
       ctx.fillStyle = 'rgba(0,0,0,1)';
     } else {
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = brushOpacity; 
+      ctx.globalAlpha = brushOpacity;
       ctx.fillStyle = this.currentOptions.color;
     }
 
@@ -149,13 +152,12 @@ export class BrushEngine {
     }
 
     this.lastPoint = point;
-    this.pathStarted = true;
+
   }
 
   endStroke(): void {
     this.isDrawing = false;
     this.lastPoint = null;
-    this.pathStarted = false;
 
     this.ensureRenderer();
     if (this.renderer) {

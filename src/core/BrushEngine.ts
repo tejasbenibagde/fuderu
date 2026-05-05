@@ -34,8 +34,7 @@ export class BrushEngine {
     if (!this.renderer) {
       try {
         this.renderer = createBrushEngine(this.currentBrushType);
-      } catch (e) {
-        // WASM not ready yet, will retry on next call
+      } catch {
         return false;
       }
     }
@@ -204,7 +203,7 @@ export class BrushEngine {
       if (typeof this.currentOptions.smoothing === 'number') {
         this.renderer.set_smoothing(this.currentOptions.smoothing);
       }
-    } catch (e) {
+    } catch {
       // WASM not ready yet, will be created on first use
       this.renderer = null;
     }

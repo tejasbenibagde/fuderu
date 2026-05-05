@@ -3,7 +3,7 @@
 import { CanvasManager } from "./core/canvasManager"
 import { BrushEngine } from './core/BrushEngine';
 import { initWasm } from './wasm-loader';
-import type { FuderuOptions, Point } from './types';
+import type { BrushOptions, FuderuOptions, Point } from './types';
 
 export class Fuderu {
   private canvasManager: CanvasManager;
@@ -127,6 +127,10 @@ export class Fuderu {
 
   setSmoothing(value: number): void {
     this.brushEngine.setSmoothing(value);
+  }
+
+  getOptions(): BrushOptions {
+    return this.brushEngine.getOptions();
   }
 
   clear(): void {

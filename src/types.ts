@@ -12,6 +12,7 @@ export interface BrushOptions {
   size: number;
   opacity: number;
   invert?: boolean; // When true, acts like eraser
+  smoothing?: number;
 }
 
 export interface FuderuOptions {

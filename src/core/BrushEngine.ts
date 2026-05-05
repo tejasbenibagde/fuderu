@@ -10,7 +10,8 @@ export class BrushEngine {
     color: '#000000',
     size: 10,
     opacity: 1,
-    invert: false
+    invert: false,
+    smoothing: 0
   };
 
   private renderer: WasmBrushRenderer | null = null;
@@ -25,9 +26,21 @@ export class BrushEngine {
     this.currentBrushType = brushType;
   }
 
+  private applyCurrentOptions(): void {
+    if (!this.renderer) return;
+
+    this.renderer.set_size(this.currentOptions.size);
+    this.renderer.set_opacity(this.currentOptions.opacity);
+
+    if (typeof this.currentOptions.smoothing === 'number') {
+      this.renderer.set_smoothing(this.currentOptions.smoothing);
+    }
+  }
+
   private ensureRenderer(): void {
     if (!this.renderer && isWasmInitialized()) {
       this.renderer = createBrushEngine(this.currentBrushType);
+      this.applyCurrentOptions();
     }
   }
 
@@ -145,6 +158,8 @@ export class BrushEngine {
   }
 
   setSmoothing(value: number): void {
+    this.currentOptions.smoothing = value;
+
     this.ensureRenderer();
     this.renderer?.set_smoothing(value);
   }
@@ -159,6 +174,7 @@ export class BrushEngine {
 
     if (isWasmInitialized()) {
       this.renderer = createBrushEngine(brushType);
+      this.applyCurrentOptions();
     } else {
       this.renderer = null;
     }

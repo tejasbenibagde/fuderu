@@ -18,27 +18,34 @@ export class BrushEngine {
 
 
   constructor() {
-    this.setBrush(this.currentBrushType);
+    // Defer renderer creation until WASM is ready
   }
 
   startStroke(point: Point): void {
     this.isDrawing = true;
     this.lastPoint = point;
 
-    this.ensureRenderer();
-    this.renderer!.reset();
+    if (this.ensureRenderer()) {
+      this.renderer!.reset();
+    }
   }
 
   private ensureRenderer() {
     if (!this.renderer) {
-      this.renderer = createBrushEngine(this.currentBrushType);
+      try {
+        this.renderer = createBrushEngine(this.currentBrushType);
+      } catch (e) {
+        // WASM not ready yet, will retry on next call
+        return false;
+      }
     }
+    return true;
   }
 
   drawStroke(ctx: CanvasRenderingContext2D, point: Point): void {
     if (!this.isDrawing) return;
 
-    this.ensureRenderer();
+    if (!this.ensureRenderer()) return;
     const renderer = this.renderer!;
 
     const pressure = point.pressure || 0.5;
@@ -159,8 +166,7 @@ export class BrushEngine {
     this.isDrawing = false;
     this.lastPoint = null;
 
-    this.ensureRenderer();
-    if (this.renderer) {
+    if (this.ensureRenderer() && this.renderer) {
       this.renderer.reset();
     }
   }
@@ -171,18 +177,17 @@ export class BrushEngine {
 
   setSize(size: number): void {
     this.currentOptions.size = Math.max(1, size);
-    this.ensureRenderer();
-    const renderer = this.renderer!;
-    if (renderer && renderer.set_size) {
-      renderer.set_size(size);
+    if (this.ensureRenderer() && this.renderer && this.renderer.set_size) {
+      this.renderer.set_size(size);
     }
   }
 
   setOpacity(opacity: number): void {
     this.currentOptions.opacity = Math.min(1, Math.max(0, opacity));
 
-    this.ensureRenderer();
-    this.renderer!.set_opacity(opacity);
+    if (this.ensureRenderer() && this.renderer && this.renderer.set_opacity) {
+      this.renderer.set_opacity(opacity);
+    }
   }
 
   setInvert(invert: boolean): void {
@@ -192,23 +197,23 @@ export class BrushEngine {
   setBrush(brushType: string): void {
     this.currentBrushType = brushType;
 
-    this.renderer = createBrushEngine(brushType);
-
-    this.renderer.set_size(this.currentOptions.size);
-    this.renderer.set_opacity(this.currentOptions.opacity);
-
-    if (typeof this.currentOptions.smoothing === 'number') {
-      this.renderer.set_smoothing(this.currentOptions.smoothing);
+    try {
+      this.renderer = createBrushEngine(brushType);
+      this.renderer.set_size(this.currentOptions.size);
+      this.renderer.set_opacity(this.currentOptions.opacity);
+      if (typeof this.currentOptions.smoothing === 'number') {
+        this.renderer.set_smoothing(this.currentOptions.smoothing);
+      }
+    } catch (e) {
+      // WASM not ready yet, will be created on first use
+      this.renderer = null;
     }
-
   }
 
   setSmoothing(value: number): void {
     this.currentOptions.smoothing = value;
-    this.ensureRenderer();
-    const renderer = this.renderer!;
-    if (renderer && renderer.set_smoothing) {
-      renderer.set_smoothing(value);
+    if (this.ensureRenderer() && this.renderer && this.renderer.set_smoothing) {
+      this.renderer.set_smoothing(value);
     }
   }
 

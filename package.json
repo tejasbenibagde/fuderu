@@ -25,7 +25,8 @@
     }
   },
   "scripts": {
-    "build": "vite build && tsc --emitDeclarationOnly",
+    "wasm:build": "wasm-pack build core --target web --out-dir ../pkg",
+    "build": "npm run wasm:build && vite build && tsc --emitDeclarationOnly",
     "typecheck": "tsc --noEmit",
     "dev": "vite",
     "preview": "vite preview",

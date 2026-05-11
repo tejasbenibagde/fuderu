@@ -1,30 +1,20 @@
-import { defineConfig } from 'vite'
 import { resolve } from 'path'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
+  publicDir: false,
   build: {
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       name: 'Fuderu',
-      formats: ['es', 'cjs'],
-      fileName: (format) => {
-        if (format === 'es') return 'index.mjs'
-        if (format === 'cjs') return 'index.cjs'
-        return 'index.umd.js'
-      }
+      fileName: 'fuderu',
+      formats: ['es', 'cjs', 'umd']
     },
     rollupOptions: {
       external: [],
       output: {
-        globals: {},
-        exports: 'named'
+        globals: {}
       }
     }
-  },
-  define: {
-    'import.meta.url': 'import.meta.url'
-  },
-   server: {
-    open: '/test.html'  
   }
 })

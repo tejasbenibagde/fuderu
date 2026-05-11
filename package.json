@@ -1,58 +1,66 @@
 {
   "name": "fuderu",
-  "version": "0.2.2",
+  "version": "0.3.0",
+  "description": "High-performance canvas drawing library with a different approach to brush stroke rendering.",
   "type": "module",
-  "description": "High-performance canvas drawing library with Rust-powered brush engine",
-  "main": "./dist/index.umd.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
-  "keywords": [
-    "canvas",
-    "drawing",
-    "brush",
-    "painting",
-    "wasm",
-    "rust"
-  ],
+  "main": "./dist/fuderu.umd.cjs",
+  "module": "./dist/fuderu.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.umd.js",
-      "types": "./dist/index.d.ts"
+      "import": {
+        "default": "./dist/fuderu.js",
+        "types": "./dist/index.d.ts"
+      },
+      "require": {
+        "default": "./dist/fuderu.umd.cjs",
+        "types": "./dist/index.d.ts"
+      }
     }
   },
-  "scripts": {
-    "wasm:build": "wasm-pack build core --target web --out-dir ../pkg",
-    "build": "npm run wasm:build && vite build && tsc --emitDeclarationOnly",
-    "typecheck": "tsc --noEmit",
-    "dev": "vite",
-    "preview": "vite preview",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:watch": "vitest --watch",
-    "test:coverage": "vitest --coverage",
-    "prepare": "husky",
-    "prepublishOnly": "npm run build",
-    "lint": "eslint ."
+  "keywords": [
+    "brush",
+    "mouse",
+    "canvas",
+    "drawing",
+    "smooth",
+    "pencil",
+    "string",
+    "radius"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tejasbenibagde/fuderu.git"
   },
-  "author": "tejasbenibagde",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "build": "vite build && tsc --emitDeclarationOnly --outDir dist",
+    "test": "vitest",
+    "test:ci": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepare": "husky"
+  },
+  "author": "Tejas Benibagde",
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^25.6.0",
-    "@typescript-eslint/eslint-plugin": "^8.59.1",
-    "@typescript-eslint/parser": "^8.59.1",
+    "@types/node": "^25.6.2",
+    "@vitest/coverage-v8": "^4.1.6",
+    "catenary-curve": "^2.0.0",
     "eslint": "^10.3.0",
     "globals": "^17.6.0",
     "husky": "^9.1.7",
-    "jiti": "^2.6.1",
-    "jsdom": "^24.0.0",
+    "jiti": "^2.7.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.1",
-    "vite": "^8.0.10",
-    "vitest": "^4.1.5"
+    "typescript-eslint": "^8.59.2",
+    "vite": "^8.0.12",
+    "vitest": "^4.1.6"
   }
 }

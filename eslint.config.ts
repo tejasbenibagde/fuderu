@@ -1,32 +1,10 @@
-// eslint.config.js
-import js from '@eslint/js';
-import tseslint from 'typescript-eslint';
+import js from "@eslint/js";
+import globals from "globals";
+import tseslint from "typescript-eslint";
+import { defineConfig, globalIgnores } from "eslint/config";
 
-export default [
-  {
-    ignores: [
-      'dist/**',
-      'pkg/**',
-      'node_modules/**',
-      'test/**',
-      'pkg/**',
-      'playgrounds/**',
-    ],
-  },
-  js.configs.recommended,
-
-  ...tseslint.configs.recommended,
-
-  {
-    files: ['**/*.ts', '**/*.tsx'],
-    languageOptions: {
-      parser: tseslint.parser,
-    },
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': 'warn',
-      '@typescript-eslint/ban-ts-comment': 'off',
-
-    },
-  },
-];
+export default defineConfig([
+  { files: ["**/*.{js,mjs,cjs,ts,mts,cts}"], plugins: { js }, extends: ["js/recommended"], languageOptions: { globals: globals.browser } },
+  tseslint.configs.recommended,
+  globalIgnores(["dist"])
+]);

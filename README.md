@@ -1,4 +1,9 @@
-# 🖌️ Fuderu
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./public/fuderu.png">
+    <img src="./public/fuderu.png" alt="Fuderu" width="100%" style="border-radius: 16px; max-width: 100%;">
+  </picture>
+</p>
 
 [![npm version](https://img.shields.io/npm/v/fuderu.svg)](https://www.npmjs.com/package/fuderu)
 [![npm downloads](https://img.shields.io/npm/dm/fuderu.svg)](https://www.npmjs.com/package/fuderu)

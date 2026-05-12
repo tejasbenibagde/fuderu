@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Fuderu - Lazy Brush Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: #0f3460;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            cursor: crosshair;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button {
+            background: #1a5276;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #e94560;
+            transform: translateY(-2px);
+        }
+
+        button.active {
+            background: #e94560;
+            box-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #1a5276;
+            padding: 6px 12px;
+            border-radius: 8px;
+        }
+
+        .control-group label {
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        input {
+            padding: 6px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+        }
+
+        input[type="range"] {
+            width: 150px;
+            cursor: pointer;
+        }
+
+        .value-display {
+            color: white;
+            font-size: 12px;
+            background: #0f3460;
+            padding: 4px 8px;
+            border-radius: 4px;
+            min-width: 45px;
+            text-align: center;
+        }
+
+        .status {
+            color: #4c9aff;
+            font-size: 12px;
+            margin-left: auto;
+            padding: 4px 12px;
+            background: #1a5276;
+            border-radius: 20px;
+        }
+
+        .info {
+            margin-top: 12px;
+            padding: 10px;
+            background: #1a5276;
+            border-radius: 8px;
+            font-size: 12px;
+            color: white;
+            text-align: center;
+        }
+
+        .info span {
+            color: #e94560;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <canvas id="canvas" width="800" height="500"></canvas>
+
+        <div class="toolbar">
+            <button id="clearBtn">🧹 Clear</button>
+
+            <div class="control-group">
+                <label>🎨 Color:</label>
+                <input type="color" id="colorPicker" value="#000000">
+            </div>
+
+            <div class="control-group">
+                <label>📏 Brush Size:</label>
+                <input type="range" id="sizeSlider" min="1" max="50" value="5">
+                <span id="sizeValue" class="value-display">5px</span>
+            </div>
+
+            <div class="control-group">
+                <label>🔄 Lazy Radius:</label>
+                <input type="range" id="radiusSlider" min="0" max="100" value="30">
+                <span id="radiusValue" class="value-display">30px</span>
+            </div>
+
+            <div class="control-group">
+                <label>⚡ Friction:</label>
+                <input type="range" id="frictionSlider" min="0" max="0.9" step="0.01" value="0">
+                <span id="frictionValue" class="value-display">0%</span>
+            </div>
+
+            <div class="control-group">
+                <label>🎯 Opacity:</label>
+                <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="1">
+                <span id="opacityValue" class="value-display">100%</span>
+            </div>
+
+            <div class="status" id="status">Ready</div>
+        </div>
+
+        <div class="info">
+            💡 <span>Lazy Brush</span> - The brush follows the cursor with a delay/smoothing effect.<br>
+            Try different <span>Radius</span> (pulling distance) and <span>Friction</span> (smoothness) values!
+        </div>
+    </div>
+
+    <script type="module">
+        import LazyBrush from '../src/Brush.ts';
+        import { BrushPoint } from '../src/Point.ts';
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Drawing state
+        let isDrawing = false;
+        let lastPoint = null;
+
+        // Lazy brush instance
+        let lazyBrush = null;
+
+        // Current drawing options
+        let currentColor = '#000000';
+        let brushSize = 5;
+        let opacity = 1;
+
+        // UI Elements
+        const clearBtn = document.getElementById('clearBtn');
+        const colorPicker = document.getElementById('colorPicker');
+        const sizeSlider = document.getElementById('sizeSlider');
+        const sizeValue = document.getElementById('sizeValue');
+        const radiusSlider = document.getElementById('radiusSlider');
+        const radiusValue = document.getElementById('radiusValue');
+        const frictionSlider = document.getElementById('frictionSlider');
+        const frictionValue = document.getElementById('frictionValue');
+        const opacitySlider = document.getElementById('opacitySlider');
+        const opacityValue = document.getElementById('opacityValue');
+        const statusDiv = document.getElementById('status');
+
+        // Initialize lazy brush
+        function initLazyBrush() {
+            lazyBrush = new LazyBrush({
+                radius: parseInt(radiusSlider.value),
+                enabled: true,
+                initialPoint: { x: 0, y: 0 }
+            });
+            statusDiv.textContent = 'Lazy Brush Ready';
+            updateRadiusDisplay();
+        }
+
+        function updateRadiusDisplay() {
+            const radius = parseInt(radiusSlider.value);
+            radiusValue.textContent = `${radius}px`;
+            if (lazyBrush) {
+                lazyBrush.setRadius(radius);
+            }
+        }
+
+        function updateFrictionDisplay() {
+            const friction = parseFloat(frictionSlider.value);
+            frictionValue.textContent = `${Math.round(friction * 100)}%`;
+        }
+
+        // Drawing functions
+        function drawDot(x, y, size, color, opacity) {
+            ctx.globalAlpha = opacity;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawLine(fromX, fromY, toX, toY, size, color, opacity) {
+            ctx.globalAlpha = opacity;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = size;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            const x = (clientX - rect.left) * scaleX;
+            const y = (clientY - rect.top) * scaleY;
+
+            // Initialize lazy brush at this position
+            lazyBrush.update({ x, y }, { both: true });
+            const brushPos = lazyBrush.getBrushCoordinates();
+
+            drawDot(brushPos.x, brushPos.y, brushSize, currentColor, opacity);
+            lastPoint = { x: brushPos.x, y: brushPos.y };
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            const x = (clientX - rect.left) * scaleX;
+            const y = (clientY - rect.top) * scaleY;
+
+            // Update lazy brush with friction
+            const friction = parseFloat(frictionSlider.value);
+            const hasMoved = lazyBrush.update({ x, y }, { friction: friction || undefined });
+            const brushPos = lazyBrush.getBrushCoordinates();
+
+            if (lastPoint) {
+                drawLine(lastPoint.x, lastPoint.y, brushPos.x, brushPos.y, brushSize, currentColor, opacity);
+            }
+
+            lastPoint = { x: brushPos.x, y: brushPos.y };
+
+            // Update debug info
+            const distance = lazyBrush.getDistance();
+            const angle = lazyBrush.getAngle();
+            if (distance > 0) {
+                statusDiv.textContent = `Dist: ${distance.toFixed(1)}px | Angle: ${(angle * 180 / Math.PI).toFixed(0)}° | Radius: ${lazyBrush.getRadius()}px`;
+            }
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+            lastPoint = null;
+            lazyBrush.update({ x: 0, y: 0 }, { both: true });
+            statusDiv.textContent = 'Ready';
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Event listeners
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+
+        clearBtn.addEventListener('click', clearCanvas);
+
+        colorPicker.addEventListener('input', (e) => {
+            currentColor = e.target.value;
+        });
+
+        sizeSlider.addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            sizeValue.textContent = `${brushSize}px`;
+        });
+
+        radiusSlider.addEventListener('input', (e) => {
+            updateRadiusDisplay();
+        });
+
+        frictionSlider.addEventListener('input', (e) => {
+            updateFrictionDisplay();
+        });
+
+        opacitySlider.addEventListener('input', (e) => {
+            opacity = parseFloat(e.target.value);
+            opacityValue.textContent = `${Math.round(opacity * 100)}%`;
+        });
+
+        // Initialize
+        initLazyBrush();
+        clearCanvas();
+
+        console.log('Fuderu Lazy Brush Test Ready!');
+        console.log('Try different Radius and Friction values to see the lazy effect');
+    </script>
+</body>
+
+</html>

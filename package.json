@@ -39,7 +39,10 @@
     "lib": "lib"
   },
   "scripts": {
+    "dev": "vite",
     "build": "vite build && tsc --emitDeclarationOnly --outDir dist",
+    "playground": "cross-env PLAYGROUND=true vite",
+    "preview": "vite preview",
     "test": "vitest",
     "test:ci": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -54,6 +57,7 @@
     "@types/node": "^25.6.2",
     "@vitest/coverage-v8": "^4.1.6",
     "catenary-curve": "^2.0.0",
+    "cross-env": "^10.1.0",
     "eslint": "^10.3.0",
     "globals": "^17.6.0",
     "husky": "^9.1.7",

@@ -64,7 +64,6 @@ painter.clear()
 | `toggleEraser()` | Toggle between drawing and eraser |
 | `isErasing()` | Check if eraser is currently active |
 | `clear()` | Clear the entire canvas |
-| `destroy()` | Remove event listeners and cleanup |
 
 ## 📄 License
 

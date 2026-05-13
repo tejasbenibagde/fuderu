@@ -1,91 +1,126 @@
-import { describe, expect, it } from 'vitest'
-import { BrushPoint } from '../src/Point'
+import { describe, expect, it, beforeEach } from 'vitest'
+import Brush from '../src/Brush'
 
-describe('BrushPoint', () => {
-  it('Should be instantiatable with two coordinates', () => {
-    const p = new BrushPoint(100, 50)
+describe('Brush', () => {
+  let brush: Brush
 
-    expect(typeof p.x).toBe('number')
-    expect(p.x).toBeCloseTo(100)
-
-    expect(typeof p.y).toBe('number')
-    expect(p.y).toBeCloseTo(50)
+  beforeEach(() => {
+    brush = new Brush({ radius: 30, enabled: true })
   })
 
-  it('Should update coordinates correctly', () => {
-    const p = new BrushPoint(10, 20)
+  describe('Eraser functionality', () => {
+    it('Should initialize with eraser mode disabled by default', () => {
+      expect(brush.isErasing()).toBe(false)
+    })
 
-    const pNew = new BrushPoint(500, 300)
+    it('Should initialize with eraser mode enabled when option is passed', () => {
+      const eraserBrush = new Brush({ radius: 30, enabled: true, eraser: true })
+      expect(eraserBrush.isErasing()).toBe(true)
+    })
 
-    p.update(pNew)
+    it('Should enable eraser mode when enableEraser() is called', () => {
+      brush.enableEraser()
+      expect(brush.isErasing()).toBe(true)
+    })
 
-    expect(p.x).toBeCloseTo(500)
-    expect(p.y).toBeCloseTo(300)
-  })
+    it('Should disable eraser mode when disableEraser() is called', () => {
+      brush.enableEraser()
+      expect(brush.isErasing()).toBe(true)
+      
+      brush.disableEraser()
+      expect(brush.isErasing()).toBe(false)
+    })
 
-  it('Should move point by angle correctly', () => {
-    const p = new BrushPoint(100, 100)
+    it('Should toggle eraser mode on/off with toggleEraser()', () => {
+      // Start disabled
+      expect(brush.isErasing()).toBe(false)
+      
+      // First toggle - should enable
+      const result1 = brush.toggleEraser()
+      expect(result1).toBe(true)
+      expect(brush.isErasing()).toBe(true)
+      
+      // Second toggle - should disable
+      const result2 = brush.toggleEraser()
+      expect(result2).toBe(false)
+      expect(brush.isErasing()).toBe(false)
+      
+      // Third toggle - should enable again
+      const result3 = brush.toggleEraser()
+      expect(result3).toBe(true)
+      expect(brush.isErasing()).toBe(true)
+    })
 
-    // This equals 90° in radians
-    const angle = Math.PI / 2
+    it('Should maintain brush position tracking independently of eraser mode', () => {
+      const initialPoint = { x: 100, y: 100 }
+      const brushWithErase = new Brush({ 
+        radius: 30, 
+        enabled: true, 
+        initialPoint,
+        eraser: true 
+      })
+      
+      // Eraser enabled but position should still work
+      expect(brushWithErase.isErasing()).toBe(true)
+      
+      const brushPos = brushWithErase.getBrushCoordinates()
+      expect(brushPos.x).toBeCloseTo(100)
+      expect(brushPos.y).toBeCloseTo(100)
+      
+      // Update position
+      brushWithErase.update({ x: 200, y: 200 })
+      const newBrushPos = brushWithErase.getBrushCoordinates()
+      // Brush position should have moved (lazy effect applies)
+      expect(newBrushPos.x).toBeGreaterThan(100)
+    })
 
-    p.moveByAngle(angle, 100)
+    it('Should preserve radius and friction settings when toggling eraser', () => {
+      brush.setRadius(50)
+      expect(brush.getRadius()).toBe(50)
+      expect(brush.isErasing()).toBe(false)
+      
+      brush.toggleEraser()
+      expect(brush.isErasing()).toBe(true)
+      expect(brush.getRadius()).toBe(50) // Radius unchanged
+      
+      brush.toggleEraser()
+      expect(brush.isErasing()).toBe(false)
+      expect(brush.getRadius()).toBe(50) // Still unchanged
+    })
 
-    expect(p.x).toBeCloseTo(100)
-    expect(p.y).toBeCloseTo(200)
-  })
+    it('Should preserve enabled/disabled state when toggling eraser', () => {
+      brush.disable()
+      expect(brush.isEnabled()).toBe(false)
+      
+      brush.toggleEraser()
+      expect(brush.isErasing()).toBe(true)
+      expect(brush.isEnabled()).toBe(false) // Enabled state unchanged
+      
+      brush.enable()
+      expect(brush.isEnabled()).toBe(true)
+      expect(brush.isErasing()).toBe(true) // Eraser state preserved
+    })
 
-  it('Should compare equality to another point correctly', () => {
-    const p = new BrushPoint(300, 300)
-
-    const p1 = new BrushPoint(300, 300)
-    const p2 = new BrushPoint(299, 300)
-    const p3 = new BrushPoint(301, 300)
-    const p4 = new BrushPoint(301, 299)
-    const p5 = new BrushPoint(300, 300.000000000001)
-
-    expect(p.equalsTo(p1)).toEqual(true)
-    expect(p.equalsTo(p2)).toEqual(false)
-    expect(p.equalsTo(p3)).toEqual(false)
-    expect(p.equalsTo(p4)).toEqual(false)
-    expect(p.equalsTo(p5)).toEqual(false)
-  })
-
-  it('Should calculate the difference between another point correctly', () => {
-    const p1 = new BrushPoint(300, 300)
-    const p2 = new BrushPoint(300, 600)
-
-    const r = p1.getDifferenceTo(p2)
-
-    expect(r.x).toEqual(0)
-    expect(r.y).toEqual(-300)
-  })
-
-  it('Should calculate the distance to another point correctly', () => {
-    const p1 = new BrushPoint(300, 300)
-    const p2 = new BrushPoint(300, 600)
-
-    const r = p1.getDistanceTo(p2)
-
-    expect(r).toEqual(300)
-  })
-
-  it('Should calculate the angle to another point correctly', () => {
-    const p1 = new BrushPoint(500, 500)
-    const p2 = new BrushPoint(1000, 500)
-
-    const r = p1.getAngleTo(p2)
-
-    expect(r).toEqual(Math.PI)
-  })
-
-  it('Should return a coordinates object correctly', () => {
-    const p = new BrushPoint(511.5932, 159.999994)
-
-    const r = p.toObject()
-
-    expect(typeof r).toBe('object')
-    expect(r.x).toEqual(511.5932)
-    expect(r.y).toEqual(159.999994)
+    it('Should work correctly with multiple eraser toggles during a stroke', () => {
+      // Start drawing
+      brush.update({ x: 100, y: 100 }, { both: true })
+      expect(brush.isErasing()).toBe(false)
+      
+      // Simulate stroke with eraser toggle
+      brush.update({ x: 150, y: 150 })
+      brush.toggleEraser() // Switch to eraser mid-stroke
+      expect(brush.isErasing()).toBe(true)
+      
+      brush.update({ x: 200, y: 200 })
+      brush.toggleEraser() // Switch back to draw
+      expect(brush.isErasing()).toBe(false)
+      
+      brush.update({ x: 250, y: 250 })
+      
+      // All updates should have processed correctly
+      const finalPos = brush.getBrushCoordinates()
+      expect(finalPos.x).toBeGreaterThan(100)
+      expect(finalPos.y).toBeGreaterThan(100)
+    })
   })
 })

@@ -139,6 +139,7 @@
 
         <div class="toolbar">
             <button id="clearBtn">🧹 Clear</button>
+            <button id="eraserBtn" class="active">✏️ Draw</button>
 
             <div class="control-group">
                 <label>🎨 Color:</label>
@@ -174,7 +175,9 @@
 
         <div class="info">
             💡 <span>Lazy Brush</span> - The brush follows the cursor with a delay/smoothing effect.<br>
-            Try different <span>Radius</span> (pulling distance) and <span>Friction</span> (smoothness) values!
+            Try different <span>Radius</span> (pulling distance) and <span>Friction</span> (smoothness) values!<br>
+            🗑️ <span>Eraser Mode</span> - Click "Eraser" to switch to eraser, "Draw" to go back to drawing.<br>
+            🎯 <span>Opacity</span> - Works for both drawing AND eraser modes!
         </div>
     </div>
 
@@ -199,6 +202,7 @@
 
         // UI Elements
         const clearBtn = document.getElementById('clearBtn');
+        const eraserBtn = document.getElementById('eraserBtn');
         const colorPicker = document.getElementById('colorPicker');
         const sizeSlider = document.getElementById('sizeSlider');
         const sizeValue = document.getElementById('sizeValue');
@@ -234,21 +238,40 @@
             frictionValue.textContent = `${Math.round(friction * 100)}%`;
         }
 
-        // Drawing functions
-        function drawDot(x, y, size, color, opacity) {
-            ctx.globalAlpha = opacity;
-            ctx.fillStyle = color;
+        // Drawing functions with eraser support (both with opacity)
+        function drawDot(x, y, size, color, opacity, isErasing) {
+            if (isErasing) {
+                // For eraser: use destination-out with opacity via globalAlpha
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.fillStyle = 'rgba(0,0,0,1)';
+                ctx.globalAlpha = opacity;  // Opacity now affects eraser too!
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = color;
+                ctx.globalAlpha = opacity;
+            }
+            
             ctx.beginPath();
             ctx.arc(x, y, size / 2, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        function drawLine(fromX, fromY, toX, toY, size, color, opacity) {
-            ctx.globalAlpha = opacity;
-            ctx.strokeStyle = color;
+        function drawLine(fromX, fromY, toX, toY, size, color, opacity, isErasing) {
+            if (isErasing) {
+                // For eraser: use destination-out with opacity via globalAlpha
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.strokeStyle = 'rgba(0,0,0,1)';
+                ctx.globalAlpha = opacity;  // Opacity now affects eraser too!
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = color;
+                ctx.globalAlpha = opacity;
+            }
+            
             ctx.lineWidth = size;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
+            
             ctx.beginPath();
             ctx.moveTo(fromX, fromY);
             ctx.lineTo(toX, toY);
@@ -277,7 +300,7 @@
             lazyBrush.update({ x, y }, { both: true });
             const brushPos = lazyBrush.getBrushCoordinates();
 
-            drawDot(brushPos.x, brushPos.y, brushSize, currentColor, opacity);
+            drawDot(brushPos.x, brushPos.y, brushSize, currentColor, opacity, lazyBrush.isErasing());
             lastPoint = { x: brushPos.x, y: brushPos.y };
         }
 
@@ -307,7 +330,7 @@
             const brushPos = lazyBrush.getBrushCoordinates();
 
             if (lastPoint) {
-                drawLine(lastPoint.x, lastPoint.y, brushPos.x, brushPos.y, brushSize, currentColor, opacity);
+                drawLine(lastPoint.x, lastPoint.y, brushPos.x, brushPos.y, brushSize, currentColor, opacity, lazyBrush.isErasing());
             }
 
             lastPoint = { x: brushPos.x, y: brushPos.y };
@@ -315,8 +338,12 @@
             // Update debug info
             const distance = lazyBrush.getDistance();
             const angle = lazyBrush.getAngle();
+            const mode = lazyBrush.isErasing() ? '🗑️ Erasing' : '✏️ Drawing';
+            const opacityPercent = Math.round(opacity * 100);
             if (distance > 0) {
-                statusDiv.textContent = `Dist: ${distance.toFixed(1)}px | Angle: ${(angle * 180 / Math.PI).toFixed(0)}° | Radius: ${lazyBrush.getRadius()}px`;
+                statusDiv.textContent = `${mode} | Opacity: ${opacityPercent}% | Dist: ${distance.toFixed(1)}px | Angle: ${(angle * 180 / Math.PI).toFixed(0)}° | Radius: ${lazyBrush.getRadius()}px`;
+            } else {
+                statusDiv.textContent = `${mode} | Opacity: ${opacityPercent}%`;
             }
         }
 
@@ -324,11 +351,33 @@
             isDrawing = false;
             lastPoint = null;
             lazyBrush.update({ x: 0, y: 0 }, { both: true });
-            statusDiv.textContent = 'Ready';
+            const mode = lazyBrush.isErasing() ? '🗑️ Eraser ready' : '✏️ Draw ready';
+            statusDiv.textContent = mode;
         }
 
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function toggleEraser() {
+            lazyBrush.toggleEraser();
+            updateEraserButton();
+        }
+
+        function updateEraserButton() {
+            const isErasing = lazyBrush.isErasing();
+            if (isErasing) {
+                eraserBtn.textContent = '🗑️ Eraser';
+                eraserBtn.classList.add('active');
+                colorPicker.disabled = true;
+                // Opacity slider stays enabled for eraser!
+                statusDiv.textContent = '🗑️ Eraser mode active (opacity works!)';
+            } else {
+                eraserBtn.textContent = '✏️ Draw';
+                eraserBtn.classList.remove('active');
+                colorPicker.disabled = false;
+                statusDiv.textContent = '✏️ Drawing mode active';
+            }
         }
 
         // Event listeners
@@ -340,6 +389,7 @@
         canvas.addEventListener('touchend', stopDrawing);
 
         clearBtn.addEventListener('click', clearCanvas);
+        eraserBtn.addEventListener('click', toggleEraser);
 
         colorPicker.addEventListener('input', (e) => {
             currentColor = e.target.value;
@@ -361,14 +411,21 @@
         opacitySlider.addEventListener('input', (e) => {
             opacity = parseFloat(e.target.value);
             opacityValue.textContent = `${Math.round(opacity * 100)}%`;
+            
+            // Update status to show current opacity
+            const mode = lazyBrush.isErasing() ? '🗑️ Erasing' : '✏️ Drawing';
+            statusDiv.textContent = `${mode} | Opacity: ${Math.round(opacity * 100)}%`;
         });
 
         // Initialize
         initLazyBrush();
         clearCanvas();
+        updateEraserButton();
 
         console.log('Fuderu Lazy Brush Test Ready!');
         console.log('Try different Radius and Friction values to see the lazy effect');
+        console.log('Click the Eraser button to switch between drawing and erasing');
+        console.log('Opacity slider now works for BOTH drawing and eraser modes!');
     </script>
 </body>
 

@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./public/fuderu.png">
-    <img src="./public/fuderu.png" alt="Fuderu" width="100%" style="border-radius: 16px; max-width: 100%;">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tejasbenibagde/fuderu/main/public/fuderu.png">
+    <img src="https://raw.githubusercontent.com/tejasbenibagde/fuderu/main/public/fuderu.png" alt="Fuderu" width="100%" style="border-radius: 16px; max-width: 100%;">
   </picture>
 </p>
 
@@ -50,6 +50,7 @@ painter.clear()
 | `color` | `string` | `#000000` | Initial brush color |
 | `size` | `number` | `10` | Brush size in pixels |
 | `opacity` | `number` | `1` | Brush opacity (0-1) |
+| `eraser` |  `boolean` | `false` | Start in eraser mode
 
 ### Methods
 
@@ -58,7 +59,10 @@ painter.clear()
 | `setColor(color)` | Change brush color (hex, rgb, rgba) |
 | `setSize(size)` | Set brush size in pixels |
 | `setOpacity(opacity)` | Set opacity (0-1) |
-| `setInvert(boolean)` | Enable eraser mode |
+| `enableEraser()` | Enable eraser mode |
+| `disableEraser()` | Disable eraser mode |
+| `toggleEraser()` | Toggle between drawing and eraser |
+| `isErasing()` | Check if eraser is currently active |
 | `clear()` | Clear the entire canvas |
 | `destroy()` | Remove event listeners and cleanup |
 

@@ -65,6 +65,13 @@ class Brush {
   distance: number
 
   /**
+ * Enable eraser mode.
+ * When enabled, the brush will erase instead of draw.
+ */
+  private _isErasing: boolean = false
+
+
+  /**
    * Constructs a new LazyBrush.
    * 
    * @param options - Configuration options
@@ -77,6 +84,7 @@ class Brush {
     this.radius = options.radius || RADIUS_DEFAULT
     // Enabled by default unless explicitly set to false
     this._isEnabled = options.enabled === false ? false : true
+    this._isErasing = options.eraser || false
 
     // Initialize both pointer and brush at the same starting position
     this.pointer = new BrushPoint(initialPoint.x, initialPoint.y)
@@ -156,6 +164,41 @@ class Brush {
   }
 
   /**
+ * Enable eraser mode.
+ * When enabled, the brush will erase instead of draw.
+ * Note: The user still needs to set `ctx.globalCompositeOperation = 'destination-out'`
+ * based on this flag.
+ */
+  enableEraser(): void {
+    this._isErasing = true
+  }
+
+  /**
+ * Disable eraser mode.
+ * Returns to normal drawing mode.
+ */
+  disableEraser(): void {
+    this._isErasing = false
+  }
+
+  /**
+ * Toggle eraser mode on/off.
+ * @returns {boolean} The new eraser state (true = erasing)
+ */
+  toggleEraser(): boolean {
+    this._isErasing = !this._isErasing
+    return this._isErasing
+  }
+
+  /**
+ * Check if eraser mode is active.
+ * @returns {boolean} True if eraser is enabled
+ */
+  isErasing(): boolean {
+    return this._isErasing
+  }
+
+  /**
    * Return the pointer as a BrushPoint instance.
    * Use this if you need advanced point operations.
    * @returns {BrushPoint} Pointer point with utility methods
@@ -212,7 +255,7 @@ class Brush {
   ): boolean {
     // Reset movement flag for this update cycle
     this._hasMoved = false
-    
+
     // Early exit: if pointer didn't move AND no special options, nothing to do
     if (
       this.pointer.equalsTo(newPointerPoint) &&
@@ -241,7 +284,7 @@ class Brush {
       // Step 3: Check if pointer is outside the "lazy radius"
       // Rounding avoids floating-point jitter
       const isOutside = Math.round((this.distance - this.radius) * 10) / 10 > 0
-      
+
       // Validate friction value (must be between 0 and 1)
       const friction =
         options.friction && options.friction < 1 && options.friction > 0

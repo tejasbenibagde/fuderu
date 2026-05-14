@@ -6,7 +6,8 @@
 </p>
 
 [![npm version](https://img.shields.io/npm/v/fuderu.svg)](https://www.npmjs.com/package/fuderu)
-[![npm downloads](https://img.shields.io/npm/dm/fuderu.svg)](https://www.npmjs.com/package/fuderu)
+[![Last Month downloads](https://img.shields.io/npm/dm/fuderu?style=flat&label=Last%20Month%20Downloads)](https://www.npmjs.com/package/fuderu)
+[![Total downloads](https://img.shields.io/npm/d18m/fuderu?style=flat&label=Total%20Downloads)](https://www.npmjs.com/package/fuderu)
 [![License](https://img.shields.io/npm/l/fuderu.svg)](https://github.com/tejasbenibagde/fuderu/blob/main/LICENSE)
 
 A high-performance, lazy brush engine for canvas drawing. Built with TypeScript and Rust (WASM). Create smooth, natural brush strokes with configurable lazy radius and friction.

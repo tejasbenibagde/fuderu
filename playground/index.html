@@ -37,6 +37,7 @@
             background: white;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            touch-action: none;
         }
 
         .toolbar {
@@ -135,11 +136,11 @@
 
 <body>
     <div class="container">
-        <canvas id="canvas" width="800" height="500"></canvas>
+        <canvas id="canvas"></canvas>
 
         <div class="toolbar">
             <button id="clearBtn">🧹 Clear</button>
-            <button id="eraserBtn" class="active">✏️ Draw</button>
+            <button id="eraserBtn">✏️ Draw</button>
 
             <div class="control-group">
                 <label>🎨 Color:</label>
@@ -183,7 +184,6 @@
 
     <script type="module">
         import LazyBrush from '../src/Brush.ts';
-        import { BrushPoint } from '../src/Point.ts';
 
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -197,7 +197,6 @@
 
         // Current drawing options
         let currentColor = '#000000';
-        let brushSize = 5;
         let opacity = 1;
 
         // UI Elements
@@ -218,6 +217,7 @@
         function initLazyBrush() {
             lazyBrush = new LazyBrush({
                 radius: parseInt(radiusSlider.value),
+                size: parseInt(sizeSlider.value),
                 enabled: true,
                 initialPoint: { x: 0, y: 0 }
             });
@@ -234,7 +234,12 @@
         }
 
         function updateFrictionDisplay() {
-            const friction = parseFloat(frictionSlider.value);
+            let friction = 0;
+
+            frictionSlider.addEventListener('input', (e) => {
+                friction = Number(e.target.value);
+                updateFrictionDisplay();
+            });
             frictionValue.textContent = `${Math.round(friction * 100)}%`;
         }
 
@@ -250,10 +255,13 @@
                 ctx.fillStyle = color;
                 ctx.globalAlpha = opacity;
             }
-            
+
             ctx.beginPath();
             ctx.arc(x, y, size / 2, 0, Math.PI * 2);
             ctx.fill();
+
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'source-over';
         }
 
         function drawLine(fromX, fromY, toX, toY, size, color, opacity, isErasing) {
@@ -267,15 +275,18 @@
                 ctx.strokeStyle = color;
                 ctx.globalAlpha = opacity;
             }
-            
+
             ctx.lineWidth = size;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            
+
             ctx.beginPath();
             ctx.moveTo(fromX, fromY);
             ctx.lineTo(toX, toY);
             ctx.stroke();
+
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'source-over';
         }
 
         function startDrawing(e) {
@@ -300,7 +311,14 @@
             lazyBrush.update({ x, y }, { both: true });
             const brushPos = lazyBrush.getBrushCoordinates();
 
-            drawDot(brushPos.x, brushPos.y, brushSize, currentColor, opacity, lazyBrush.isErasing());
+            drawDot(
+                brushPos.x,
+                brushPos.y,
+                lazyBrush.getSize(),
+                currentColor,
+                opacity,
+                lazyBrush.isErasing()
+            );
             lastPoint = { x: brushPos.x, y: brushPos.y };
         }
 
@@ -325,12 +343,34 @@
             const y = (clientY - rect.top) * scaleY;
 
             // Update lazy brush with friction
-            const friction = parseFloat(frictionSlider.value);
-            const hasMoved = lazyBrush.update({ x, y }, { friction: friction || undefined });
+            let friction = 0;
+
+            frictionSlider.addEventListener('input', (e) => {
+                friction = Number(e.target.value);
+                updateFrictionDisplay();
+            });
+
+            lazyBrush.update(
+                { x, y },
+                { friction: friction || undefined }
+            );
+
             const brushPos = lazyBrush.getBrushCoordinates();
 
-            if (lastPoint) {
-                drawLine(lastPoint.x, lastPoint.y, brushPos.x, brushPos.y, brushSize, currentColor, opacity, lazyBrush.isErasing());
+            if (
+                lastPoint &&
+                (lastPoint.x !== brushPos.x || lastPoint.y !== brushPos.y)
+            ) {
+                drawLine(
+                    lastPoint.x,
+                    lastPoint.y,
+                    brushPos.x,
+                    brushPos.y,
+                    lazyBrush.getSize(),
+                    currentColor,
+                    opacity,
+                    lazyBrush.isErasing()
+                );
             }
 
             lastPoint = { x: brushPos.x, y: brushPos.y };
@@ -364,6 +404,18 @@
             updateEraserButton();
         }
 
+        function resizeCanvas() {
+            const ratio = window.devicePixelRatio || 1;
+
+            canvas.width = 800 * ratio;
+            canvas.height = 500 * ratio;
+
+            canvas.style.width = '800px';
+            canvas.style.height = '500px';
+
+            ctx.scale(ratio, ratio);
+        }
+
         function updateEraserButton() {
             const isErasing = lazyBrush.isErasing();
             if (isErasing) {
@@ -384,8 +436,9 @@
         canvas.addEventListener('mousedown', startDrawing);
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
         canvas.addEventListener('touchstart', startDrawing);
-        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchmove', draw, { passive: false });
         canvas.addEventListener('touchend', stopDrawing);
 
         clearBtn.addEventListener('click', clearCanvas);
@@ -396,8 +449,11 @@
         });
 
         sizeSlider.addEventListener('input', (e) => {
-            brushSize = parseInt(e.target.value);
-            sizeValue.textContent = `${brushSize}px`;
+            const size = parseInt(e.target.value);
+
+            lazyBrush.setSize(size);
+
+            sizeValue.textContent = `${size}px`;
         });
 
         radiusSlider.addEventListener('input', (e) => {
@@ -407,11 +463,12 @@
         frictionSlider.addEventListener('input', (e) => {
             updateFrictionDisplay();
         });
+        window.addEventListener('mouseup', stopDrawing);
 
         opacitySlider.addEventListener('input', (e) => {
             opacity = parseFloat(e.target.value);
             opacityValue.textContent = `${Math.round(opacity * 100)}%`;
-            
+
             // Update status to show current opacity
             const mode = lazyBrush.isErasing() ? '🗑️ Erasing' : '✏️ Drawing';
             statusDiv.textContent = `${mode} | Opacity: ${Math.round(opacity * 100)}%`;
@@ -420,6 +477,7 @@
         // Initialize
         initLazyBrush();
         clearCanvas();
+        resizeCanvas();
         updateEraserButton();
 
         console.log('Fuderu Lazy Brush Test Ready!');

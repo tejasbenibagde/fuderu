@@ -8,6 +8,7 @@ export interface BrushOptions {
   enabled?: boolean
   initialPoint?: Point
   eraser?: boolean
+  size?: number
 }
 
 export interface BrushUpdateOptions {

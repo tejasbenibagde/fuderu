@@ -39,6 +39,11 @@ class Brush {
   radius: number
 
   /**
+   * size of the brush. 
+   */
+  size: number
+
+  /**
    * Coordinates of the pointer (cursor/mouse position).
    * This is the "target" that the brush tries to reach.
    */
@@ -82,9 +87,12 @@ class Brush {
   constructor(options: BrushOptions = {}) {
     const initialPoint = options.initialPoint || { x: 0, y: 0 }
     this.radius = options.radius || RADIUS_DEFAULT
+    this.size = options.size && options.size > 0
+      ? options.size
+      : 10
     // Enabled by default unless explicitly set to false
     this._isEnabled = options.enabled === false ? false : true
-    this._isErasing = options.eraser || false
+    this._isErasing = options.eraser ?? false
 
     // Initialize both pointer and brush at the same starting position
     this.pointer = new BrushPoint(initialPoint.x, initialPoint.y)
@@ -134,6 +142,18 @@ class Brush {
    */
   getRadius(): number {
     return this.radius
+  }
+
+  setSize(size: number): void {
+    if (size <= 0 || !Number.isFinite(size)) {
+      throw new Error('Brush size must be a positive finite number')
+    }
+
+    this.size = size
+  }
+
+  getSize(): number {
+    return this.size
   }
 
   /**

@@ -18,6 +18,8 @@ A high-performance, lazy brush engine for canvas drawing. Built with TypeScript 
 - 📱 **Cross-platform** – Works on desktop and mobile (touch support)
 - 🎯 **Framework Agnostic** – Use with vanilla JS, React, Vue, or any framework
 - 🔧 **Configurable** – Adjust radius, friction, opacity, and brush size
+- 🗑️ **Built-in Eraser Mode** – Toggle between drawing and erasing
+- 📏 **Dynamic Brush Size** – Update brush size at runtime
 
 ## 📦 Installation
 
@@ -38,32 +40,49 @@ const painter = new Fuderu({
 painter.setColor('#ff6b6b')
 painter.setSize(15)
 painter.setOpacity(0.8)
+
+// Eraser controls
+painter.enableEraser()
+painter.disableEraser()
+painter.toggleEraser()
+
 painter.clear()
 ```
 ## 📝 API
 
 ### Constructor Options
+| Option         | Type      | Default          | Description                      |
+| -------------- | --------- | ---------------- | -------------------------------- |
+| `radius`       | `number`  | `30`             | Lazy brush radius                |
+| `enabled`      | `boolean` | `true`           | Enable/disable lazy brush effect |
+| `initialPoint` | `Point`   | `{ x: 0, y: 0 }` | Initial pointer/brush position   |
+| `size`         | `number`  | `10`             | Brush size in pixels             |
+| `eraser`       | `boolean` | `false`          | Start in eraser mode             |
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `canvas` | `HTMLCanvasElement \| string` | required | Canvas element or selector |
-| `color` | `string` | `#000000` | Initial brush color |
-| `size` | `number` | `10` | Brush size in pixels |
-| `opacity` | `number` | `1` | Brush opacity (0-1) |
-| `eraser` |  `boolean` | `false` | Start in eraser mode
+
 
 ### Methods
 
-| Method | Description |
-|--------|-------------|
-| `setColor(color)` | Change brush color (hex, rgb, rgba) |
-| `setSize(size)` | Set brush size in pixels |
-| `setOpacity(opacity)` | Set opacity (0-1) |
-| `enableEraser()` | Enable eraser mode |
-| `disableEraser()` | Disable eraser mode |
-| `toggleEraser()` | Toggle between drawing and eraser |
-| `isErasing()` | Check if eraser is currently active |
-| `clear()` | Clear the entire canvas |
+| Method                    | Description                                          |
+| ------------------------- | ---------------------------------------------------- |
+| `update(point, options?)` | Update pointer position and calculate brush movement |
+| `enable()`                | Enable lazy brush effect                             |
+| `disable()`               | Disable lazy brush effect                            |
+| `isEnabled()`             | Check if lazy brush is enabled                       |
+| `setRadius(radius)`       | Set lazy radius                                      |
+| `getRadius()`             | Get current lazy radius                              |
+| `setSize(size)`           | Set brush size                                       |
+| `getSize()`               | Get current brush size                               |
+| `getBrushCoordinates()`   | Get current brush coordinates                        |
+| `getPointerCoordinates()` | Get current pointer coordinates                      |
+| `getAngle()`              | Get angle between pointer and brush                  |
+| `getDistance()`           | Get distance between pointer and brush               |
+| `brushHasMoved()`         | Check if brush moved in last update                  |
+| `enableEraser()`          | Enable eraser mode                                   |
+| `disableEraser()`         | Disable eraser mode                                  |
+| `toggleEraser()`          | Toggle eraser mode                                   |
+| `isErasing()`             | Check if eraser mode is active                       |
+
 
 ## 📄 License
 

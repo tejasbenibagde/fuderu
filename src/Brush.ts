@@ -76,6 +76,10 @@ class Brush {
   private _isErasing: boolean = false
 
 
+  private _densityCompensation: boolean = true
+  private _minSpacing: number = 0.5
+  private _maxSpacing: number = 12
+
   /**
    * Constructs a new LazyBrush.
    * 
@@ -210,6 +214,70 @@ class Brush {
     return this._isErasing
   }
 
+  setSpacing(min: number, max: number): void {
+    this._minSpacing = Math.max(0.1, min)
+    this._maxSpacing = Math.max(this._minSpacing, max)
+  }
+
+  calculateSpacing(size: number, opacity: number = 1): number {
+    const baseSpacing = size * 0.12
+
+    // low opacity => denser stamps
+    const opacityFactor = Math.max(0.05, opacity)
+
+    return Math.max(
+      this._minSpacing,
+      Math.min(baseSpacing * opacityFactor, this._maxSpacing)
+    )
+  }
+
+  /**
+ * Calculate density compensation factor for opacity.
+ * Prevents visible dots by adjusting opacity based on spacing.
+ * @param spacing - Distance between stamps
+ * @param size - Current brush size
+ * @param originalOpacity - User's desired opacity
+ * @returns Adjusted opacity value
+ */
+  calculateDensityCompensation(spacing: number, size: number, originalOpacity: number): number {
+    if (!this._densityCompensation || originalOpacity >= 0.99) {
+      return originalOpacity
+    }
+
+    // More stamps = lower alpha per stamp (density compensation)
+    const overlapFactor = spacing / size
+
+    // Prevent going too invisible
+    return Math.max(
+      0.001,
+      originalOpacity * Math.pow(overlapFactor, 0.25)
+    )
+  }
+
+  interpolatePoints(from: Point, to: Point, spacing: number): Point[] {
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    const distance = Math.sqrt(dx * dx + dy * dy)
+    const points: Point[] = []
+
+    if (distance === 0) {
+      points.push({ x: from.x, y: from.y })
+      return points
+    }
+
+    const steps = Math.ceil(distance / spacing)
+
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps
+      points.push({
+        x: from.x + dx * t,
+        y: from.y + dy * t
+      })
+    }
+
+    return points
+  }
+
   /**
  * Check if eraser mode is active.
  * @returns {boolean} True if eraser is enabled
@@ -250,6 +318,28 @@ class Brush {
    */
   brushHasMoved(): boolean {
     return this._hasMoved
+  }
+
+  enableDensityCompensation(): void {
+    this._densityCompensation = true
+  }
+
+  disableDensityCompensation(): void {
+    this._densityCompensation = false
+  }
+
+  isDensityCompensationEnabled(): boolean {
+    return this._densityCompensation
+  }
+
+  calculateOpacity(opacity: number): number {
+    const spacing = this.calculateSpacing(this.size, opacity)
+
+    return this.calculateDensityCompensation(
+      spacing,
+      this.size,
+      opacity
+    )
   }
 
   /**

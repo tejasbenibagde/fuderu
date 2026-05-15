@@ -21,6 +21,9 @@ A high-performance, lazy brush engine for canvas drawing. Built with TypeScript 
 - 🔧 **Configurable** – Adjust radius, friction, opacity, and brush size
 - 🗑️ **Built-in Eraser Mode** – Toggle between drawing and erasing
 - 📏 **Dynamic Brush Size** – Update brush size at runtime
+- 🪄 **Brush Interpolation** – Generate smooth points between updates `(NEW)`
+- 🎯 **Density Compensation** – Prevent overly dark brush accumulation `(NEW)`
+- 🌫️ **Opacity Compensation Helpers** – Adaptive opacity balancing for soft brushes `(NEW)`
 
 ## 📦 Installation
 
@@ -64,25 +67,37 @@ painter.clear()
 
 ### Methods
 
-| Method                    | Description                                          |
-| ------------------------- | ---------------------------------------------------- |
-| `update(point, options?)` | Update pointer position and calculate brush movement |
-| `enable()`                | Enable lazy brush effect                             |
-| `disable()`               | Disable lazy brush effect                            |
-| `isEnabled()`             | Check if lazy brush is enabled                       |
-| `setRadius(radius)`       | Set lazy radius                                      |
-| `getRadius()`             | Get current lazy radius                              |
-| `setSize(size)`           | Set brush size                                       |
-| `getSize()`               | Get current brush size                               |
-| `getBrushCoordinates()`   | Get current brush coordinates                        |
-| `getPointerCoordinates()` | Get current pointer coordinates                      |
-| `getAngle()`              | Get angle between pointer and brush                  |
-| `getDistance()`           | Get distance between pointer and brush               |
-| `brushHasMoved()`         | Check if brush moved in last update                  |
-| `enableEraser()`          | Enable eraser mode                                   |
-| `disableEraser()`         | Disable eraser mode                                  |
-| `toggleEraser()`          | Toggle eraser mode                                   |
-| `isErasing()`             | Check if eraser mode is active                       |
+| Method                                 | Description                                          |
+| -------------------------------------- | ---------------------------------------------------- |
+| `update(point, options?)`              | Update pointer position and calculate brush movement |
+| `enable()`                             | Enable lazy brush effect                             |
+| `disable()`                            | Disable lazy brush effect                            |
+| `isEnabled()`                          | Check if lazy brush is enabled                       |
+| `setRadius(radius)`                    | Set lazy radius                                      |
+| `getRadius()`                          | Get current lazy radius                              |
+| `setSize(size)`                        | Set brush size                                       |
+| `getSize()`                            | Get current brush size                               |
+| `setSpacing(min, max)`                 | Configure minimum and maximum brush spacing `(NEW)`  |
+| `calculateSpacing(size, opacity?)`     | Calculate adaptive spacing `(NEW)`                   |
+| `calculateDensityCompensation(...)`    | Calculate opacity compensation based on density `(NEW)` |
+| `calculateOpacity(opacity)`            | Get final adjusted opacity `(NEW)`                   |
+| `interpolatePoints(from, to, spacing)` | Generate interpolated brush points `(NEW)`           |
+| `enableDensityCompensation()`          | Enable density compensation `(NEW)`                  |
+| `disableDensityCompensation()`         | Disable density compensation `(NEW)`                 |
+| `isDensityCompensationEnabled()`       | Check density compensation state `(NEW)`             |
+| `getBrushCoordinates()`                | Get current brush coordinates                        |
+| `getPointerCoordinates()`              | Get current pointer coordinates                      |
+| `getAngle()`                           | Get angle between pointer and brush                  |
+| `getDistance()`                        | Get distance between pointer and brush               |
+| `brushHasMoved()`                      | Check if brush moved in last update                  |
+| `enableEraser()`                       | Enable eraser mode                                   |
+| `disableEraser()`                      | Disable eraser mode                                  |
+| `toggleEraser()`                       | Toggle eraser mode                                   |
+| `isErasing()`                          | Check if eraser mode is active                       |
+
+## 📄 License
+
+[MIT](https://github.com/tejasbenibagde/fuderu/blob/main/LICENSE)
 
 
 ## 📄 License

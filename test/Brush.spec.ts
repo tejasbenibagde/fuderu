@@ -232,3 +232,194 @@ describe('Brush radius and size', () => {
     expect(b.getSize()).toBe(10)
   })
 })
+
+
+describe('Brush spacing and density compensation', () => {
+  let brush: Brush
+
+  beforeEach(() => {
+    brush = new Brush({
+      size: 20
+    })
+  })
+
+  describe('Spacing calculation', () => {
+    it('Should calculate spacing based on brush size', () => {
+      const spacing = brush.calculateSpacing(20)
+
+      // 20 * 0.12 = 2.4
+      expect(spacing).toBeCloseTo(2.4)
+    })
+
+    it('Should reduce spacing for low opacity', () => {
+      const highOpacitySpacing = brush.calculateSpacing(20, 1)
+      const lowOpacitySpacing = brush.calculateSpacing(20, 0.2)
+
+      expect(lowOpacitySpacing).toBeLessThan(highOpacitySpacing)
+    })
+
+    it('Should respect minimum spacing', () => {
+      brush.setSpacing(1, 10)
+
+      const spacing = brush.calculateSpacing(1, 0.01)
+
+      expect(spacing).toBeGreaterThanOrEqual(1)
+    })
+
+    it('Should respect maximum spacing', () => {
+      brush.setSpacing(0.5, 5)
+
+      const spacing = brush.calculateSpacing(100)
+
+      expect(spacing).toBeLessThanOrEqual(5)
+    })
+
+    it('Should update spacing limits with setSpacing()', () => {
+      brush.setSpacing(2, 8)
+
+      const smallSpacing = brush.calculateSpacing(1)
+      const largeSpacing = brush.calculateSpacing(200)
+
+      expect(smallSpacing).toBeGreaterThanOrEqual(2)
+      expect(largeSpacing).toBeLessThanOrEqual(8)
+    })
+  })
+
+  describe('Density compensation', () => {
+    it('Should have density compensation enabled by default', () => {
+      expect(brush.isDensityCompensationEnabled()).toBe(true)
+    })
+
+    it('Should disable density compensation', () => {
+      brush.disableDensityCompensation()
+
+      expect(brush.isDensityCompensationEnabled()).toBe(false)
+    })
+
+    it('Should enable density compensation again', () => {
+      brush.disableDensityCompensation()
+      brush.enableDensityCompensation()
+
+      expect(brush.isDensityCompensationEnabled()).toBe(true)
+    })
+
+    it('Should return original opacity when density compensation is disabled', () => {
+      brush.disableDensityCompensation()
+
+      const result = brush.calculateDensityCompensation(
+        1,
+        20,
+        0.5
+      )
+
+      expect(result).toBe(0.5)
+    })
+
+    it('Should return original opacity when opacity is near 1', () => {
+      const result = brush.calculateDensityCompensation(
+        1,
+        20,
+        1
+      )
+
+      expect(result).toBe(1)
+    })
+
+    it('Should reduce opacity when density compensation is enabled', () => {
+      const result = brush.calculateDensityCompensation(
+        1,
+        20,
+        0.5
+      )
+
+      expect(result).toBeLessThan(0.5)
+    })
+
+    it('Should never return opacity below minimum threshold', () => {
+      const result = brush.calculateDensityCompensation(
+        0.0001,
+        100,
+        0.0001
+      )
+
+      expect(result).toBeGreaterThanOrEqual(0.001)
+    })
+  })
+
+  describe('Opacity calculation', () => {
+    it('Should calculate adjusted opacity using spacing and density compensation', () => {
+      const opacity = brush.calculateOpacity(0.5)
+
+      expect(opacity).toBeGreaterThan(0)
+      expect(opacity).toBeLessThanOrEqual(0.5)
+    })
+
+    it('Should return original opacity when compensation is disabled', () => {
+      brush.disableDensityCompensation()
+
+      const opacity = brush.calculateOpacity(0.5)
+
+      expect(opacity).toBe(0.5)
+    })
+  })
+
+  describe('Point interpolation', () => {
+    it('Should interpolate points between two coordinates', () => {
+      const points = brush.interpolatePoints(
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        2
+      )
+
+      expect(points.length).toBeGreaterThan(1)
+
+      expect(points[0]).toEqual({ x: 0, y: 0 })
+
+      expect(points[points.length - 1]).toEqual({
+        x: 10,
+        y: 0
+      })
+    })
+
+    it('Should return a single point when distance is zero', () => {
+      const points = brush.interpolatePoints(
+        { x: 5, y: 5 },
+        { x: 5, y: 5 },
+        2
+      )
+
+      expect(points).toEqual([{ x: 5, y: 5 }])
+    })
+
+    it('Should create evenly spaced interpolated points', () => {
+      const points = brush.interpolatePoints(
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        5
+      )
+
+      expect(points.length).toBe(3)
+
+      expect(points[0].x).toBeCloseTo(0)
+      expect(points[1].x).toBeCloseTo(5)
+      expect(points[2].x).toBeCloseTo(10)
+    })
+
+    it('Should interpolate diagonal points correctly', () => {
+      const points = brush.interpolatePoints(
+        { x: 0, y: 0 },
+        { x: 10, y: 10 },
+        5
+      )
+
+      expect(points.length).toBeGreaterThan(1)
+
+      expect(points[0]).toEqual({ x: 0, y: 0 })
+
+      expect(points[points.length - 1]).toEqual({
+        x: 10,
+        y: 10
+      })
+    })
+  })
+})

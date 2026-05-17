@@ -7,23 +7,29 @@
 
 [![npm version](https://img.shields.io/npm/v/fuderu.svg)](https://www.npmjs.com/package/fuderu)
 [![Last Month downloads](https://img.shields.io/npm/dm/fuderu?style=flat&label=Last%20Month%20Downloads)](https://www.npmjs.com/package/fuderu)
-[![Total downloads](https://img.shields.io/npm/d18m/fuderu?style=flat&label=Total%20Downloads)](https://www.npmjs.com/package/fuderu)
 [![License](https://img.shields.io/npm/l/fuderu.svg)](https://github.com/tejasbenibagde/fuderu/blob/main/LICENSE)
 
-A high-performance, lazy brush engine for canvas drawing. Built with TypeScript and Rust (WASM). Create smooth, natural brush strokes with configurable lazy radius and friction.
+A lightweight and extensible canvas drawing engine with lazy brush physics, interpolation, adaptive spacing, and built-in canvas rendering.
+
+Built with TypeScript and designed for smooth, natural drawing experiences.
+
+---
 
 ## ✨ Features
 
-- 🎨 **Lazy Brush** – Smooth, delayed brush following for natural strokes
-- ⚡ **Performance** – Rust-powered WASM core for heavy calculations
-- 📱 **Cross-platform** – Works on desktop and mobile (touch support)
-- 🎯 **Framework Agnostic** – Use with vanilla JS, React, Vue, or any framework
-- 🔧 **Configurable** – Adjust radius, friction, opacity, and brush size
-- 🗑️ **Built-in Eraser Mode** – Toggle between drawing and erasing
-- 📏 **Dynamic Brush Size** – Update brush size at runtime
-- 🪄 **Brush Interpolation** – Generate smooth points between updates `(NEW)`
-- 🎯 **Density Compensation** – Prevent overly dark brush accumulation `(NEW)`
-- 🌫️ **Opacity Compensation Helpers** – Adaptive opacity balancing for soft brushes `(NEW)`
+- 🎨 Lazy brush movement
+- ⚡ Smooth brush interpolation
+- 🖌️ Built-in canvas renderer
+- 📏 Adaptive brush spacing
+- 🌫️ Opacity compensation helpers
+- 🗑️ Built-in eraser mode
+- 📱 Pointer + touch support
+- 🖥️ High-DPI canvas scaling
+- 🔧 Runtime configurable brush settings
+- 🎯 Framework agnostic
+- 🧹 Automatic cleanup + resize handling
+
+---
 
 ## 📦 Installation
 
@@ -31,74 +37,99 @@ A high-performance, lazy brush engine for canvas drawing. Built with TypeScript 
 npm install fuderu
 ```
 
-```js
-import Fuderu from 'fuderu'
+---
 
-const painter = new Fuderu({
-  canvas: '#myCanvas',
+## 🚀 Quick Start
+
+```ts
+import { Canvas } from 'fuderu'
+
+const painter = new Canvas({
+  canvas: '#canvas',
   color: '#000000',
-  size: 10
+  size: 10,
+  radius: 30,
+  opacity: 1
 })
 
-// Drawing controls
+// Brush controls
 painter.setColor('#ff6b6b')
-painter.setSize(15)
-painter.setOpacity(0.8)
+painter.setSize(20)
+painter.setRadius(50)
+painter.setOpacity(0.7)
 
-// Eraser controls
+// Eraser
 painter.enableEraser()
-painter.disableEraser()
-painter.toggleEraser()
 
+// Clear canvas
 painter.clear()
 ```
-## 📝 API
+
+---
+
+## 📝 Canvas API
 
 ### Constructor Options
-| Option         | Type      | Default          | Description                      |
-| -------------- | --------- | ---------------- | -------------------------------- |
-| `radius`       | `number`  | `30`             | Lazy brush radius                |
-| `enabled`      | `boolean` | `true`           | Enable/disable lazy brush effect |
-| `initialPoint` | `Point`   | `{ x: 0, y: 0 }` | Initial pointer/brush position   |
-| `size`         | `number`  | `10`             | Brush size in pixels             |
-| `eraser`       | `boolean` | `false`          | Start in eraser mode             |
 
+| Option      | Type                          | Default     |
+| ------------| ----------------------------- | ------------|
+| `canvas`    | `HTMLCanvasElement \| string` | Required    |
+| `color`     | `string`                      | `#000000`   |
+| `size`      | `number`                      | `10`        |
+| `radius`    | `number`                      | `30`        |
+| `friction`  | `number`                      | `0`         |
+| `opacity`   | `number`                      | `1`         |
+| `eraser`    | `boolean`                     | `false`     |
 
+---
 
 ### Methods
 
-| Method                                 | Description                                          |
-| -------------------------------------- | ---------------------------------------------------- |
-| `update(point, options?)`              | Update pointer position and calculate brush movement |
-| `enable()`                             | Enable lazy brush effect                             |
-| `disable()`                            | Disable lazy brush effect                            |
-| `isEnabled()`                          | Check if lazy brush is enabled                       |
-| `setRadius(radius)`                    | Set lazy radius                                      |
-| `getRadius()`                          | Get current lazy radius                              |
-| `setSize(size)`                        | Set brush size                                       |
-| `getSize()`                            | Get current brush size                               |
-| `setSpacing(min, max)`                 | Configure minimum and maximum brush spacing `(NEW)`  |
-| `calculateSpacing(size, opacity?)`     | Calculate adaptive spacing `(NEW)`                   |
-| `calculateDensityCompensation(...)`    | Calculate opacity compensation based on density `(NEW)` |
-| `calculateOpacity(opacity)`            | Get final adjusted opacity `(NEW)`                   |
-| `interpolatePoints(from, to, spacing)` | Generate interpolated brush points `(NEW)`           |
-| `enableDensityCompensation()`          | Enable density compensation `(NEW)`                  |
-| `disableDensityCompensation()`         | Disable density compensation `(NEW)`                 |
-| `isDensityCompensationEnabled()`       | Check density compensation state `(NEW)`             |
-| `getBrushCoordinates()`                | Get current brush coordinates                        |
-| `getPointerCoordinates()`              | Get current pointer coordinates                      |
-| `getAngle()`                           | Get angle between pointer and brush                  |
-| `getDistance()`                        | Get distance between pointer and brush               |
-| `brushHasMoved()`                      | Check if brush moved in last update                  |
-| `enableEraser()`                       | Enable eraser mode                                   |
-| `disableEraser()`                      | Disable eraser mode                                  |
-| `toggleEraser()`                       | Toggle eraser mode                                   |
-| `isErasing()`                          | Check if eraser mode is active                       |
+| Method                  | Description                  |
+| ----------------------- | ---------------------------- |
+| `setColor(color)`       | Update brush color           |
+| `getColor()`            | Get current color            |
+| `setSize(size)`         | Update brush size            |
+| `getSize()`             | Get current size             |
+| `setRadius(radius)`     | Update lazy radius           |
+| `getRadius()`           | Get current radius           |
+| `setOpacity(opacity)`   | Update opacity               |
+| `getOpacity()`          | Get current opacity          |
+| `setFriction(value)`    | Update friction              |
+| `getFriction()`         | Get current friction         |
+| `enableEraser()`        | Enable eraser mode           |
+| `disableEraser()`       | Disable eraser mode          |
+| `toggleEraser()`        | Toggle eraser mode           |
+| `isErasing()`           | Check eraser state           |
+| `clear()`               | Clear the canvas             |
+| `resize()`              | Recalculate DPI scaling      |
+| `destroy()`             | Cleanup all event listeners  |
 
-## 📄 License
+---
 
-[MIT](https://github.com/tejasbenibagde/fuderu/blob/main/LICENSE)
+## 🧠 Brush Engine Utilities
 
+Fuderu also exposes lower-level brush utilities:
+
+- Brush interpolation
+- Density compensation
+- Adaptive spacing
+- Lazy movement calculations
+- Opacity compensation
+- Brush state management
+
+---
+
+## 🧪 Current Status
+
+Currently tested in:
+
+- ✅ Vitest + jsdom
+- ✅ Vanilla HTML/TypeScript
+- 🚧 React
+- 🚧 Next.js
+
+---
 
 ## 📄 License
 

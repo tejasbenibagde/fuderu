@@ -141,7 +141,6 @@
         <div class="toolbar">
             <button id="clearBtn">🧹 Clear</button>
             <button id="eraserBtn">✏️ Draw</button>
-            <button id="densityBtn" class="active">🎯 Density: ON</button>
 
             <div class="control-group">
                 <label>🎨 Color:</label>
@@ -184,40 +183,21 @@
     </div>
 
     <script type="module">
-        import LazyBrush from '../src/Brush.ts';
-
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        import { Canvas } from '../src/canvas.ts';
 
         // =========================
-        // Canvas Setup
+        // Canvas Instance
         // =========================
 
-        function resizeCanvas() {
-            const ratio = window.devicePixelRatio || 1;
-
-            canvas.width = 800 * ratio;
-            canvas.height = 500 * ratio;
-
-            canvas.style.width = '800px';
-            canvas.style.height = '500px';
-
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.scale(ratio, ratio);
-        }
-
-        resizeCanvas();
-
-        // =========================
-        // State
-        // =========================
-
-        let isDrawing = false;
-        let lastPoint = null;
-
-        let currentColor = '#000000';
-        let opacity = 1;
-        let friction = 0;
+        const painter = new Canvas({
+            canvas: '#canvas',
+            color: '#000000',
+            size: 5,
+            radius: 30,
+            friction: 0,
+            opacity: 1,
+            eraser: false
+        });
 
         // =========================
         // UI Elements
@@ -225,7 +205,6 @@
 
         const clearBtn = document.getElementById('clearBtn');
         const eraserBtn = document.getElementById('eraserBtn');
-        const densityBtn = document.getElementById('densityBtn');
 
         const colorPicker = document.getElementById('colorPicker');
 
@@ -244,218 +223,37 @@
         const statusDiv = document.getElementById('status');
 
         // =========================
-        // Lazy Brush
+        // Initial Canvas Size
         // =========================
 
-        const lazyBrush = new LazyBrush({
-            radius: Number(radiusSlider.value),
-            size: Number(sizeSlider.value),
-            enabled: true,
-            initialPoint: { x: 0, y: 0 },
-        });
+        const canvas = document.getElementById('canvas');
 
-        // =========================
-        // Helpers
-        // =========================
+        canvas.style.width = '800px';
+        canvas.style.height = '500px';
 
-        function getPointerPosition(e) {
-            const rect = canvas.getBoundingClientRect();
-
-            let clientX;
-            let clientY;
-
-            if (e.touches) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
-
-            return {
-                x: clientX - rect.left,
-                y: clientY - rect.top
-            };
-        }
-
-
-
-        // =========================
-        // Brush Rendering (Using Library Methods!)
-        // =========================
-
-        function drawDot(x, y, size, color, opacity, isErasing) {
-            ctx.save();
-
-            if (isErasing) {
-                ctx.globalCompositeOperation = 'destination-out';
-            } else {
-                ctx.globalCompositeOperation = 'source-over';
-            }
-
-
-            const radius = size / 2;
-
-            // Smaller softness factor
-            const softEdge = Math.min(radius * 0.35, 6);
-
-            const gradient = ctx.createRadialGradient(
-                x,
-                y,
-                radius - softEdge,
-                x,
-                y,
-                radius
-            );
-
-            if (isErasing) {
-                gradient.addColorStop(0, 'rgba(0,0,0,1)');
-                gradient.addColorStop(1, 'rgba(0,0,0,0)');
-            } else {
-                // convert hex to rgba
-                const r = parseInt(color.slice(1, 3), 16);
-                const g = parseInt(color.slice(3, 5), 16);
-                const b = parseInt(color.slice(5, 7), 16);
-
-                gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${opacity* 0.7})`);
-                gradient.addColorStop(0.4, `rgba(${r}, ${g}, ${b}, ${opacity * 0.35})`);
-                gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
-            }
-
-            ctx.fillStyle = gradient;
-
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.restore();
-        }
-        function drawInterpolatedStroke(
-            fromX,
-            fromY,
-            toX,
-            toY,
-            size,
-            color,
-            opacity,
-            isErasing
-        ) {
-            // === NOW USING LIBRARY METHODS ===
-
-            // Calculate spacing using the library
-            const spacing = lazyBrush.calculateSpacing(size);
-
-            // Get interpolated points from the library
-            const points = lazyBrush.interpolatePoints(
-                { x: fromX, y: fromY },
-                { x: toX, y: toY },
-                spacing
-            );
-
-            // For each point, calculate density compensation and draw
-            for (const point of points) {
-                // Calculate adjusted opacity using the library
-                const adjustedOpacity = lazyBrush.calculateOpacity(opacity)
-
-                drawDot(
-                    point.x,
-                    point.y,
-                    size,
-                    color,
-                    adjustedOpacity,
-                    isErasing
-                );
-            }
-        }
-
-        // =========================
-        // Drawing
-        // =========================
-
-        function startDrawing(e) {
-            isDrawing = true;
-
-            const point = getPointerPosition(e);
-
-            lazyBrush.update(point, { both: true });
-
-            const brushPos = lazyBrush.getBrushCoordinates();
-
-            lastPoint = brushPos;
-        }
-
-        function draw(e) {
-            if (!isDrawing) return;
-
-            e.preventDefault();
-
-            const point = getPointerPosition(e);
-
-            lazyBrush.update(point, {
-                friction: friction || undefined
-            });
-
-            const brushPos = lazyBrush.getBrushCoordinates();
-
-            if (lastPoint) {
-                drawInterpolatedStroke(
-                    lastPoint.x,
-                    lastPoint.y,
-                    brushPos.x,
-                    brushPos.y,
-                    lazyBrush.getSize(),
-                    currentColor,
-                    opacity,
-                    lazyBrush.isErasing()
-                );
-            }
-
-            lastPoint = brushPos;
-
-            const distance = lazyBrush.getDistance();
-            const spacing = lazyBrush.calculateSpacing(lazyBrush.getSize());
-
-            statusDiv.textContent =
-                `Opacity: ${Math.round(opacity * 100)}% | ` +
-                `Spacing: ${spacing.toFixed(1)}px | ` +
-                `Distance: ${distance.toFixed(1)}px`;
-        }
-
-        function stopDrawing() {
-            isDrawing = false;
-            lastPoint = null;
-        }
+        painter.resize();
 
         // =========================
         // Actions
         // =========================
 
         function clearCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            painter.clear();
         }
 
         function toggleEraser() {
-            lazyBrush.toggleEraser();
+            painter.toggleEraser();
 
-            if (lazyBrush.isErasing()) {
+            if (painter.isErasing()) {
                 eraserBtn.textContent = '🗑️ Eraser';
                 eraserBtn.classList.add('active');
+
+                statusDiv.textContent = 'Eraser Enabled';
             } else {
                 eraserBtn.textContent = '✏️ Draw';
                 eraserBtn.classList.remove('active');
-            }
-        }
 
-        function toggleDensity() {
-
-            if (lazyBrush.isDensityCompensationEnabled()) {
-                lazyBrush.disableDensityCompensation();
-                densityBtn.textContent = '🎯 Density: OFF';
-                densityBtn.classList.remove('active');
-            } else {
-                lazyBrush.enableDensityCompensation();
-                densityBtn.textContent = '🎯 Density: ON';
-                densityBtn.classList.add('active');
+                statusDiv.textContent = 'Draw Mode';
             }
         }
 
@@ -463,51 +261,68 @@
         // Events
         // =========================
 
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-
-        canvas.addEventListener('mouseup', stopDrawing);
-        canvas.addEventListener('mouseleave', stopDrawing);
-
-        canvas.addEventListener('touchstart', startDrawing);
-        canvas.addEventListener('touchmove', draw, { passive: false });
-        canvas.addEventListener('touchend', stopDrawing);
-
-        window.addEventListener('mouseup', stopDrawing);
-
         clearBtn.addEventListener('click', clearCanvas);
+
         eraserBtn.addEventListener('click', toggleEraser);
-        densityBtn.addEventListener('click', toggleDensity);
 
         colorPicker.addEventListener('input', (e) => {
-            currentColor = e.target.value;
+            painter.setColor(e.target.value);
+
+            statusDiv.textContent =
+                `Color: ${e.target.value}`;
         });
 
         sizeSlider.addEventListener('input', (e) => {
             const size = Number(e.target.value);
-            lazyBrush.setSize(size);
+
+            painter.setSize(size);
+
             sizeValue.textContent = `${size}px`;
+
+            statusDiv.textContent =
+                `Brush Size: ${size}px`;
         });
 
         radiusSlider.addEventListener('input', (e) => {
             const radius = Number(e.target.value);
-            lazyBrush.setRadius(radius);
+
+            painter.setRadius(radius);
+
             radiusValue.textContent = `${radius}px`;
+
+            statusDiv.textContent =
+                `Lazy Radius: ${radius}px`;
         });
 
         frictionSlider.addEventListener('input', (e) => {
-            friction = Number(e.target.value);
-            frictionValue.textContent = `${Math.round(friction * 100)}%`;
+            const friction = Number(e.target.value);
+
+            painter.setFriction(friction);
+
+            frictionValue.textContent =
+                `${Math.round(friction * 100)}%`;
+
+            statusDiv.textContent =
+                `Friction: ${Math.round(friction * 100)}%`;
         });
 
         opacitySlider.addEventListener('input', (e) => {
-            opacity = Number(e.target.value);
-            opacityValue.textContent = `${Math.round(opacity * 100)}%`;
+            const opacity = Number(e.target.value);
+
+            painter.setOpacity(opacity);
+
+            opacityValue.textContent =
+                `${Math.round(opacity * 100)}%`;
+
+            statusDiv.textContent =
+                `Opacity: ${Math.round(opacity * 100)}%`;
         });
 
-        // Optional: Add spacing controls (advanced)
-        console.log('Fuderu ready - using library methods for spacing and density compensation!');
-        console.log('Try toggling Density Compensation to see the difference');
+        // =========================
+        // Ready
+        // =========================
+
+        console.log('Fuderu Canvas Ready');
     </script>
 </body>
 

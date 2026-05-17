@@ -20,6 +20,18 @@
 | Opacity Compensation Helpers    | Auto-adjust opacity for smooth accumulation                  |
 | Custom Brush Spacing Limits     | Configure min/max spacing dynamically                        |
 | Flexible Input Support          | Accepts mouse, touch, or pointer coordinates                 |
+| Built-in Canvas Class           | High-level canvas drawing system                             |
+| Pointer Event Handling          | Built-in pointer/mouse/touch event management                |
+| High-DPI Canvas Scaling         | Automatic DPR-aware canvas rendering                         |
+| Brush Stroke Rendering          | Smooth interpolated canvas drawing                           |
+| Canvas Resize Handling          | Automatic resize + redraw preservation                       |
+| Runtime Color Updates           | Dynamically update brush color                               |
+| Runtime Opacity Updates         | Dynamically update brush opacity                             |
+| Runtime Friction Updates        | Dynamically update brush friction                            |
+| Runtime Eraser Switching        | Toggle eraser mode during drawing                            |
+| Canvas Clearing                 | Built-in canvas clearing support                             |
+| Canvas Destruction Cleanup      | Automatic event listener cleanup                             |
+| String or Element Canvas Input  | Accept canvas element or selector string                     |
 
 ---
 
@@ -43,39 +55,72 @@
 | Density compensation toggles              | ✅     |
 | Opacity compensation behavior             | ✅     |
 | Custom spacing limit configuration        | ✅     |
+| Canvas initialization                     | ✅     |
+| Canvas default values                     | ✅     |
+| Canvas custom values                      | ✅     |
+| Runtime color updates                     | ✅     |
+| Runtime opacity updates                   | ✅     |
+| Runtime friction updates                  | ✅     |
+| Runtime brush size updates                | ✅     |
+| Runtime brush radius updates              | ✅     |
+| Eraser enable/disable/toggle              | ✅     |
+| Canvas clearing                           | ✅     |
+| Canvas resize safety                      | ✅     |
+| Canvas destruction cleanup                | ✅     |
 
 ---
 
-## 🚧 User Land (Not in Library)
+## 🚧 Currently Experimental
 
-These are intentionally handled by the user's implementation:
+These features exist but still need broader real-world validation:
 
-- Canvas rendering
-- Event listeners
-- Pointer/touch handling
-- Color management
-- Gradient generation
-- Final opacity blending/compositing
-- Coordinate scaling
-- High-DPI canvas support
-- Canvas compositing (`globalCompositeOperation`)
-- Undo/redo
+| Feature                  | Status |
+| ------------------------ | ------ |
+| React integration        | 🚧     |
+| Next.js integration      | 🚧     |
+| Mobile/touch validation  | 🚧     |
+| Safari compatibility     | 🚧     |
+| Performance stress tests | 🚧     |
+
+> The Canvas system currently works in:
+>
+> - Unit tests
+> - Vanilla HTML/TypeScript environments
+>
+> React/Next.js production testing is still ongoing.
+
+---
+
+## 🚧 User Land (Still Fully Controlled by User)
+
+Fuderu now includes a built-in canvas renderer, but users still fully control:
+
+- Application UI
+- Toolbar systems
+- Color pickers
+- Brush presets
+- Undo/redo history
 - Saving/exporting
-- Cursor rendering
-- Toolbar/UI systems
+- Layer systems
+- Cursor rendering styles
+- Custom compositing modes
+- State persistence
+- Multiplayer/collaboration systems
+- Rendering pipelines
+- Custom shaders/effects
 
 ---
 
 ## 🔮 Future Possibilities
 
 ### Core Features
-- [ ] Built-in canvas renderer
 - [ ] Pressure sensitivity support
 - [ ] Velocity-based brush dynamics
 - [ ] Brush stabilization improvements
 - [ ] Built-in cursor visualization
 - [ ] Stroke smoothing algorithms
 - [ ] Stroke replay system
+- [ ] Multi-pointer drawing support
 
 ### Brush System
 - [ ] Multiple brush types (spray, calligraphy, watercolor)
@@ -95,14 +140,16 @@ These are intentionally handled by the user's implementation:
 - [ ] Symmetry drawing
 - [ ] Stroke recording/export
 - [ ] SVG path generation
+- [ ] Infinite canvas support
 
 ### Performance
 - [ ] RequestAnimationFrame rendering helpers
-- [ ] Performance optimizations for large canvases
+- [ ] Performance optimizations for very large canvases
 - [ ] WebWorker-based calculations
 - [ ] Optimized touch rendering
 - [ ] Spatial caching for interpolation
 - [ ] Incremental redraw optimizations
+- [ ] OffscreenCanvas support
 
 ### Developer Experience
 - [ ] React bindings
@@ -114,6 +161,8 @@ These are intentionally handled by the user's implementation:
 - [ ] Devtools/debug overlay
 - [ ] Interactive playground website
 - [ ] Visual debugging helpers
+- [ ] Documentation website
+- [ ] Live examples gallery
 
 ---
 
@@ -123,18 +172,22 @@ Fuderu focuses on:
 
 - Lightweight brush logic
 - Framework-agnostic architecture
-- User-controlled rendering
+- User-controlled rendering pipelines
 - Maximum customization
 - Smooth and predictable brush movement
-- Brush-engine utilities without rendering lock-in
-- Keeping canvas rendering fully in user-land
+- Brush-engine utilities without framework lock-in
+- High-performance drawing primitives
+- Extensible canvas systems
+- Minimal API surface
+- Runtime configurability
 
 ---
 
-## 📦 Current Internal Brush Utilities
+## 📦 Current Internal Systems
 
-The library currently provides helper systems for:
+The library currently provides systems for:
 
+### Brush Engine
 - Brush interpolation
 - Density-aware spacing
 - Opacity compensation
@@ -144,6 +197,37 @@ The library currently provides helper systems for:
 - Friction smoothing
 - Adaptive brush spacing
 
+### Canvas Engine
+- Pointer event handling
+- Canvas rendering
+- DPI-aware scaling
+- Stroke interpolation rendering
+- Canvas clearing
+- Resize preservation
+- Automatic cleanup systems
+- Runtime drawing configuration
+- Canvas coordinate normalization
+
 ---
 
-*Legend: ✅ = Done | 🚧 = Needs Tests / In Progress | 🔮 = Planned*
+## 📌 Current State
+
+Fuderu is currently evolving from:
+
+> "A lazy brush utility"
+
+into
+
+> "A lightweight extensible drawing engine"
+
+while still keeping the library:
+- Lightweight
+- Framework agnostic
+- Runtime configurable
+- Rendering focused
+- Easy to integrate
+- Fully TypeScript-first
+
+---
+
+*Legend: ✅ = Done | 🚧 = Experimental / Needs More Validation | 🔮 = Planned*

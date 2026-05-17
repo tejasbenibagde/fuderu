@@ -222,8 +222,8 @@ class Brush {
   calculateSpacing(size: number, opacity: number = 1): number {
     const baseSpacing =
       size < 20
-        ? size * 0.12
-        : size * 0.04
+        ? size * 0.18
+        : size * 0.12
 
     // low opacity => denser stamps
     const opacityFactor = Math.pow(opacity, 1.5)
@@ -253,7 +253,7 @@ class Brush {
     // Prevent going too invisible
     return Math.max(
       0.001,
-      originalOpacity * Math.pow(overlapFactor, 0.25)
+      originalOpacity * Math.pow(overlapFactor, 0.5)
     )
   }
 

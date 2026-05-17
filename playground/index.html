@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Fuderu - Lazy Brush Test</title>
+    <title>Fuderu - Brush Presets Demo</title>
     <style>
         * {
             margin: 0;
@@ -69,6 +69,34 @@
         button.active {
             background: #e94560;
             box-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+        }
+
+        .preset-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            background: #0a1a2e;
+            padding: 8px 12px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        .preset-btn {
+            background: #0f3460;
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .preset-btn:hover {
+            background: #e94560;
+        }
+
+        .preset-title {
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 8px;
         }
 
         .control-group {
@@ -138,6 +166,17 @@
     <div class="container">
         <canvas id="canvas"></canvas>
 
+        <!-- Preset Buttons -->
+        <div class="preset-group">
+            <span class="preset-title">🎨 Presets:</span>
+            <button class="preset-btn" data-preset="pencil">✏️ Pencil</button>
+            <button class="preset-btn" data-preset="marker">🖍️ Marker</button>
+            <button class="preset-btn" data-preset="watercolor">💧 Watercolor</button>
+            <button class="preset-btn" data-preset="airbrush">🎨 Airbrush</button>
+            <button class="preset-btn" data-preset="charcoal">⚫ Charcoal</button>
+            <button class="preset-btn" data-preset="calligraphy">✒️ Calligraphy</button>
+        </div>
+
         <div class="toolbar">
             <button id="clearBtn">🧹 Clear</button>
             <button id="eraserBtn">✏️ Draw</button>
@@ -175,10 +214,9 @@
         </div>
 
         <div class="info">
-            💡 <span>Lazy Brush</span> - The brush follows the cursor with a delay/smoothing effect.<br>
-            Try different <span>Radius</span> (pulling distance) and <span>Friction</span> (smoothness) values!<br>
-            🗑️ <span>Eraser Mode</span> - Click "Eraser" to switch to eraser, "Draw" to go back to drawing.<br>
-            🎯 <span>Opacity & Density</span> - Density compensation is now handled by the library!
+            💡 <span>Brush Presets</span> - Click any preset to instantly change brush behavior!<br>
+            🎨 Each preset has unique <span>Size, Radius, Friction, and Spacing</span> settings.<br>
+            Try <span>Pencil</span> for precise lines, <span>Watercolor</span> for smooth blending, or <span>Airbrush</span> for soft spray!
         </div>
     </div>
 
@@ -205,6 +243,7 @@
 
         const clearBtn = document.getElementById('clearBtn');
         const eraserBtn = document.getElementById('eraserBtn');
+        const presetBtns = document.querySelectorAll('.preset-btn');
 
         const colorPicker = document.getElementById('colorPicker');
 
@@ -234,11 +273,39 @@
         painter.resize();
 
         // =========================
+        // Apply Preset Function
+        // =========================
+
+        function applyPreset(preset) {
+            painter.applyPreset(preset);
+            
+            // Update UI sliders to reflect preset values
+            sizeSlider.value = painter.getSize();
+            sizeValue.textContent = `${painter.getSize()}px`;
+            
+            radiusSlider.value = painter.getRadius();
+            radiusValue.textContent = `${painter.getRadius()}px`;
+            
+            frictionSlider.value = painter.getFriction();
+            frictionValue.textContent = `${Math.round(painter.getFriction() * 100)}%`;
+            
+            statusDiv.textContent = `🎨 Preset: ${preset.toUpperCase()} applied!`;
+            
+            // Reset eraser button state if needed
+            if (painter.isErasing()) {
+                painter.disableEraser();
+                eraserBtn.textContent = '✏️ Draw';
+                eraserBtn.classList.remove('active');
+            }
+        }
+
+        // =========================
         // Actions
         // =========================
 
         function clearCanvas() {
             painter.clear();
+            statusDiv.textContent = 'Canvas cleared';
         }
 
         function toggleEraser() {
@@ -247,14 +314,49 @@
             if (painter.isErasing()) {
                 eraserBtn.textContent = '🗑️ Eraser';
                 eraserBtn.classList.add('active');
-
-                statusDiv.textContent = 'Eraser Enabled';
+                statusDiv.textContent = 'Eraser Mode - Click Draw to go back';
             } else {
                 eraserBtn.textContent = '✏️ Draw';
                 eraserBtn.classList.remove('active');
-
-                statusDiv.textContent = 'Draw Mode';
+                statusDiv.textContent = 'Drawing Mode';
             }
+        }
+
+        // =========================
+        // Update UI from Controls
+        // =========================
+
+        function updateSize() {
+            const size = Number(sizeSlider.value);
+            painter.setSize(size);
+            sizeValue.textContent = `${size}px`;
+            statusDiv.textContent = `Brush Size: ${size}px`;
+        }
+
+        function updateRadius() {
+            const radius = Number(radiusSlider.value);
+            painter.setRadius(radius);
+            radiusValue.textContent = `${radius}px`;
+            statusDiv.textContent = `Lazy Radius: ${radius}px`;
+        }
+
+        function updateFriction() {
+            const friction = Number(frictionSlider.value);
+            painter.setFriction(friction);
+            frictionValue.textContent = `${Math.round(friction * 100)}%`;
+            statusDiv.textContent = `Friction: ${Math.round(friction * 100)}%`;
+        }
+
+        function updateOpacity() {
+            const opacity = Number(opacitySlider.value);
+            painter.setOpacity(opacity);
+            opacityValue.textContent = `${Math.round(opacity * 100)}%`;
+            statusDiv.textContent = `Opacity: ${Math.round(opacity * 100)}%`;
+        }
+
+        function updateColor() {
+            painter.setColor(colorPicker.value);
+            statusDiv.textContent = `Color: ${colorPicker.value}`;
         }
 
         // =========================
@@ -262,67 +364,28 @@
         // =========================
 
         clearBtn.addEventListener('click', clearCanvas);
-
         eraserBtn.addEventListener('click', toggleEraser);
 
-        colorPicker.addEventListener('input', (e) => {
-            painter.setColor(e.target.value);
-
-            statusDiv.textContent =
-                `Color: ${e.target.value}`;
+        // Preset buttons
+        presetBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const preset = btn.dataset.preset;
+                applyPreset(preset);
+            });
         });
 
-        sizeSlider.addEventListener('input', (e) => {
-            const size = Number(e.target.value);
-
-            painter.setSize(size);
-
-            sizeValue.textContent = `${size}px`;
-
-            statusDiv.textContent =
-                `Brush Size: ${size}px`;
-        });
-
-        radiusSlider.addEventListener('input', (e) => {
-            const radius = Number(e.target.value);
-
-            painter.setRadius(radius);
-
-            radiusValue.textContent = `${radius}px`;
-
-            statusDiv.textContent =
-                `Lazy Radius: ${radius}px`;
-        });
-
-        frictionSlider.addEventListener('input', (e) => {
-            const friction = Number(e.target.value);
-
-            painter.setFriction(friction);
-
-            frictionValue.textContent =
-                `${Math.round(friction * 100)}%`;
-
-            statusDiv.textContent =
-                `Friction: ${Math.round(friction * 100)}%`;
-        });
-
-        opacitySlider.addEventListener('input', (e) => {
-            const opacity = Number(e.target.value);
-
-            painter.setOpacity(opacity);
-
-            opacityValue.textContent =
-                `${Math.round(opacity * 100)}%`;
-
-            statusDiv.textContent =
-                `Opacity: ${Math.round(opacity * 100)}%`;
-        });
+        colorPicker.addEventListener('input', updateColor);
+        sizeSlider.addEventListener('input', updateSize);
+        radiusSlider.addEventListener('input', updateRadius);
+        frictionSlider.addEventListener('input', updateFriction);
+        opacitySlider.addEventListener('input', updateOpacity);
 
         // =========================
         // Ready
         // =========================
 
-        console.log('Fuderu Canvas Ready');
+        console.log('Fuderu Canvas Ready with Presets!');
+        console.log('Available presets: pencil, marker, watercolor, airbrush, charcoal, calligraphy');
     </script>
 </body>
 

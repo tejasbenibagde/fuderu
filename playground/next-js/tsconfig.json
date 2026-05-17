@@ -24,10 +24,7 @@
     ],
     "paths": {
       "@/*": [
-        "./playground/next-js/*"
-      ],
-      "@/lib/*": [
-        "./playground/next-js/lib/*"
+        "./*"
       ]
     }
   },

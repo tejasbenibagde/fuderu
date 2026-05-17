@@ -7,6 +7,7 @@
 
 [![npm version](https://img.shields.io/npm/v/fuderu.svg)](https://www.npmjs.com/package/fuderu)
 [![Last Month downloads](https://img.shields.io/npm/dm/fuderu?style=flat&label=Last%20Month%20Downloads)](https://www.npmjs.com/package/fuderu)
+[![Total downloads](https://img.shields.io/npm/d18m/fuderu?style=flat&label=Total%20Downloads)](https://www.npmjs.com/package/fuderu)
 [![License](https://img.shields.io/npm/l/fuderu.svg)](https://github.com/tejasbenibagde/fuderu/blob/main/LICENSE)
 
 A lightweight and extensible canvas drawing engine with lazy brush physics, interpolation, adaptive spacing, and built-in canvas rendering.
@@ -126,8 +127,8 @@ Currently tested in:
 
 - ✅ Vitest + jsdom
 - ✅ Vanilla HTML/TypeScript
-- 🚧 React
-- 🚧 Next.js
+- ✅ React
+- ✅ Next.js
 
 ---
 

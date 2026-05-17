@@ -76,18 +76,14 @@ These features exist but still need broader real-world validation:
 
 | Feature                  | Status |
 | ------------------------ | ------ |
-| React integration        | 🚧     |
-| Next.js integration      | 🚧     |
 | Mobile/touch validation  | 🚧     |
-| Safari compatibility     | 🚧     |
 | Performance stress tests | 🚧     |
 
 > The Canvas system currently works in:
 >
 > - Unit tests
 > - Vanilla HTML/TypeScript environments
->
-> React/Next.js production testing is still ongoing.
+> - React/Next.js environment
 
 ---
 
@@ -214,7 +210,7 @@ The library currently provides systems for:
 
 Fuderu is currently evolving from:
 
-> "A lazy brush utility"
+> "A simple brush utility"
 
 into
 

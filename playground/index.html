@@ -317,8 +317,8 @@
                 const g = parseInt(color.slice(3, 5), 16);
                 const b = parseInt(color.slice(5, 7), 16);
 
-                gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${opacity})`);
-                gradient.addColorStop(0.7, `rgba(${r}, ${g}, ${b}, ${opacity * 0.35})`);
+                gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${opacity* 0.7})`);
+                gradient.addColorStop(0.4, `rgba(${r}, ${g}, ${b}, ${opacity * 0.35})`);
                 gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
             }
 

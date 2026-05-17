@@ -6,7 +6,7 @@ import { BrushOptions, BrushUpdateOptions, Point } from './types'
 const RADIUS_DEFAULT = 30
 
 /**
- * Brush - Implements a "lazy brush" or "smoothing" algorithm for drawing.
+ * Brush - Implements a "brush" or "smoothing" algorithm for drawing.
  * 
  * How it works:
  * - There are TWO points: the "pointer" (where your cursor/mouse actually is)
@@ -81,7 +81,7 @@ class Brush {
   private _maxSpacing: number = 12
 
   /**
-   * Constructs a new LazyBrush.
+   * Constructs a new Brush.
    * 
    * @param options - Configuration options
    * @param options.radius - How far brush trails behind (default: 30)
@@ -108,7 +108,7 @@ class Brush {
   }
 
   /**
-   * Enable lazy brush calculations.
+   * Enable brush calculations.
    * After calling this, the brush will trail behind the pointer.
    */
   enable(): void {
@@ -220,10 +220,13 @@ class Brush {
   }
 
   calculateSpacing(size: number, opacity: number = 1): number {
-    const baseSpacing = size * 0.12
+    const baseSpacing =
+      size < 20
+        ? size * 0.12
+        : size * 0.04
 
     // low opacity => denser stamps
-    const opacityFactor = Math.max(0.05, opacity)
+    const opacityFactor = Math.pow(opacity, 1.5)
 
     return Math.max(
       this._minSpacing,

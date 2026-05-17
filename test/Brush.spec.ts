@@ -247,8 +247,22 @@ describe('Brush spacing and density compensation', () => {
     it('Should calculate spacing based on brush size', () => {
       const spacing = brush.calculateSpacing(20)
 
-      // 20 * 0.12 = 2.4
-      expect(spacing).toBeCloseTo(2.4)
+      // 20 * 0.04 = 0.8
+      expect(spacing).toBeCloseTo(0.8)
+    })
+
+    it('Should use tighter spacing for large brushes', () => {
+      const spacing = brush.calculateSpacing(40)
+
+      // 40 * 0.04 = 1.6
+      expect(spacing).toBeCloseTo(1.6)
+    })
+
+    it('Should use default spacing for small brushes', () => {
+      const spacing = brush.calculateSpacing(10)
+
+      // 10 * 0.12 = 1.2
+      expect(spacing).toBeCloseTo(1.2)
     })
 
     it('Should reduce spacing for low opacity', () => {

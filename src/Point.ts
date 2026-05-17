@@ -13,8 +13,9 @@ import { ease } from './util'
  * - Equality checking
  * 
  * It's used both for the "pointer" (cursor position) and "brush" (drawing position)
- * in the lazy brush algorithm.
+ * in the brush algorithm.
  */
+
 export class BrushPoint implements Point {
   x: number
   y: number
@@ -28,6 +29,7 @@ export class BrushPoint implements Point {
    * Update the x and y values to a new position.
    * @param point - New coordinates
    * @returns This BrushPoint instance (for chaining)
+   * chaining here means when you move a brush it will create a chain of points and we will fill that to the canvas making a brush stroke
    */
   update(point: Point): BrushPoint {
     this.x = point.x

@@ -1,71 +1,51 @@
 // src/presets/index.ts
 
-export type BrushPreset = 
-  | 'pencil' 
-  | 'marker' 
-  | 'watercolor' 
-  | 'airbrush' 
-  | 'charcoal'
-  | 'calligraphy'
-
-interface PresetConfig {
-  radius: number      
-  size: number        
-  friction: number   
-  spacingMin: number  
-  spacingMax: number 
-  densityCompensation: boolean
-}
-
-const PRESETS: Record<BrushPreset, PresetConfig> = {
+export const BrushPresets = {
   pencil: {
-    radius: 20,
-    size: 4,
-    friction: 0.3,
-    spacingMin: 0.5,
-    spacingMax: 8,
-    densityCompensation: true
-  },
-  marker: {
-    radius: 30,
-    size: 12,
-    friction: 0.2,
-    spacingMin: 0.5,
-    spacingMax: 10,
-    densityCompensation: true
-  },
-  watercolor: {
-    radius: 40,
-    size: 20,
-    friction: 0.6,
-    spacingMin: 1.0,
-    spacingMax: 14,
-    densityCompensation: true
-  },
-  airbrush: {
-    radius: 25,
-    size: 30,
-    friction: 0.7,
+    spacingMultiplier: 0.12,
     spacingMin: 0.3,
-    spacingMax: 6,
-    densityCompensation: false
+    spacingMax: 4,
+    opacityCurve: 1.8,
+    densityCurve: 0.4
   },
+
+  marker: {
+    spacingMultiplier: 0.25,
+    spacingMin: 1,
+    spacingMax: 10,
+    opacityCurve: 1.1,
+    densityCurve: 0.8
+  },
+
+  airbrush: {
+    spacingMultiplier: 0.08,
+    spacingMin: 0.2,
+    spacingMax: 2,
+    opacityCurve: 2,
+    densityCurve: 0.25
+  },
+
+  watercolor: {
+    spacingMultiplier: 0.05,
+    spacingMin: 0.2,
+    spacingMax: 1.5,
+    opacityCurve: 2.5,
+    densityCurve: 0.15
+  },
+
   charcoal: {
-    radius: 35,
-    size: 15,
-    friction: 0.5,
-    spacingMin: 0.8,
-    spacingMax: 12,
-    densityCompensation: true
+    spacingMultiplier: 0.3,
+    spacingMin: 2,
+    spacingMax: 14,
+    opacityCurve: 0.9,
+    densityCurve: 1
   },
+
   calligraphy: {
-    radius: 15,
-    size: 8,
-    friction: 0.4,
-    spacingMin: 0.4,
-    spacingMax: 9,
-    densityCompensation: true
+    spacingMultiplier: 0.15,
+    spacingMin: 0.5,
+    spacingMax: 6,
+    opacityCurve: 1.3,
+    densityCurve: 0.6
   }
 }
-
-export default PRESETS;

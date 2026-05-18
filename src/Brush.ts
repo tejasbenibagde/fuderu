@@ -1,7 +1,7 @@
 // src/Brush.ts
 
 import { BrushPoint } from './Point'
-import { BrushOptions, BrushUpdateOptions, Point } from './types'
+import { BrushOptions, BrushUpdateOptions, Point, BrushEngineConfig } from './types'
 
 const RADIUS_DEFAULT = 30
 
@@ -77,8 +77,13 @@ class Brush {
 
 
   private _densityCompensation: boolean = true
-  private _minSpacing: number = 0.5
-  private _maxSpacing: number = 12
+
+  private _spacingMin = 0.5
+  private _spacingMax = 12
+  private _spacingMultiplier = 0.18
+
+  private _densityCurve = 0.5
+  private _opacityCurve = 1.5
 
   /**
    * Constructs a new Brush.
@@ -214,23 +219,23 @@ class Brush {
     return this._isErasing
   }
 
-  setSpacing(min: number, max: number): void {
-    this._minSpacing = Math.max(0.1, min)
-    this._maxSpacing = Math.max(this._minSpacing, max)
-  }
+  calculateSpacing(
+    size: number,
+    opacity: number = 1
+  ): number {
 
-  calculateSpacing(size: number, opacity: number = 1): number {
     const baseSpacing =
-      size < 20
-        ? size * 0.18
-        : size * 0.12
+      size * this._spacingMultiplier
 
-    // low opacity => denser stamps
-    const opacityFactor = Math.pow(opacity, 1.5)
+    const opacityFactor =
+      Math.pow(opacity, this._opacityCurve)
 
     return Math.max(
-      this._minSpacing,
-      Math.min(baseSpacing * opacityFactor, this._maxSpacing)
+      this._spacingMin,
+      Math.min(
+        baseSpacing * opacityFactor,
+        this._spacingMax
+      )
     )
   }
 
@@ -242,18 +247,29 @@ class Brush {
  * @param originalOpacity - User's desired opacity
  * @returns Adjusted opacity value
  */
-  calculateDensityCompensation(spacing: number, size: number, originalOpacity: number): number {
-    if (!this._densityCompensation || originalOpacity >= 0.99) {
+  calculateDensityCompensation(
+    spacing: number,
+    size: number,
+    originalOpacity: number
+  ): number {
+
+    if (
+      !this._densityCompensation ||
+      originalOpacity >= 0.99
+    ) {
       return originalOpacity
     }
 
-    // More stamps = lower alpha per stamp (density compensation)
-    const overlapFactor = spacing / size
+    const overlapFactor =
+      spacing / size
 
-    // Prevent going too invisible
     return Math.max(
       0.001,
-      originalOpacity * Math.pow(overlapFactor, 0.5)
+      originalOpacity *
+      Math.pow(
+        overlapFactor,
+        this._densityCurve
+      )
     )
   }
 
@@ -323,17 +339,6 @@ class Brush {
     return this._hasMoved
   }
 
-  enableDensityCompensation(): void {
-    this._densityCompensation = true
-  }
-
-  disableDensityCompensation(): void {
-    this._densityCompensation = false
-  }
-
-  isDensityCompensationEnabled(): boolean {
-    return this._densityCompensation
-  }
 
   calculateOpacity(opacity: number): number {
     const spacing = this.calculateSpacing(this.size, opacity)
@@ -343,6 +348,56 @@ class Brush {
       this.size,
       opacity
     )
+  }
+
+  configureEngine(
+    config: BrushEngineConfig
+  ): void {
+
+    if (config.spacingMin !== undefined) {
+      this._spacingMin =
+        Math.max(0.1, config.spacingMin)
+    }
+
+    if (config.spacingMax !== undefined) {
+      this._spacingMax =
+        Math.max(
+          this._spacingMin,
+          config.spacingMax
+        )
+    }
+
+    if (config.spacingMultiplier !== undefined) {
+      this._spacingMultiplier =
+        Math.max(0.001, config.spacingMultiplier)
+    }
+
+    if (config.opacityCurve !== undefined &&
+      Number.isFinite(config.opacityCurve)) {
+      this._opacityCurve =
+        Math.max(0.01, config.opacityCurve)
+    }
+
+    if (config.densityCurve !== undefined) {
+      this._densityCurve =
+        Math.max(0.01, config.densityCurve)
+    }
+
+    if (config.densityCompensation !== undefined) {
+      this._densityCompensation =
+        config.densityCompensation
+    }
+  }
+
+  getEngineConfig(): BrushEngineConfig {
+    return {
+      spacingMin: this._spacingMin,
+      spacingMax: this._spacingMax,
+      spacingMultiplier: this._spacingMultiplier,
+      opacityCurve: this._opacityCurve,
+      densityCurve: this._densityCurve,
+      densityCompensation: this._densityCompensation
+    }
   }
 
   /**

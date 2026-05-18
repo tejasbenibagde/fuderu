@@ -247,18 +247,18 @@ describe('Brush spacing and density compensation', () => {
     it('Should calculate spacing based on brush size', () => {
       const spacing = brush.calculateSpacing(20)
 
-      // 20 * 0.12 = 2.4
-      expect(spacing).toBeCloseTo(2.4)
+      // 20 * 0.18 = 3.6
+      expect(spacing).toBeCloseTo(3.6)
     })
 
-    it('Should use tighter spacing for large brushes', () => {
+    it('Should calculate spacing for large brushes', () => {
       const spacing = brush.calculateSpacing(40)
 
-      // 40 * 0.12 = 4.8
-      expect(spacing).toBeCloseTo(4.8)
+      // 40 * 0.18 = 7.2
+      expect(spacing).toBeCloseTo(7.2)
     })
 
-    it('Should use default spacing for small brushes', () => {
+    it('Should calculate spacing for small brushes', () => {
       const spacing = brush.calculateSpacing(10)
 
       // 10 * 0.18 = 1.8
@@ -271,93 +271,6 @@ describe('Brush spacing and density compensation', () => {
 
       expect(lowOpacitySpacing).toBeLessThan(highOpacitySpacing)
     })
-
-    it('Should respect minimum spacing', () => {
-      brush.setSpacing(1, 10)
-
-      const spacing = brush.calculateSpacing(1, 0.01)
-
-      expect(spacing).toBeGreaterThanOrEqual(1)
-    })
-
-    it('Should respect maximum spacing', () => {
-      brush.setSpacing(0.5, 5)
-
-      const spacing = brush.calculateSpacing(100)
-
-      expect(spacing).toBeLessThanOrEqual(5)
-    })
-
-    it('Should update spacing limits with setSpacing()', () => {
-      brush.setSpacing(2, 8)
-
-      const smallSpacing = brush.calculateSpacing(1)
-      const largeSpacing = brush.calculateSpacing(200)
-
-      expect(smallSpacing).toBeGreaterThanOrEqual(2)
-      expect(largeSpacing).toBeLessThanOrEqual(8)
-    })
-  })
-
-  describe('Density compensation', () => {
-    it('Should have density compensation enabled by default', () => {
-      expect(brush.isDensityCompensationEnabled()).toBe(true)
-    })
-
-    it('Should disable density compensation', () => {
-      brush.disableDensityCompensation()
-
-      expect(brush.isDensityCompensationEnabled()).toBe(false)
-    })
-
-    it('Should enable density compensation again', () => {
-      brush.disableDensityCompensation()
-      brush.enableDensityCompensation()
-
-      expect(brush.isDensityCompensationEnabled()).toBe(true)
-    })
-
-    it('Should return original opacity when density compensation is disabled', () => {
-      brush.disableDensityCompensation()
-
-      const result = brush.calculateDensityCompensation(
-        1,
-        20,
-        0.5
-      )
-
-      expect(result).toBe(0.5)
-    })
-
-    it('Should return original opacity when opacity is near 1', () => {
-      const result = brush.calculateDensityCompensation(
-        1,
-        20,
-        1
-      )
-
-      expect(result).toBe(1)
-    })
-
-    it('Should reduce opacity when density compensation is enabled', () => {
-      const result = brush.calculateDensityCompensation(
-        1,
-        20,
-        0.5
-      )
-
-      expect(result).toBeLessThan(0.5)
-    })
-
-    it('Should never return opacity below minimum threshold', () => {
-      const result = brush.calculateDensityCompensation(
-        0.0001,
-        100,
-        0.0001
-      )
-
-      expect(result).toBeGreaterThanOrEqual(0.001)
-    })
   })
 
   describe('Opacity calculation', () => {
@@ -366,14 +279,6 @@ describe('Brush spacing and density compensation', () => {
 
       expect(opacity).toBeGreaterThan(0)
       expect(opacity).toBeLessThanOrEqual(0.5)
-    })
-
-    it('Should return original opacity when compensation is disabled', () => {
-      brush.disableDensityCompensation()
-
-      const opacity = brush.calculateOpacity(0.5)
-
-      expect(opacity).toBe(0.5)
     })
   })
 

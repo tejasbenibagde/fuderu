@@ -210,13 +210,49 @@
                 <span id="opacityValue" class="value-display">100%</span>
             </div>
 
+            <div class="control-group">
+                <label>📍 Spacing Min:</label>
+                <input type="range" id="spacingMinSlider" min="0.1" max="10" step="0.1" value="0.5">
+                <span id="spacingMinValue" class="value-display">0.5</span>
+            </div>
+
+            <div class="control-group">
+                <label>📏 Spacing Max:</label>
+                <input type="range" id="spacingMaxSlider" min="1" max="30" step="0.1" value="12">
+                <span id="spacingMaxValue" class="value-display">12</span>
+            </div>
+
+            <div class="control-group">
+                <label>⚙️ Spacing Mult:</label>
+                <input type="range" id="spacingMultiplierSlider" min="0.01" max="1" step="0.01" value="0.18">
+                <span id="spacingMultiplierValue" class="value-display">0.18</span>
+            </div>
+
+            <div class="control-group">
+                <label>🎚️ Density Curve:</label>
+                <input type="range" id="densityCurveSlider" min="0.01" max="5" step="0.01" value="0.5">
+                <span id="densityCurveValue" class="value-display">0.5</span>
+            </div>
+
+            <div class="control-group">
+                <label>✨ Opacity Curve:</label>
+                <input type="range" id="opacityCurveSlider" min="0.01" max="5" step="0.01" value="1.5">
+                <span id="opacityCurveValue" class="value-display">1.5</span>
+            </div>
+
+            <div class="control-group">
+                <label>🧠 Density Fix:</label>
+                <input type="checkbox" id="densityCompensationToggle" checked>
+            </div>
+
             <div class="status" id="status">Ready</div>
         </div>
 
         <div class="info">
             💡 <span>Brush Presets</span> - Click any preset to instantly change brush behavior!<br>
             🎨 Each preset has unique <span>Size, Radius, Friction, and Spacing</span> settings.<br>
-            Try <span>Pencil</span> for precise lines, <span>Watercolor</span> for smooth blending, or <span>Airbrush</span> for soft spray!
+            Try <span>Pencil</span> for precise lines, <span>Watercolor</span> for smooth blending, or
+            <span>Airbrush</span> for soft spray!
         </div>
     </div>
 
@@ -261,6 +297,39 @@
 
         const statusDiv = document.getElementById('status');
 
+        const spacingMinSlider =
+            document.getElementById('spacingMinSlider');
+
+        const spacingMinValue =
+            document.getElementById('spacingMinValue');
+
+        const spacingMaxSlider =
+            document.getElementById('spacingMaxSlider');
+
+        const spacingMaxValue =
+            document.getElementById('spacingMaxValue');
+
+        const spacingMultiplierSlider =
+            document.getElementById('spacingMultiplierSlider');
+
+        const spacingMultiplierValue =
+            document.getElementById('spacingMultiplierValue');
+
+        const densityCurveSlider =
+            document.getElementById('densityCurveSlider');
+
+        const densityCurveValue =
+            document.getElementById('densityCurveValue');
+
+        const opacityCurveSlider =
+            document.getElementById('opacityCurveSlider');
+
+        const opacityCurveValue =
+            document.getElementById('opacityCurveValue');
+
+        const densityCompensationToggle =
+            document.getElementById('densityCompensationToggle');
+
         // =========================
         // Initial Canvas Size
         // =========================
@@ -271,6 +340,7 @@
         canvas.style.height = '500px';
 
         painter.resize();
+        updateEngineControls();
 
         // =========================
         // Apply Preset Function
@@ -278,25 +348,65 @@
 
         function applyPreset(preset) {
             painter.applyPreset(preset);
-            
+
             // Update UI sliders to reflect preset values
             sizeSlider.value = painter.getSize();
             sizeValue.textContent = `${painter.getSize()}px`;
-            
+
             radiusSlider.value = painter.getRadius();
             radiusValue.textContent = `${painter.getRadius()}px`;
-            
+
             frictionSlider.value = painter.getFriction();
             frictionValue.textContent = `${Math.round(painter.getFriction() * 100)}%`;
-            
+
             statusDiv.textContent = `🎨 Preset: ${preset.toUpperCase()} applied!`;
-            
+
             // Reset eraser button state if needed
             if (painter.isErasing()) {
                 painter.disableEraser();
                 eraserBtn.textContent = '✏️ Draw';
                 eraserBtn.classList.remove('active');
             }
+
+            updateEngineControls();
+        }
+
+        function updateEngineControls() {
+            const config =
+                painter.getBrushEngineConfig();
+
+            spacingMinSlider.value =
+                config.spacingMin;
+
+            spacingMinValue.textContent =
+                config.spacingMin;
+
+            spacingMaxSlider.value =
+                config.spacingMax;
+
+            spacingMaxValue.textContent =
+                config.spacingMax;
+
+            spacingMultiplierSlider.value =
+                config.spacingMultiplier;
+
+            spacingMultiplierValue.textContent =
+                config.spacingMultiplier;
+
+            densityCurveSlider.value =
+                config.densityCurve;
+
+            densityCurveValue.textContent =
+                config.densityCurve;
+
+            opacityCurveSlider.value =
+                config.opacityCurve;
+
+            opacityCurveValue.textContent =
+                config.opacityCurve;
+
+            densityCompensationToggle.checked =
+                config.densityCompensation;
         }
 
         // =========================
@@ -359,6 +469,93 @@
             statusDiv.textContent = `Color: ${colorPicker.value}`;
         }
 
+        function updateSpacingMin() {
+            const value =
+                Number(spacingMinSlider.value);
+
+            painter.configureBrushEngine({
+                spacingMin: value
+            });
+
+            spacingMinValue.textContent =
+                value.toFixed(1);
+
+            statusDiv.textContent =
+                `Spacing Min: ${value}`;
+        }
+
+        function updateSpacingMax() {
+            const value =
+                Number(spacingMaxSlider.value);
+
+            painter.configureBrushEngine({
+                spacingMax: value
+            });
+
+            spacingMaxValue.textContent =
+                value.toFixed(1);
+
+            statusDiv.textContent =
+                `Spacing Max: ${value}`;
+        }
+
+        function updateSpacingMultiplier() {
+            const value =
+                Number(spacingMultiplierSlider.value);
+
+            painter.configureBrushEngine({
+                spacingMultiplier: value
+            });
+
+            spacingMultiplierValue.textContent =
+                value.toFixed(2);
+
+            statusDiv.textContent =
+                `Spacing Multiplier: ${value}`;
+        }
+
+        function updateDensityCurve() {
+            const value =
+                Number(densityCurveSlider.value);
+
+            painter.configureBrushEngine({
+                densityCurve: value
+            });
+
+            densityCurveValue.textContent =
+                value.toFixed(2);
+
+            statusDiv.textContent =
+                `Density Curve: ${value}`;
+        }
+
+        function updateOpacityCurve() {
+            const value =
+                Number(opacityCurveSlider.value);
+
+            painter.configureBrushEngine({
+                opacityCurve: value
+            });
+
+            opacityCurveValue.textContent =
+                value.toFixed(2);
+
+            statusDiv.textContent =
+                `Opacity Curve: ${value}`;
+        }
+
+        function updateDensityCompensation() {
+            const value =
+                densityCompensationToggle.checked;
+
+            painter.configureBrushEngine({
+                densityCompensation: value
+            });
+
+            statusDiv.textContent =
+                `Density Compensation: ${value}`;
+        }
+
         // =========================
         // Events
         // =========================
@@ -379,6 +576,36 @@
         radiusSlider.addEventListener('input', updateRadius);
         frictionSlider.addEventListener('input', updateFriction);
         opacitySlider.addEventListener('input', updateOpacity);
+
+        spacingMinSlider.addEventListener(
+            'input',
+            updateSpacingMin
+        );
+
+        spacingMaxSlider.addEventListener(
+            'input',
+            updateSpacingMax
+        );
+
+        spacingMultiplierSlider.addEventListener(
+            'input',
+            updateSpacingMultiplier
+        );
+
+        densityCurveSlider.addEventListener(
+            'input',
+            updateDensityCurve
+        );
+
+        opacityCurveSlider.addEventListener(
+            'input',
+            updateOpacityCurve
+        );
+
+        densityCompensationToggle.addEventListener(
+            'change',
+            updateDensityCompensation
+        );
 
         // =========================
         // Ready

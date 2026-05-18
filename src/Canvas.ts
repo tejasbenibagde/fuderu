@@ -1,8 +1,6 @@
 import Brush from "./Brush";
-
-import type { Point } from "./types";
-import type { BrushPreset } from './presets';
-import PRESETS from './presets';
+import { BrushPresets } from "./presets";
+import type { BrushEngineConfig, Point } from "./types";
 
 export interface CanvasOptions {
     canvas: HTMLCanvasElement | string
@@ -240,42 +238,6 @@ export class Canvas {
         this.ctx.restore();
     }
 
-    // =========================
-    // Preset API
-    // =========================
-
-    /**
-     * Apply a brush preset (pencil, marker, watercolor, etc.)
-     * This will override the current brush settings with the preset values.
-     * @param preset - Name of the preset to apply
-     * @example
-     * canvas.applyPreset('watercolor')
-     * canvas.applyPreset('pencil')
-     * canvas.applyPreset('airbrush')
-    */
-
-    applyPreset(preset: BrushPreset): void {
-        const config = PRESETS[preset]
-        if (!config) {
-            console.warn(`Unknown preset: ${preset}`)
-            return
-        }
-
-        // Apply preset values to the brush
-        this.brush.setRadius(config.radius)
-        this.brush.setSize(config.size)
-        this.brush.setSpacing(config.spacingMin, config.spacingMax)
-
-        if (config.densityCompensation) {
-            this.brush.enableDensityCompensation()
-        } else {
-            this.brush.disableDensityCompensation()
-        }
-
-        // Also update the Canvas-level friction
-        this.setFriction(config.friction)
-    }
-
 
     // =========================
     // Public API
@@ -284,6 +246,21 @@ export class Canvas {
     private _color: string = '#000000';
     private _opacity: number = 1;
     private _friction: number = 0;
+
+    applyPreset(
+        preset: keyof typeof BrushPresets
+    ): void {
+
+        const config = BrushPresets[preset];
+
+        if (!config) {
+            throw new Error(
+                `Preset "${preset}" does not exist`
+            );
+        }
+
+        this.configureBrushEngine(config);
+    }
 
     setColor(color: string): void {
         this._color = color;
@@ -325,6 +302,16 @@ export class Canvas {
         return this._friction
     }
 
+    configureBrushEngine(
+        config: BrushEngineConfig
+    ): void {
+        this.brush.configureEngine(config)
+    }
+
+    getBrushEngineConfig(): BrushEngineConfig {
+        return this.brush.getEngineConfig()
+    }
+
     enableEraser(): void {
         this.brush.enableEraser()
     }
@@ -343,22 +330,6 @@ export class Canvas {
 
     isErasing(): boolean {
         return this.brush.isErasing()
-    }
-
-    /**
- * Get list of all available preset names
- * @returns Array of preset names
- */
-    getAvailablePresets(): BrushPreset[] {
-        return Object.keys(PRESETS) as BrushPreset[]
-    }
-
-    /**
-     * Get the current preset configuration (or closest match)
-     * Note: This returns the preset values, not necessarily the current settings
-     */
-    getPresetConfig(preset: BrushPreset): typeof PRESETS[BrushPreset] | undefined {
-        return PRESETS[preset]
     }
 
     clear(): void {

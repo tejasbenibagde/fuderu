@@ -15,3 +15,18 @@ export interface BrushUpdateOptions {
   both?: boolean
   friction?: number
 }
+
+export interface BrushEngineConfig {
+  spacingMin?: number
+  spacingMax?: number
+
+  densityCompensation?: boolean
+
+  interpolation?: 'linear' | 'smooth'
+
+  spacingMultiplier?: number
+
+  opacityCurve?: number
+
+  densityCurve?: number
+}

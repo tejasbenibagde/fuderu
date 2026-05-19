@@ -1,6 +1,4 @@
-import Brush from './Brush'
-import { Canvas } from './Canvas'
-import { BrushPoint } from './Point'
-import type { Point } from './types'
+export { Brush } from './Brush'
 
-export { Brush, Point, BrushPoint, Canvas }
+export { type BrushConfig, type BrushBasicConfig } from './types/config'
+export { type Module } from './types/modules'

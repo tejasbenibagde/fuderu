@@ -1,215 +1,230 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, expect, it, beforeAll, vi } from "vitest";
+import { Canvas } from "../src/Canvas";
 
-import { Canvas } from '../src/Canvas';
+const mockBrushInstance = {
+    putPoint: vi.fn(),
+    render: vi.fn(),
+    finalizeStroke: vi.fn(),
+    clear: vi.fn(),
+    undo: vi.fn(),
+    redo: vi.fn(),
+    loadConfig: vi.fn(),
+    loadImageAsync: vi.fn(),
+};
 
-type MockCanvasContext = {
-    save: ReturnType<typeof vi.fn>
-    restore: ReturnType<typeof vi.fn>
-    scale: ReturnType<typeof vi.fn>
-    setTransform: ReturnType<typeof vi.fn>
-    drawImage: ReturnType<typeof vi.fn>
-    clearRect: ReturnType<typeof vi.fn>
-    beginPath: ReturnType<typeof vi.fn>
-    arc: ReturnType<typeof vi.fn>
-    fill: ReturnType<typeof vi.fn>
-}
+vi.mock("../src/Brush", () => {
+    return {
+        Brush: vi.fn(function () {
+            return mockBrushInstance;
+        }),
+    };
+});
 
-describe('Canvas', () => {
-    let canvasElement: HTMLCanvasElement;
-    let mockContext: MockCanvasContext;
-
-    beforeEach(() => {
-        canvasElement = document.createElement('canvas')
-
-        canvasElement.width = 500
-        canvasElement.height = 500
-
-        mockContext = {
-            save: vi.fn(),
-            restore: vi.fn(),
-            scale: vi.fn(),
-            setTransform: vi.fn(),
-            drawImage: vi.fn(),
-            clearRect: vi.fn(),
-            beginPath: vi.fn(),
-            arc: vi.fn(),
-            fill: vi.fn(),
+beforeAll(() => {
+    vi.spyOn(
+        HTMLCanvasElement.prototype,
+        "getContext"
+    ).mockImplementation(function (
+        contextId: string
+    ) {
+        if (contextId === "2d") {
+            return {
+                scale: vi.fn(),
+                clearRect: vi.fn(),
+                drawImage: vi.fn(),
+                getImageData: vi.fn(() => ({
+                    data: [],
+                    width: 100,
+                    height: 100,
+                })),
+                putImageData: vi.fn(),
+                save: vi.fn(),
+                restore: vi.fn(),
+                beginPath: vi.fn(),
+                closePath: vi.fn(),
+                fill: vi.fn(),
+                ellipse: vi.fn(),
+                translate: vi.fn(),
+                rotate: vi.fn(),
+                fillRect: vi.fn(),
+                rect: vi.fn(),
+                globalAlpha: 1,
+                globalCompositeOperation: "source-over",
+                filter: "none",
+                fillStyle: "#000000",
+            } as unknown as CanvasRenderingContext2D;
         }
 
-        vi.spyOn(
-            canvasElement,
-            'getContext'
-        ).mockReturnValue(
-            mockContext as unknown as CanvasRenderingContext2D
-        )
+        return null;
+    });
 
-        document.body.appendChild(canvasElement)
-    })
+    vi.spyOn(
+        HTMLCanvasElement.prototype,
+        "getBoundingClientRect"
+    ).mockImplementation(function () {
+        return {
+            width: 500,
+            height: 500,
+            top: 0,
+            left: 0,
+            right: 500,
+            bottom: 500,
+            x: 0,
+            y: 0,
+            toJSON: () => { },
+        };
+    });
+});
 
-    describe("Initialization", () => {
-        it('should create a canvas instance', () => {
-            const canvas = new Canvas({
-                canvas: canvasElement
+describe("Canvas", () => {
+    const createCanvas = () => {
+        const canvas = document.createElement("canvas");
+
+        document.body.appendChild(canvas);
+
+        return canvas;
+    };
+
+    it("should create canvas instance", () => {
+        const canvas = createCanvas();
+
+        const instance = new Canvas({
+            canvas,
+        });
+
+        expect(instance).toBeInstanceOf(Canvas);
+    });
+
+    it("should accept selector string", () => {
+        const canvas = createCanvas();
+
+        canvas.id = "my-canvas";
+
+        const instance = new Canvas({
+            canvas: "#my-canvas",
+        });
+
+        expect(instance).toBeInstanceOf(Canvas);
+    });
+
+    it("should throw if selector does not exist", () => {
+        expect(() => {
+            new Canvas({
+                canvas: "#missing",
+            });
+        }).toThrow();
+    });
+
+    it("should resize canvas correctly", () => {
+        const canvas = createCanvas();
+
+        new Canvas({
+            canvas,
+        });
+
+        expect(canvas.width).toBe(500);
+        expect(canvas.height).toBe(500);
+    });
+
+    it("should expose clear method", () => {
+        const canvas = createCanvas();
+
+        const instance = new Canvas({
+            canvas,
+        });
+
+        instance.clear();
+
+        expect(mockBrushInstance.clear).toHaveBeenCalled();
+    });
+
+    it("should expose undo/redo methods", () => {
+        const canvas = createCanvas();
+
+        const instance = new Canvas({
+            canvas,
+        });
+
+        instance.undo();
+        instance.redo();
+
+        expect(mockBrushInstance.undo).toHaveBeenCalled();
+        expect(mockBrushInstance.redo).toHaveBeenCalled();
+    });
+
+    it("should expose loadConfig method", () => {
+        const canvas = createCanvas();
+
+        const instance = new Canvas({
+            canvas,
+        });
+
+        const config = {
+            size: 50,
+            opacity: 1,
+            flow: 1,
+            color: "#fff",
+            angle: 0,
+            roundness: 1,
+            spacing: 1,
+        };
+
+        instance.loadConfig(config);
+
+        expect(
+            mockBrushInstance.loadConfig
+        ).toHaveBeenCalledWith(config);
+    });
+
+    it("should destroy event listeners safely", () => {
+        const canvas = createCanvas();
+
+        const instance = new Canvas({
+            canvas,
+        });
+
+        expect(() => {
+            instance.destroy();
+        }).not.toThrow();
+    });
+
+    it("should handle pointer events", () => {
+        const canvas = createCanvas();
+
+        new Canvas({
+            canvas,
+        });
+
+        canvas.dispatchEvent(
+            new PointerEvent("pointerdown", {
+                clientX: 100,
+                clientY: 100,
+                pressure: 1,
             })
+        );
 
-            expect(canvas).toBeInstanceOf(Canvas)
-        })
-
-        it('should initialize default brush values', () => {
-            const canvas = new Canvas({
-                canvas: canvasElement
+        canvas.dispatchEvent(
+            new PointerEvent("pointermove", {
+                clientX: 120,
+                clientY: 120,
+                pressure: 1,
             })
+        );
 
-            expect(canvas.getSize()).toBe(10)
-            expect(canvas.getRadius()).toBe(30)
-            expect(canvas.getOpacity()).toBe(1)
-            expect(canvas.getColor()).toBe('#000000')
-        })
+        window.dispatchEvent(
+            new PointerEvent("pointerup")
+        );
 
-        it('should initialize custom values', () => {
-            const canvas = new Canvas({
-                canvas: canvasElement,
-                size: 20,
-                radius: 50,
-                opacity: 0.5,
-                color: '#ff0000'
-            })
+        expect(
+            mockBrushInstance.putPoint
+        ).toHaveBeenCalled();
 
-            expect(canvas.getSize()).toBe(20)
-            expect(canvas.getRadius()).toBe(50)
-            expect(canvas.getOpacity()).toBe(0.5)
-            expect(canvas.getColor()).toBe('#ff0000')
-        })
-    })
+        expect(
+            mockBrushInstance.render
+        ).toHaveBeenCalled();
 
-    describe('Color', () => {
-        it('should update color', () => {
-            const canvas = new Canvas({
-                canvas: canvasElement
-            })
-
-            canvas.setColor('#00ff00')
-
-            expect(canvas.getColor()).toBe('#00ff00')
-        })
-    })
-
-    describe('Opacity', () => {
-        it('should clamp opacity between 0 and 1', () => {
-            const canvas = new Canvas({
-                canvas: canvasElement
-            })
-
-            canvas.setOpacity(5)
-
-            expect(canvas.getOpacity()).toBe(1)
-
-            canvas.setOpacity(-1)
-
-            expect(canvas.getOpacity()).toBe(0)
-        })
-    })
-
-    describe('Friction', () => {
-        it('should clamp friction between 0 and 0.9', () => {
-            const canvas = new Canvas({
-                canvas: canvasElement
-            })
-
-            canvas.setFriction(5)
-
-            expect(canvas.getFriction()).toBe(0.9)
-
-            canvas.setFriction(-1)
-
-            expect(canvas.getFriction()).toBe(0)
-        })
-    })
-
-    describe('Brush Controls', () => {
-        it('should update brush size', () => {
-            const canvas = new Canvas({
-                canvas: canvasElement
-            })
-
-            canvas.setSize(25)
-
-            expect(canvas.getSize()).toBe(25)
-        })
-
-        it('should update brush radius', () => {
-            const canvas = new Canvas({
-                canvas: canvasElement
-            })
-
-            canvas.setRadius(100)
-
-            expect(canvas.getRadius()).toBe(100)
-        })
-    })
-
-    describe('Eraser', () => {
-        it('should enable eraser', () => {
-            const canvas = new Canvas({
-                canvas: canvasElement
-            })
-
-            canvas.enableEraser()
-
-            expect(canvas.isErasing()).toBe(true)
-        })
-
-        it('should disable eraser', () => {
-            const canvas = new Canvas({
-                canvas: canvasElement
-            })
-
-            canvas.enableEraser()
-            canvas.disableEraser()
-
-            expect(canvas.isErasing()).toBe(false)
-        })
-
-        it('should toggle eraser', () => {
-            const canvas = new Canvas({
-                canvas: canvasElement
-            })
-
-            canvas.toggleEraser()
-
-            expect(canvas.isErasing()).toBe(true)
-
-            canvas.toggleEraser()
-
-            expect(canvas.isErasing()).toBe(false)
-        })
-
-        describe('Canvas Operations', () => {
-            it('should clear the canvas', () => {
-                const canvas = new Canvas({
-                    canvas: canvasElement
-                })
-
-                canvas.clear()
-
-                expect(mockContext.clearRect).toHaveBeenCalled()
-            })
-
-            it('should resize safely', () => {
-                const canvas = new Canvas({
-                    canvas: canvasElement
-                })
-
-                expect(() => canvas.resize()).not.toThrow()
-            })
-
-            it('should destroy safely', () => {
-                const canvas = new Canvas({
-                    canvas: canvasElement
-                })
-
-                expect(() => canvas.destroy()).not.toThrow()
-            })
-        })
-    })
+        expect(
+            mockBrushInstance.finalizeStroke
+        ).toHaveBeenCalled();
+    });
 });

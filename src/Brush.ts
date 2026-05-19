@@ -1,486 +1,759 @@
 // src/Brush.ts
-
-import { BrushPoint } from './Point'
-import { BrushOptions, BrushUpdateOptions, Point, BrushEngineConfig } from './types'
-
-const RADIUS_DEFAULT = 30
-
-/**
- * Brush - Implements a "brush" or "smoothing" algorithm for drawing.
- * 
- * How it works:
- * - There are TWO points: the "pointer" (where your cursor/mouse actually is)
- *   and the "brush" (where the drawing happens).
- * - The brush trails behind the pointer, creating a smooth, natural drawing feel.
- * - The "radius" defines how far the pointer can move before the brush starts following.
- * - "Friction" makes the movement smoother by reducing the distance traveled per frame.
- * 
- * Think of it like pulling a ball on a string - the ball (brush) follows where you pull,
- * but with a delay based on how long the string is (radius).
- */
-class Brush {
-  /**
-   * If the brush should be enabled.
-   * When disabled, the brush instantly snaps to the pointer position.
-   */
-  _isEnabled: boolean
-
-  /**
-   * Indicates if the brush has moved in the last update cycle.
-   * Useful for knowing if you need to redraw.
-   */
-  _hasMoved: boolean
-
-  /**
-   * The lazy radius (pulling distance).
-   * Larger = brush lags further behind, creating more smoothing.
-   * Smaller = brush follows more closely, more responsive.
-   */
-  radius: number
-
-  /**
-   * size of the brush. 
-   */
-  size: number
-
-  /**
-   * Coordinates of the pointer (cursor/mouse position).
-   * This is the "target" that the brush tries to reach.
-   */
-  pointer: BrushPoint
-
-  /**
-   * Coordinates of the brush (actual drawing position).
-   * This is where you should draw on the canvas.
-   * It trails behind the pointer based on radius and friction.
-   */
-  brush: BrushPoint
-
-  /**
-   * The angle between pointer and brush in the last update cycle.
-   * Measured in radians. 0 = right, PI/2 = down, etc.
-   * Useful for directional brush effects.
-   */
-  angle: number
-
-  /**
-   * The distance between pointer and brush in the last update cycle.
-   * How far apart the two points currently are.
-   */
-  distance: number
-
-  /**
- * Enable eraser mode.
- * When enabled, the brush will erase instead of draw.
- */
-  private _isErasing: boolean = false
-
-
-  private _densityCompensation: boolean = true
-
-  private _spacingMin = 0.5
-  private _spacingMax = 12
-  private _spacingMultiplier = 0.18
-
-  private _densityCurve = 0.5
-  private _opacityCurve = 1.5
-
-  /**
-   * Constructs a new Brush.
-   * 
-   * @param options - Configuration options
-   * @param options.radius - How far brush trails behind (default: 30)
-   * @param options.enabled - Whether lazy effect is active (default: true)
-   * @param options.initialPoint - Starting position for both pointer and brush
-   */
-  constructor(options: BrushOptions = {}) {
-    const initialPoint = options.initialPoint || { x: 0, y: 0 }
-    this.radius = options.radius || RADIUS_DEFAULT
-    this.size = options.size && options.size > 0
-      ? options.size
-      : 10
-    // Enabled by default unless explicitly set to false
-    this._isEnabled = options.enabled === false ? false : true
-    this._isErasing = options.eraser ?? false
-
-    // Initialize both pointer and brush at the same starting position
-    this.pointer = new BrushPoint(initialPoint.x, initialPoint.y)
-    this.brush = new BrushPoint(initialPoint.x, initialPoint.y)
-
-    this.angle = 0
-    this.distance = 0
-    this._hasMoved = false
-  }
-
-  /**
-   * Enable brush calculations.
-   * After calling this, the brush will trail behind the pointer.
-   */
-  enable(): void {
-    this._isEnabled = true
-  }
-
-  /**
-   * Disable lazy brush calculations.
-   * After calling this, the brush instantly snaps to the pointer position.
-   * Useful for when you want direct, immediate drawing (like an eraser).
-   */
-  disable(): void {
-    this._isEnabled = false
-  }
-
-  /**
-   * Check if lazy brush is currently enabled.
-   * @returns {boolean} True if enabled, false if disabled
-   */
-  isEnabled(): boolean {
-    return this._isEnabled
-  }
-
-  /**
-   * Update the radius (pulling distance).
-   * @param {number} radius - New radius in pixels
-   */
-  setRadius(radius: number): void {
-    this.radius = radius
-  }
-
-  /**
-   * Return the current radius.
-   * @returns {number} Current radius in pixels
-   */
-  getRadius(): number {
-    return this.radius
-  }
-
-  setSize(size: number): void {
-    if (size <= 0 || !Number.isFinite(size)) {
-      throw new Error('Brush size must be a positive finite number')
-    }
-
-    this.size = size
-  }
-
-  getSize(): number {
-    return this.size
-  }
-
-  /**
-   * Return the brush coordinates as a simple object.
-   * This is where you should actually draw on the canvas.
-   * @returns {object} { x, y } coordinates
-   */
-  getBrushCoordinates(): Point {
-    return this.brush.toObject()
-  }
-
-  /**
-   * Return the pointer coordinates as a simple object.
-   * This is where the cursor/mouse currently is.
-   * @returns {object} { x, y } coordinates
-   */
-  getPointerCoordinates(): Point {
-    return this.pointer.toObject()
-  }
-
-  /**
-   * Return the brush as a BrushPoint instance.
-   * Use this if you need advanced point operations.
-   * @returns {BrushPoint} Brush point with utility methods
-   */
-  getBrush(): BrushPoint {
-    return this.brush
-  }
-
-  /**
- * Enable eraser mode.
- * When enabled, the brush will erase instead of draw.
- * Note: The user still needs to set `ctx.globalCompositeOperation = 'destination-out'`
- * based on this flag.
- */
-  enableEraser(): void {
-    this._isErasing = true
-  }
-
-  /**
- * Disable eraser mode.
- * Returns to normal drawing mode.
- */
-  disableEraser(): void {
-    this._isErasing = false
-  }
-
-  /**
- * Toggle eraser mode on/off.
- * @returns {boolean} The new eraser state (true = erasing)
- */
-  toggleEraser(): boolean {
-    this._isErasing = !this._isErasing
-    return this._isErasing
-  }
-
-  calculateSpacing(
-    size: number,
-    opacity: number = 1
-  ): number {
-
-    const baseSpacing =
-      size * this._spacingMultiplier
-
-    const opacityFactor =
-      Math.pow(opacity, this._opacityCurve)
-
-    return Math.max(
-      this._spacingMin,
-      Math.min(
-        baseSpacing * opacityFactor,
-        this._spacingMax
-      )
-    )
-  }
-
-  /**
- * Calculate density compensation factor for opacity.
- * Prevents visible dots by adjusting opacity based on spacing.
- * @param spacing - Distance between stamps
- * @param size - Current brush size
- * @param originalOpacity - User's desired opacity
- * @returns Adjusted opacity value
- */
-  calculateDensityCompensation(
-    spacing: number,
-    size: number,
-    originalOpacity: number
-  ): number {
-
-    if (
-      !this._densityCompensation ||
-      originalOpacity >= 0.99
-    ) {
-      return originalOpacity
-    }
-
-    const overlapFactor =
-      spacing / size
-
-    return Math.max(
-      0.001,
-      originalOpacity *
-      Math.pow(
-        overlapFactor,
-        this._densityCurve
-      )
-    )
-  }
-
-  interpolatePoints(from: Point, to: Point, spacing: number): Point[] {
-    const dx = to.x - from.x
-    const dy = to.y - from.y
-    const distance = Math.sqrt(dx * dx + dy * dy)
-    const points: Point[] = []
-
-    if (distance === 0) {
-      points.push({ x: from.x, y: from.y })
-      return points
-    }
-
-    const steps = Math.ceil(distance / spacing)
-
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps
-      points.push({
-        x: from.x + dx * t,
-        y: from.y + dy * t
-      })
-    }
-
-    return points
-  }
-
-  /**
- * Check if eraser mode is active.
- * @returns {boolean} True if eraser is enabled
- */
-  isErasing(): boolean {
-    return this._isErasing
-  }
-
-  /**
-   * Return the pointer as a BrushPoint instance.
-   * Use this if you need advanced point operations.
-   * @returns {BrushPoint} Pointer point with utility methods
-   */
-  getPointer(): BrushPoint {
-    return this.pointer
-  }
-
-  /**
-   * Return the angle between pointer and brush.
-   * @returns {number} Angle in radians (0 = right, PI/2 = down, PI = left, etc.)
-   */
-  getAngle(): number {
-    return this.angle
-  }
-
-  /**
-   * Return the distance between pointer and brush.
-   * @returns {number} Distance in pixels
-   */
-  getDistance(): number {
-    return this.distance
-  }
-
-  /**
-   * Return if the previous update has moved the brush.
-   * Useful for skipping rendering when nothing changed.
-   * @returns {boolean} Whether the brush moved previously
-   */
-  brushHasMoved(): boolean {
-    return this._hasMoved
-  }
-
-
-  calculateOpacity(opacity: number): number {
-    const spacing = this.calculateSpacing(this.size, opacity)
-
-    return this.calculateDensityCompensation(
-      spacing,
-      this.size,
-      opacity
-    )
-  }
-
-  configureEngine(
-    config: BrushEngineConfig
-  ): void {
-
-    if (config.spacingMin !== undefined) {
-      this._spacingMin =
-        Math.max(0.1, config.spacingMin)
-    }
-
-    if (config.spacingMax !== undefined) {
-      this._spacingMax =
-        Math.max(
-          this._spacingMin,
-          config.spacingMax
-        )
-    }
-
-    if (config.spacingMultiplier !== undefined) {
-      this._spacingMultiplier =
-        Math.max(0.001, config.spacingMultiplier)
-    }
-
-    if (config.opacityCurve !== undefined &&
-      Number.isFinite(config.opacityCurve)) {
-      this._opacityCurve =
-        Math.max(0.01, config.opacityCurve)
-    }
-
-    if (config.densityCurve !== undefined) {
-      this._densityCurve =
-        Math.max(0.01, config.densityCurve)
-    }
-
-    if (config.densityCompensation !== undefined) {
-      this._densityCompensation =
-        config.densityCompensation
-    }
-  }
-
-  getEngineConfig(): BrushEngineConfig {
-    return {
-      spacingMin: this._spacingMin,
-      spacingMax: this._spacingMax,
-      spacingMultiplier: this._spacingMultiplier,
-      opacityCurve: this._opacityCurve,
-      densityCurve: this._densityCurve,
-      densityCompensation: this._densityCompensation
-    }
-  }
-
-  /**
-   * Updates the pointer point and calculates the new brush point.
-   * This is the core algorithm - call this whenever the mouse/cursor moves.
-   * 
-   * @param newPointerPoint - Where the cursor/mouse is now
-   * @param options - Update options
-   * @param options.both - If true, instantly moves both pointer AND brush together
-   * @param options.friction - Smoothing factor (0-1). Lower = smoother but more lag.
-   * @returns {boolean} True if brush position changed, false otherwise
-   * 
-   * Algorithm explanation:
-   * 1. Update pointer to new position
-   * 2. If disabled, snap brush to pointer immediately
-   * 3. If enabled, calculate distance between pointer and brush
-   * 4. If distance > radius, move brush towards pointer by (distance - radius)
-   * 5. Apply friction to make movement smoother
-   */
-  update(
-    newPointerPoint: Point,
-    options: BrushUpdateOptions = {}
-  ): boolean {
-    // Reset movement flag for this update cycle
-    this._hasMoved = false
-
-    // Early exit: if pointer didn't move AND no special options, nothing to do
-    if (
-      this.pointer.equalsTo(newPointerPoint) &&
-      !options.both &&
-      !options.friction
-    ) {
-      return false
-    }
-
-    // Step 1: Update pointer position
-    this.pointer.update(newPointerPoint)
-
-    // Special case: "both" option moves pointer AND brush together instantly
-    // Useful for teleporting the brush without drawing a line
-    if (options.both) {
-      this._hasMoved = true
-      this.brush.update(newPointerPoint)
-      return true
-    }
-
-    if (this._isEnabled) {
-      // Step 2: Calculate how far and at what angle the brush is from pointer
-      this.distance = this.pointer.getDistanceTo(this.brush)
-      this.angle = this.pointer.getAngleTo(this.brush)
-
-      // Step 3: Check if pointer is outside the "lazy radius"
-      // Rounding avoids floating-point jitter
-      const isOutside = Math.round((this.distance - this.radius) * 10) / 10 > 0
-
-      // Validate friction value (must be between 0 and 1)
-      const friction =
-        options.friction && options.friction < 1 && options.friction > 0
-          ? options.friction
-          : undefined
-
-      // Step 4: If pointer is outside radius, move brush closer
-      if (isOutside) {
-        // Move brush by the excess distance (distance - radius)
-        // Direction is towards the pointer (using the calculated angle)
-        this.brush.moveByAngle(
-          this.angle,
-          this.distance - this.radius,
-          friction
-        )
-        this._hasMoved = true
-      }
-    } else {
-      // Disabled mode: brush instantly snaps to pointer
-      // No delay, no smoothing - direct drawing
-      this.distance = 0
-      this.angle = 0
-      this.brush.update(newPointerPoint)
-      this._hasMoved = true
-    }
-
-    return true
-  }
+// Important Note:- Some of the heavy tasks ma be moved in different language like Rust for faster performance in later versions
+
+import { BrushBasicConfig, BrushConfig } from "./types/config";
+import { Module } from "./types/modules";
+import { PurePoint, Point, PointCallBack } from "./types/point";
+import { getControlPoint, getEquidistantBezierPoints } from "./utils/bezier";
+import { toHashColor } from "./utils/color";
+import { getAngle, getDistance } from "./utils/math";
+
+
+const createCanvas = (width: number = 0, height: number = 0): HTMLCanvasElement => {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    return canvas;
+}
+const getContext = (canvas: HTMLCanvasElement): CanvasRenderingContext2D => {
+    return canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
 }
 
-export default Brush
+const defaultBasicConfig: BrushBasicConfig = {
+    size: 20,
+    opacity: 1.00,
+    flow: 1.00,
+    color: "#000000",
+    angle: 0.00,
+    roundness: 1.00,
+    spacing: 0.5,
+}
+
+/**
+ * Basic brush object
+ * 
+ * @param canvas Canvas Element (If not, please use loadContext to load it later)
+ * @param config Brush Config (If not, please access the config property later or use the loadConfig function to modify it)
+ */
+export class Brush {
+    /***********************************Undo/Redo**********************************/
+    private canvasStack: ImageData[] = []
+    private canvasStackIndex: number = -1;
+    /**
+     * Maximum number of undo/redo operations (0 means no limit)
+     */
+    maxUndoRedoStackSize: number = 10
+    private initCanvasStack() {
+        this.canvasStack = []
+        this.canvasStackIndex = -1
+        if (this.maxUndoRedoStackSize <= 0) {
+            return
+        }
+        if (this.oriCanvas && this.oriContext) {
+            this.canvasStack.push(this.oriContext.getImageData(0, 0, this.oriCanvas.width, this.oriCanvas.height))
+            this.canvasStackIndex++
+        }
+
+    }
+    /**
+     * Undo
+     */
+    undo() {
+        if (this.canvasStackIndex > 0) {
+            this.canvasStackIndex--;
+            this.context?.putImageData(this.canvasStack[this.canvasStackIndex], 0, 0)
+            this.oriContext?.putImageData(this.canvasStack[this.canvasStackIndex], 0, 0)
+        }
+    }
+    /**
+     * Redo
+     */
+    redo() {
+        if (this.canvasStackIndex < this.canvasStack.length - 1) {
+            this.canvasStackIndex++;
+            this.context?.putImageData(this.canvasStack[this.canvasStackIndex], 0, 0)
+            this.oriContext?.putImageData(this.canvasStack[this.canvasStackIndex], 0, 0)
+        }
+    }
+    /******************************************************************************/
+
+    /***********************************canvas*************************************/
+    // Source Canvas
+    private canvas?: HTMLCanvasElement;
+    private context?: CanvasRenderingContext2D;
+    // Original Content Canvas
+    private oriCanvas?: HTMLCanvasElement;
+    private oriContext?: CanvasRenderingContext2D;
+    // Current Draw Canvas
+    private strokeCanvas?: HTMLCanvasElement;
+    private strokeContext?: CanvasRenderingContext2D;
+    // Transfer Canvas
+    private transferCanvas?: HTMLCanvasElement;
+    private transferContext?: CanvasRenderingContext2D;
+    // Shape Canvas
+    private shapeCanvas?: HTMLCanvasElement;
+    private shapeContext?: CanvasRenderingContext2D;
+
+    private initSourceCanvas(canvas: HTMLCanvasElement) {
+        this.canvas = canvas
+        this.context = getContext(this.canvas)
+    }
+
+    private initOriCanvas(canvas: HTMLCanvasElement) {
+        this.oriCanvas = createCanvas(canvas.width, canvas.height)
+        this.oriContext = getContext(this.oriCanvas)
+        this.oriContext.drawImage(canvas, 0, 0, canvas.width, canvas.height)
+    }
+
+    private initStrokeCanvas(canvas: HTMLCanvasElement) {
+        this.strokeCanvas = createCanvas(canvas.width, canvas.height)
+        this.strokeContext = getContext(this.strokeCanvas)
+    }
+
+    private initTransferCanvasCanvas(canvas: HTMLCanvasElement) {
+        this.transferCanvas = createCanvas(canvas.width, canvas.height)
+        this.transferContext = getContext(this.transferCanvas)
+
+    }
+
+    /**
+     * Load the canvas you want to draw
+     * @param canvas 
+     */
+    loadContext(canvas: HTMLCanvasElement) {
+        this.initSourceCanvas(canvas)
+        this.initOriCanvas(canvas)
+        this.initStrokeCanvas(canvas)
+        this.initTransferCanvasCanvas(canvas)
+        this.initCanvasStack()
+    }
+    /******************************************************************************/
+
+    private points: Point[] = [];
+    private drawCount: number = 0;
+
+
+
+    private prePoint?: PurePoint;
+    private prePrePoint?: PurePoint;
+
+
+
+    private isRender: boolean = false;
+
+    private modules: Map<string, Module> = new Map();
+
+    /** min space pixel */
+    private readonly minSpacePixel: number = 0.5;
+    /** min render interval */
+    private readonly maxPointsPerFrame: number = 3000;
+    /** lag distance */
+    private readonly lagDistance: number = 5;
+
+    private get shapeRatio(): number {
+        if (this.shapeCanvas) {
+            return this.shapeCanvas.width / this.shapeCanvas.height;
+        } else {
+            return 1;
+        }
+    }
+
+    /** Brush Config */
+    config: BrushBasicConfig = { ...defaultBasicConfig };
+    /** Is curve smoothing enabled (default: true) */
+    isSmooth: boolean = true;
+    /** Is interpolation filling enabled (default: true) */
+    isSpacing: boolean = true;
+    /** Blend Mode (default: 'source-over') */
+    blendMode: CanvasRenderingContext2D['globalCompositeOperation'] = 'source-over';
+    /** Filter (default: 'none') */
+    filter: CanvasRenderingContext2D['filter'] = 'none';
+
+    private assertCanvasReady(): void {
+        if (
+            !this.canvas ||
+            !this.context ||
+            !this.oriCanvas ||
+            !this.oriContext ||
+            !this.strokeCanvas ||
+            !this.strokeContext ||
+            !this.transferCanvas ||
+            !this.transferContext
+        ) {
+            throw new Error(
+                'Canvas not loaded, please use "loadContext" to load it'
+            );
+        }
+    }
+
+    private processPoint(
+        x: number,
+        y: number,
+        pressure: number
+    ) {
+        let handled = false;
+
+        for (const [, module] of this.modules) {
+            if (!module.onChangePoint) continue;
+
+            const result = module.onChangePoint(
+                { x, y, pressure },
+                { ...this.config }
+            );
+
+            const points = Array.isArray(result)
+                ? result
+                : [result];
+
+            for (const point of points) {
+                this.points.push(
+                    this.newPoint(
+                        point.x,
+                        point.y,
+                        point.pressure
+                    )
+                );
+            }
+
+            handled = true;
+        }
+
+        if (!handled) {
+            this.points.push(
+                this.newPoint(x, y, pressure)
+            );
+        }
+    }
+
+    private clamp01(value: number): number {
+        return Math.min(Math.max(value, 0), 1);
+    }
+
+    constructor(canvas?: HTMLCanvasElement, config?: BrushConfig) {
+        if (config) this.loadConfig(config)
+        if (canvas) this.loadContext(canvas)
+    }
+
+    private newPoint(x: number, y: number, pressure: number): Point {
+        const cnf = { ...this.config }
+        for (const [, module] of this.modules) {
+            if (module.onChangeConfig) {
+                module.onChangeConfig(cnf, pressure)
+            }
+        }
+        cnf.opacity = this.clamp01(cnf.opacity);
+        cnf.flow = this.clamp01(cnf.flow);
+        cnf.angle = this.clamp01(cnf.angle);
+        cnf.roundness = this.clamp01(cnf.roundness);
+
+        return { x, y, pressure, config: cnf }
+    }
+    private getMixedCanvas(): [
+        HTMLCanvasElement,
+        CanvasRenderingContext2D
+    ] {
+        let strokeCanvas = this.strokeCanvas!;
+        let strokeContext = this.strokeContext!;
+
+        for (const [, module] of this.modules) {
+            if (module.onMixinCanvas) {
+                [strokeCanvas, strokeContext] =
+                    module.onMixinCanvas(
+                        strokeCanvas,
+                        strokeContext
+                    );
+            }
+        }
+
+        return [strokeCanvas, strokeContext];
+    }
+
+    private mixin(): void {
+        this.assertCanvasReady();
+        this.context!.clearRect(0, 0, this.canvas!.width, this.canvas!.height)
+        this.context!.drawImage(this.oriCanvas!, 0, 0)
+
+        const [strokeCanvas] =
+            this.getMixedCanvas();
+
+        // transfer canvas
+        this.transferContext!.clearRect(0, 0, this.transferCanvas!.width, this.transferCanvas!.height)
+        this.transferContext!.drawImage(strokeCanvas, 0, 0)
+
+        // blend mode
+        const globalCompositeOperation = this.context!.globalCompositeOperation
+        this.context!.globalCompositeOperation = this.blendMode
+        // filter
+        const filter = this.context!.filter
+        this.context!.filter = this.filter
+
+        this.context!.drawImage(this.transferCanvas!, 0, 0)
+
+        // blend mode restore
+        this.context!.globalCompositeOperation = globalCompositeOperation
+        // filter restore
+        this.context!.filter = filter
+    }
+
+    private endStroke() {
+        this.assertCanvasReady();
+
+        const [strokeCanvas] =
+            this.getMixedCanvas();
+        // transfer canvas
+        this.transferContext!.clearRect(0, 0, this.transferCanvas!.width, this.transferCanvas!.height)
+        this.transferContext!.drawImage(strokeCanvas, 0, 0)
+        this.oriContext!.drawImage(this.transferCanvas!, 0, 0)
+        this.strokeContext!.clearRect(0, 0, strokeCanvas.width, strokeCanvas.height)
+
+
+        // command stack
+        if (this.maxUndoRedoStackSize > 0) {
+            if (this.canvasStackIndex != this.canvasStack.length - 1) {
+                this.canvasStack.splice(this.canvasStackIndex + 1, this.canvasStack.length - this.canvasStackIndex - 1)
+            }
+            this.canvasStackIndex = this.canvasStack.push((this.context!.getImageData(0, 0, this.canvas!.width, this.canvas!.height))) - 1
+            if (this.canvasStack.length > this.maxUndoRedoStackSize) {
+                this.canvasStack.shift()
+                this.canvasStackIndex--
+            }
+        }
+
+
+        // onEndStroke
+        for (const [, module] of this.modules) {
+            if (module.onEndStroke) {
+                module.onEndStroke()
+            }
+        }
+    }
+
+    // draw point
+    private draw() {
+        this.assertCanvasReady();
+
+        if (this.points.length === 0) {
+            return
+        }
+
+        const p = this.points.shift() as Point;
+
+        this.strokeContext!.save()
+
+        // flow
+        this.strokeContext!.globalAlpha = p.config.flow
+
+        // opacity
+        this.transferContext!.globalAlpha = p.config.opacity
+
+        // draw to stroke canvas
+        if (this.shapeCanvas && this.shapeContext) {
+            // change color
+            if (this.shapeContext.fillStyle !== p.config.color.toLowerCase()) {
+
+
+                const globalCompositeOperation = this.shapeContext.globalCompositeOperation
+                this.shapeContext.globalCompositeOperation = "source-atop"
+                this.shapeContext.fillStyle = toHashColor(p.config.color)
+                this.shapeContext.beginPath()
+                this.shapeContext.fillRect(0, 0, this.shapeCanvas.width, this.shapeCanvas.height)
+                this.shapeContext.globalCompositeOperation = globalCompositeOperation
+            }
+
+            //rotate
+            this.strokeContext!.translate(p.x, p.y)
+            this.strokeContext!.rotate(-p.config.angle * 360 * Math.PI / 180)
+            this.strokeContext!.translate(-(p.config.size * p.config.roundness / 2), -(p.config.size / this.shapeRatio / 2))
+
+            const width = p.config.size * p.config.roundness
+            const height = p.config.size / this.shapeRatio
+
+            this.strokeContext!.drawImage(
+                this.shapeCanvas,
+                0, 0,
+                width, height,
+            )
+
+            // rotate back
+            // this.strokeContext.translate(-p.x, -p.y)
+            // this.strokeContext.rotate(p.config.angle * 360 * Math.PI / 180)
+            // this.strokeContext.translate(p.config.size * p.config.roundness / 2, p.config.size / this.shapeRatio / 2)
+        } else {
+            const size = p.config.size
+            const roundness = p.config.roundness
+            const smallerRadius = size * roundness
+            this.strokeContext!.beginPath()
+            this.strokeContext!.fillStyle = p.config.color
+            this.strokeContext!.translate(p.x, p.y)
+            this.strokeContext!.rotate(-p.config.angle * 360 * Math.PI / 180)
+            this.strokeContext!.ellipse(0, 0, size, smallerRadius, 0, 0, Math.PI * 2, false)
+            this.strokeContext!.fill()
+            // rotate back
+            // this.strokeContext.translate(-p.x, -p.y)
+            // this.strokeContext.rotate(p.config.angle * 360 * Math.PI / 180)
+            this.strokeContext!.closePath()
+        }
+
+        this.strokeContext!.restore()
+
+        // mixin to show canvas
+        if (this.points.length === 0 || this.drawCount >= this.maxPointsPerFrame) {
+            this.mixin()
+            this.drawCount = 0
+        } else {
+            this.drawCount++
+        }
+
+        // strokeEnd
+        if (p.strokeEnd === true) {
+            this.endStroke()
+        }
+        // callback
+        if (p.callback) try {
+            p.callback()
+        } catch (err) { console.error(err) }
+    }
+
+
+
+    private imageInitColoring() {
+        if (!this.shapeCanvas || !this.shapeContext) return
+        const oriGlobalCompositeOperation = this.shapeContext.globalCompositeOperation
+        this.shapeContext.globalCompositeOperation = "source-atop"
+        this.shapeContext.fillStyle = "#000000"
+        this.shapeContext.beginPath()
+        this.shapeContext.rect(0, 0, this.shapeCanvas.width, this.shapeCanvas.height)
+        this.shapeContext.fill()
+        this.shapeContext.closePath()
+        this.shapeContext.globalCompositeOperation = oriGlobalCompositeOperation
+    }
+
+    private loadImageWithCanvas(img: HTMLCanvasElement) {
+        const canvas = img
+        if (canvas.width === 0 || canvas.height === 0) {
+            console.warn("[loadImage] Canvas size is 0, please check your canvas.")
+            return
+        }
+        this.shapeCanvas = canvas
+        this.shapeContext = canvas.getContext("2d") as CanvasRenderingContext2D;
+
+        this.imageInitColoring()
+    }
+
+    private loadImageWithElement(img: HTMLImageElement) {
+        const image = img as HTMLImageElement
+        const shapeCvs = document.createElement("canvas")
+        if (image.naturalWidth === 0 || image.naturalHeight === 0) {
+            console.warn("[loadImage] Image natural size is 0, please check your image url.")
+            return
+        }
+        shapeCvs.width = image.naturalWidth
+        shapeCvs.height = image.naturalHeight
+        const shapeCtx = shapeCvs.getContext("2d") as CanvasRenderingContext2D;
+        shapeCtx.globalAlpha = 1
+        shapeCtx.drawImage(image, 0, 0, shapeCvs.width, shapeCvs.height)
+        this.shapeCanvas = shapeCvs
+        this.shapeContext = shapeCtx
+
+        this.imageInitColoring()
+    }
+
+    private loadImageWithUrl(url: string, callback?: () => void, onError?: () => void) {
+        const image = new Image();
+        image.src = url;
+        image.onload = () => {
+            this.loadImageWithElement(image)
+            callback?.()
+        };
+        image.onerror = () => {
+            onError?.()
+        }
+    }
+
+    /**
+     * Load/Modify Brush Configuration
+     * 
+     * This function only exists in the config field. 
+     * 
+     * You can also modify brush.config
+     * 
+     * @example
+     * brush.loadConfig({size: 10})
+     * brush.config.size = 10
+     */
+    loadConfig(config: BrushConfig) {
+        if (config.size != null) this.config.size = config.size;
+        if (config.opacity != null) this.config.opacity = config.opacity;
+        if (config.flow != null) this.config.flow = config.flow;
+        if (config.color != null) this.config.color = config.color;
+        if (config.angle != null) this.config.angle = config.angle;
+        if (config.roundness != null) this.config.roundness = config.roundness;
+        if (config.spacing != null) this.config.spacing = config.spacing;
+    }
+
+    /**
+     * Bind config to brush. 
+     * 
+     * If you do this, the brush config will change with the external config
+     */
+    bindConfig(config: BrushBasicConfig) {
+        this.config = config
+    }
+
+
+    /**
+     * This function allows loading images as brush styles.
+     * 
+     * The image format has strict requirements. 
+     * Please use '.png' images with a transparent background or other image formats 
+     * with a transparent background. Pixels with content in the image will be used as the pattern shape.
+     * 
+     * Tip: It takes some time to load images based on URL (string) ! ! ! 
+     * Pls use 'callback' param or 'loadImageAsync' Function If img as string ! ! !
+     */
+    loadImage(img: HTMLImageElement | HTMLCanvasElement | string, callback?: (isSuc: boolean) => void) {
+        if (img instanceof HTMLCanvasElement) {
+            this.loadImageWithCanvas(img)
+            callback?.(true)
+        } else if (img instanceof HTMLImageElement) {
+            this.loadImageWithElement(img)
+            callback?.(true)
+        } else {
+            this.loadImageWithUrl(img, () => { callback?.(true) }, () => { callback?.(false) })
+        }
+    }
+
+    /**
+     * Asynchronous version of 'loadImage'
+     */
+    loadImageAsync(img: HTMLImageElement | HTMLCanvasElement | string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.loadImage(img, (isSuc) => {
+                if (isSuc) resolve()
+                else reject()
+            })
+        })
+    }
+
+    removeImage() {
+        this.shapeCanvas = void 0
+        this.shapeContext = void 0
+    }
+
+    /**
+     * Add the current point to the point pool, 
+     * which will be rendered when the render function is called 
+     * (interpolation and Bessel calculations will be performed)
+     */
+    putPoint(x: number, y: number, pressure: number) {
+        if (!this.prePoint || !this.isSpacing) {
+            this.prePrePoint = this.prePoint
+            this.prePoint = { x, y, pressure }
+            // When there is no previous point or spacing is not enabled, simply add it to the coordinate pool without calculating interpolation
+            this.processPoint(x, y, pressure);
+        } else {
+            // Calculate whether interpolation is required between the current point and the previous point, and calculate interpolation and Bezier transform
+            const p1: PurePoint = { x, y, pressure }
+            const p2: PurePoint = this.prePoint
+            const p3: PurePoint = this.prePrePoint || p2
+            let distance = getDistance(p2.x, p2.y, p1.x, p1.y)
+
+            let space = this.config.spacing * this.config.size
+            if (space < this.minSpacePixel) space = this.minSpacePixel
+            if (Math.floor(distance / space) <= 0) return
+            if (distance < this.lagDistance + space) return
+            // Update the x and y coordinates to the position of the previous point after moving toward the original x and y coordinates by (distance - lagDistance).
+            const angle = getAngle(p2.x, p2.y, p1.x, p1.y)
+            p1.x = p2.x + Math.cos(angle) * (distance - this.lagDistance)
+            p1.y = p2.y + Math.sin(angle) * (distance - this.lagDistance)
+            distance = distance - this.lagDistance
+            // Get Bezier Control Points
+            const control = getControlPoint(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y)
+
+            // upper one input value point
+
+            const lastP = { x: p1.x, y: p1.y, pressure: p1.pressure }
+
+            if (this.isSmooth) {
+                const points = getEquidistantBezierPoints(p2.x, p2.y, control.x, control.y, p1.x, p1.y, space)
+
+                for (const i in points) {
+                    if (!Object.prototype.hasOwnProperty.call(points, i)) {
+                        continue
+                    }
+
+                    const point = points[i];
+                    const t = parseInt(i) / points.length
+                    const curPressure = p2.pressure + (p1.pressure - p2.pressure) * t
+
+                    lastP.x = point.x
+                    lastP.y = point.y
+                    lastP.pressure = curPressure
+
+                    this.processPoint(
+                        point.x,
+                        point.y,
+                        curPressure
+                    );
+                }
+            } else {
+                for (let i = space; i <= distance; i += space) {
+                    const t = i / distance
+                    const curPressure = p2.pressure + (p1.pressure - p2.pressure) * t
+
+                    const pointX = p2.x + Math.cos(angle) * i;
+                    const pointY = p2.y + Math.sin(angle) * i;
+
+                    lastP.x = pointX
+                    lastP.y = pointY
+                    lastP.pressure = curPressure
+
+                    this.processPoint(
+                        pointX,
+                        pointY,
+                        curPressure
+                    );
+                }
+            }
+
+            this.prePrePoint = this.prePoint
+            this.prePoint = { x: lastP.x, y: lastP.y, pressure: lastP.pressure }
+        }
+    }
+
+    /**
+     * Start rendering the coordinate queue data until all the queue data has been rendered, 
+     * which means that once the render function is run, 
+     * it will only end when all the coordinate queues have been rendered
+     * 
+     * The render will not run the second one repeatedly. 
+     * If the rendering is not completed and the render is called repeatedly, 
+     * it will not produce any effect, so feel free to call it
+     */
+    render() {
+        if (this.isRender) return
+        this.isRender = true
+        const loop = () => {
+            for (let i = 0; i < this.maxPointsPerFrame; i++) {
+                if (this.points.length === 0) break
+                this.draw()
+            }
+            if (this.points.length > 0) {
+                run()
+            } else {
+                this.isRender = false
+            }
+        }
+        const run = () => {
+            try {
+                requestAnimationFrame(loop)
+            } catch {
+                loop()
+            }
+        }
+        run()
+    }
+
+    /** 
+     * Reset brush run data
+     * 
+     * This reset does not clear the queue data that has not been fully rendered yet. 
+     * It only eliminates the impact of the current pen on the next one. 
+     * If not cleared, there may be a connection between the end of the previous pen 
+     * and the beginning of the current pen, as well as other bugs
+     */
+    finalizeStroke(callback?: PointCallBack) {
+        this.prePoint = void 0
+        this.prePrePoint = void 0
+        if (this.points.length > 0) {
+            this.points[this.points.length - 1].strokeEnd = true
+        }
+        if (this.points.length > 0) {
+            this.points[this.points.length - 1].strokeEnd = true
+        } else {
+            this.endStroke()
+        }
+        if (callback) {
+            if (this.points.length === 0) {
+                try {
+                    callback()
+                } catch (err) { console.error(err) }
+            } else this.points[this.points.length - 1].callback = callback
+        }
+    }
+
+    /**
+     * Clear all canvas
+     */
+    clear() {
+        this.points = [];
+        this.prePoint = void 0;
+        this.prePrePoint = void 0;
+
+        if (this.canvas && this.context) {
+            this.context.clearRect(
+                0,
+                0,
+                this.canvas.width,
+                this.canvas.height
+            );
+        }
+
+        if (this.oriCanvas && this.oriContext) {
+            this.oriContext.clearRect(
+                0,
+                0,
+                this.oriCanvas.width,
+                this.oriCanvas.height
+            );
+        }
+
+        if (this.strokeCanvas && this.strokeContext) {
+            this.strokeContext.clearRect(
+                0,
+                0,
+                this.strokeCanvas.width,
+                this.strokeCanvas.height
+            );
+        }
+
+        if (this.transferCanvas && this.transferContext) {
+            this.transferContext.clearRect(
+                0,
+                0,
+                this.transferCanvas.width,
+                this.transferCanvas.height
+            );
+        }
+    }
+
+    /**
+     * Use a module
+     * @returns module unique id
+     */
+    useModule(module: Module): string {
+        for (const [id, existingModule] of this.modules) {
+            if (existingModule === module) {
+                return id;
+            }
+        }
+
+        const uniqueId =
+            `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+        this.modules.set(uniqueId, module);
+
+        return uniqueId;
+    }
+
+    /**
+     * Remove a module
+     */
+    removeModule(uniqueId: string): boolean {
+        if (this.modules.has(uniqueId)) {
+            this.modules.delete(uniqueId);
+            return true;
+        }
+        return false
+    }
+}

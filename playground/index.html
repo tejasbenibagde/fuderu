@@ -2,9 +2,13 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Fuderu - Brush Presets Demo</title>
+    <meta charset="UTF-8" />
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, user-scalable=no" />
+
+    <title>Fuderu - New Brush Engine Demo</title>
+
     <style>
         * {
             margin: 0;
@@ -15,605 +19,518 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+            min-height: 100vh;
+            padding: 20px;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            padding: 20px;
         }
 
         .container {
-            background: #0f3460;
-            border-radius: 16px;
+            width: 100%;
+            max-width: 1400px;
+            background: #0f172a;
+            border-radius: 20px;
             padding: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            box-shadow:
+                0 10px 30px rgba(0, 0, 0, 0.4);
         }
 
         canvas {
+            width: 100%;
+            height: 700px;
             display: block;
-            margin: 0 auto;
-            cursor: crosshair;
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 14px;
+            cursor: crosshair;
             touch-action: none;
         }
 
         .toolbar {
+            margin-top: 18px;
             display: flex;
-            gap: 12px;
-            margin-top: 16px;
             flex-wrap: wrap;
+            gap: 12px;
             align-items: center;
-            justify-content: center;
+        }
+
+        .group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #1e293b;
+            padding: 10px 14px;
+            border-radius: 12px;
+        }
+
+        .group label {
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .group input[type="range"] {
+            width: 140px;
+        }
+
+        .value {
+            min-width: 48px;
+            text-align: center;
+            color: #93c5fd;
+            font-size: 12px;
+            font-weight: 700;
         }
 
         button {
-            background: #1a5276;
-            color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
+            outline: none;
             cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
+            background: #2563eb;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: 0.2s ease;
         }
 
         button:hover {
-            background: #e94560;
             transform: translateY(-2px);
+            background: #3b82f6;
         }
 
         button.active {
-            background: #e94560;
-            box-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
-        }
-
-        .preset-group {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            align-items: center;
-            background: #0a1a2e;
-            padding: 8px 12px;
-            border-radius: 12px;
-            margin-bottom: 12px;
-        }
-
-        .preset-btn {
-            background: #0f3460;
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-
-        .preset-btn:hover {
-            background: #e94560;
-        }
-
-        .preset-title {
-            color: white;
-            font-size: 12px;
-            font-weight: 500;
-            margin-right: 8px;
-        }
-
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: #1a5276;
-            padding: 6px 12px;
-            border-radius: 8px;
-        }
-
-        .control-group label {
-            color: white;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        input {
-            padding: 6px;
-            border-radius: 6px;
-            border: none;
-            cursor: pointer;
-        }
-
-        input[type="range"] {
-            width: 150px;
-            cursor: pointer;
-        }
-
-        .value-display {
-            color: white;
-            font-size: 12px;
-            background: #0f3460;
-            padding: 4px 8px;
-            border-radius: 4px;
-            min-width: 45px;
-            text-align: center;
+            background: #ef4444;
         }
 
         .status {
-            color: #4c9aff;
-            font-size: 12px;
             margin-left: auto;
-            padding: 4px 12px;
-            background: #1a5276;
-            border-radius: 20px;
+            color: #93c5fd;
+            background: #1e293b;
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
         }
 
         .info {
-            margin-top: 12px;
-            padding: 10px;
-            background: #1a5276;
-            border-radius: 8px;
-            font-size: 12px;
+            margin-top: 16px;
+            background: #1e293b;
+            padding: 14px;
+            border-radius: 14px;
             color: white;
-            text-align: center;
+            font-size: 13px;
+            line-height: 1.6;
         }
 
         .info span {
-            color: #e94560;
-            font-weight: bold;
+            color: #60a5fa;
+            font-weight: 700;
         }
     </style>
 </head>
 
 <body>
+
     <div class="container">
+
         <canvas id="canvas"></canvas>
 
-        <!-- Preset Buttons -->
-        <div class="preset-group">
-            <span class="preset-title">🎨 Presets:</span>
-            <button class="preset-btn" data-preset="pencil">✏️ Pencil</button>
-            <button class="preset-btn" data-preset="marker">🖍️ Marker</button>
-            <button class="preset-btn" data-preset="watercolor">💧 Watercolor</button>
-            <button class="preset-btn" data-preset="airbrush">🎨 Airbrush</button>
-            <button class="preset-btn" data-preset="charcoal">⚫ Charcoal</button>
-            <button class="preset-btn" data-preset="calligraphy">✒️ Calligraphy</button>
-        </div>
-
         <div class="toolbar">
-            <button id="clearBtn">🧹 Clear</button>
-            <button id="eraserBtn">✏️ Draw</button>
 
-            <div class="control-group">
-                <label>🎨 Color:</label>
-                <input type="color" id="colorPicker" value="#000000">
+            <button id="clearBtn">
+                🧹 Clear
+            </button>
+
+            <button id="undoBtn">
+                ↩️ Undo
+            </button>
+
+            <button id="redoBtn">
+                ↪️ Redo
+            </button>
+
+            <div class="group">
+                <label>🎨 Color</label>
+
+                <input
+                    type="color"
+                    id="colorPicker"
+                    value="#000000" />
             </div>
 
-            <div class="control-group">
-                <label>📏 Brush Size:</label>
-                <input type="range" id="sizeSlider" min="1" max="50" value="5">
-                <span id="sizeValue" class="value-display">5px</span>
+            <div class="group">
+                <label>📏 Size</label>
+
+                <input
+                    type="range"
+                    id="sizeSlider"
+                    min="1"
+                    max="120"
+                    value="20" />
+
+                <span
+                    class="value"
+                    id="sizeValue">
+                    20
+                </span>
             </div>
 
-            <div class="control-group">
-                <label>🔄 Lazy Radius:</label>
-                <input type="range" id="radiusSlider" min="0" max="100" value="30">
-                <span id="radiusValue" class="value-display">30px</span>
+            <div class="group">
+                <label>✨ Opacity</label>
+
+                <input
+                    type="range"
+                    id="opacitySlider"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value="1" />
+
+                <span
+                    class="value"
+                    id="opacityValue">
+                    100%
+                </span>
             </div>
 
-            <div class="control-group">
-                <label>⚡ Friction:</label>
-                <input type="range" id="frictionSlider" min="0" max="0.9" step="0.01" value="0">
-                <span id="frictionValue" class="value-display">0%</span>
+            <div class="group">
+                <label>💧 Flow</label>
+
+                <input
+                    type="range"
+                    id="flowSlider"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value="1" />
+
+                <span
+                    class="value"
+                    id="flowValue">
+                    100%
+                </span>
             </div>
 
-            <div class="control-group">
-                <label>🎯 Opacity:</label>
-                <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="1">
-                <span id="opacityValue" class="value-display">100%</span>
+            <div class="group">
+                <label>🌀 Spacing</label>
+
+                <input
+                    type="range"
+                    id="spacingSlider"
+                    min="0.1"
+                    max="5"
+                    step="0.1"
+                    value="0.5" />
+
+                <span
+                    class="value"
+                    id="spacingValue">
+                    0.5
+                </span>
             </div>
 
-            <div class="control-group">
-                <label>📍 Spacing Min:</label>
-                <input type="range" id="spacingMinSlider" min="0.1" max="10" step="0.1" value="0.5">
-                <span id="spacingMinValue" class="value-display">0.5</span>
+            <div class="group">
+                <label>✒️ Roundness</label>
+
+                <input
+                    type="range"
+                    id="roundnessSlider"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value="1" />
+
+                <span
+                    class="value"
+                    id="roundnessValue">
+                    1
+                </span>
             </div>
 
-            <div class="control-group">
-                <label>📏 Spacing Max:</label>
-                <input type="range" id="spacingMaxSlider" min="1" max="30" step="0.1" value="12">
-                <span id="spacingMaxValue" class="value-display">12</span>
+            <div class="group">
+                <label>🔄 Angle</label>
+
+                <input
+                    type="range"
+                    id="angleSlider"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value="0" />
+
+                <span
+                    class="value"
+                    id="angleValue">
+                    0
+                </span>
             </div>
 
-            <div class="control-group">
-                <label>⚙️ Spacing Mult:</label>
-                <input type="range" id="spacingMultiplierSlider" min="0.01" max="1" step="0.01" value="0.18">
-                <span id="spacingMultiplierValue" class="value-display">0.18</span>
+            <div class="group">
+                <label>🧠 Smooth</label>
+
+                <input
+                    type="checkbox"
+                    id="smoothToggle"
+                    checked />
             </div>
 
-            <div class="control-group">
-                <label>🎚️ Density Curve:</label>
-                <input type="range" id="densityCurveSlider" min="0.01" max="5" step="0.01" value="0.5">
-                <span id="densityCurveValue" class="value-display">0.5</span>
+            <div class="group">
+                <label>📍 Spacing</label>
+
+                <input
+                    type="checkbox"
+                    id="spacingToggle"
+                    checked />
             </div>
 
-            <div class="control-group">
-                <label>✨ Opacity Curve:</label>
-                <input type="range" id="opacityCurveSlider" min="0.01" max="5" step="0.01" value="1.5">
-                <span id="opacityCurveValue" class="value-display">1.5</span>
+            <div
+                class="status"
+                id="status">
+                Ready
             </div>
 
-            <div class="control-group">
-                <label>🧠 Density Fix:</label>
-                <input type="checkbox" id="densityCompensationToggle" checked>
-            </div>
-
-            <div class="status" id="status">Ready</div>
         </div>
 
         <div class="info">
-            💡 <span>Brush Presets</span> - Click any preset to instantly change brush behavior!<br>
-            🎨 Each preset has unique <span>Size, Radius, Friction, and Spacing</span> settings.<br>
-            Try <span>Pencil</span> for precise lines, <span>Watercolor</span> for smooth blending, or
-            <span>Airbrush</span> for soft spray!
+            <span>Fuderu New Engine</span><br />
+
+            • Bezier interpolation system<br />
+            • Pressure-sensitive point engine<br />
+            • Brush image support<br />
+            • Undo / Redo system<br />
+            • Module-based architecture<br />
+            • Real-time rendering queue
         </div>
+
     </div>
 
     <script type="module">
+
         import { Canvas } from '../src/canvas.ts';
 
-        // =========================
-        // Canvas Instance
-        // =========================
+        // ========================================
+        // Canvas
+        // ========================================
 
         const painter = new Canvas({
             canvas: '#canvas',
-            color: '#000000',
-            size: 5,
-            radius: 30,
-            friction: 0,
-            opacity: 1,
-            eraser: false
+            brush: {
+                size: 20,
+                opacity: 1,
+                flow: 1,
+                color: '#000000',
+                angle: 0,
+                roundness: 1,
+                spacing: 0.5
+            }
         });
 
-        // =========================
-        // UI Elements
-        // =========================
+        // ========================================
+        // Elements
+        // ========================================
 
-        const clearBtn = document.getElementById('clearBtn');
-        const eraserBtn = document.getElementById('eraserBtn');
-        const presetBtns = document.querySelectorAll('.preset-btn');
+        const clearBtn =
+            document.getElementById('clearBtn');
 
-        const colorPicker = document.getElementById('colorPicker');
+        const undoBtn =
+            document.getElementById('undoBtn');
 
-        const sizeSlider = document.getElementById('sizeSlider');
-        const sizeValue = document.getElementById('sizeValue');
+        const redoBtn =
+            document.getElementById('redoBtn');
 
-        const radiusSlider = document.getElementById('radiusSlider');
-        const radiusValue = document.getElementById('radiusValue');
+        const colorPicker =
+            document.getElementById('colorPicker');
 
-        const frictionSlider = document.getElementById('frictionSlider');
-        const frictionValue = document.getElementById('frictionValue');
+        const sizeSlider =
+            document.getElementById('sizeSlider');
 
-        const opacitySlider = document.getElementById('opacitySlider');
-        const opacityValue = document.getElementById('opacityValue');
+        const opacitySlider =
+            document.getElementById('opacitySlider');
 
-        const statusDiv = document.getElementById('status');
+        const flowSlider =
+            document.getElementById('flowSlider');
 
-        const spacingMinSlider =
-            document.getElementById('spacingMinSlider');
+        const spacingSlider =
+            document.getElementById('spacingSlider');
 
-        const spacingMinValue =
-            document.getElementById('spacingMinValue');
+        const roundnessSlider =
+            document.getElementById('roundnessSlider');
 
-        const spacingMaxSlider =
-            document.getElementById('spacingMaxSlider');
+        const angleSlider =
+            document.getElementById('angleSlider');
 
-        const spacingMaxValue =
-            document.getElementById('spacingMaxValue');
+        const smoothToggle =
+            document.getElementById('smoothToggle');
 
-        const spacingMultiplierSlider =
-            document.getElementById('spacingMultiplierSlider');
+        const spacingToggle =
+            document.getElementById('spacingToggle');
 
-        const spacingMultiplierValue =
-            document.getElementById('spacingMultiplierValue');
+        const status =
+            document.getElementById('status');
 
-        const densityCurveSlider =
-            document.getElementById('densityCurveSlider');
+        // Values
 
-        const densityCurveValue =
-            document.getElementById('densityCurveValue');
+        const sizeValue =
+            document.getElementById('sizeValue');
 
-        const opacityCurveSlider =
-            document.getElementById('opacityCurveSlider');
+        const opacityValue =
+            document.getElementById('opacityValue');
 
-        const opacityCurveValue =
-            document.getElementById('opacityCurveValue');
+        const flowValue =
+            document.getElementById('flowValue');
 
-        const densityCompensationToggle =
-            document.getElementById('densityCompensationToggle');
+        const spacingValue =
+            document.getElementById('spacingValue');
 
-        // =========================
-        // Initial Canvas Size
-        // =========================
+        const roundnessValue =
+            document.getElementById('roundnessValue');
 
-        const canvas = document.getElementById('canvas');
+        const angleValue =
+            document.getElementById('angleValue');
 
-        canvas.style.width = '800px';
-        canvas.style.height = '500px';
+        // ========================================
+        // Update Config
+        // ========================================
 
-        painter.resize();
-        updateEngineControls();
+        function updateConfig() {
 
-        // =========================
-        // Apply Preset Function
-        // =========================
+            const config = {
+                size:
+                    Number(sizeSlider.value),
 
-        function applyPreset(preset) {
-            painter.applyPreset(preset);
+                opacity:
+                    Number(opacitySlider.value),
 
-            // Update UI sliders to reflect preset values
-            sizeSlider.value = painter.getSize();
-            sizeValue.textContent = `${painter.getSize()}px`;
+                flow:
+                    Number(flowSlider.value),
 
-            radiusSlider.value = painter.getRadius();
-            radiusValue.textContent = `${painter.getRadius()}px`;
+                color:
+                    colorPicker.value,
 
-            frictionSlider.value = painter.getFriction();
-            frictionValue.textContent = `${Math.round(painter.getFriction() * 100)}%`;
+                spacing:
+                    Number(spacingSlider.value),
 
-            statusDiv.textContent = `🎨 Preset: ${preset.toUpperCase()} applied!`;
+                roundness:
+                    Number(roundnessSlider.value),
 
-            // Reset eraser button state if needed
-            if (painter.isErasing()) {
-                painter.disableEraser();
-                eraserBtn.textContent = '✏️ Draw';
-                eraserBtn.classList.remove('active');
-            }
+                angle:
+                    Number(angleSlider.value)
+            };
 
-            updateEngineControls();
+            painter.loadConfig(config);
+
+            painter.setSmooth(
+                smoothToggle.checked
+            );
+
+            painter.setSpacing(
+                spacingToggle.checked
+            );
         }
 
-        function updateEngineControls() {
-            const config =
-                painter.getBrushEngineConfig();
+        // ========================================
+        // UI Updates
+        // ========================================
 
-            spacingMinSlider.value =
-                config.spacingMin;
+        function refreshValues() {
 
-            spacingMinValue.textContent =
-                config.spacingMin;
+            sizeValue.textContent =
+                sizeSlider.value;
 
-            spacingMaxSlider.value =
-                config.spacingMax;
+            opacityValue.textContent =
+                `${Math.round(
+                    Number(opacitySlider.value) * 100
+                )}%`;
 
-            spacingMaxValue.textContent =
-                config.spacingMax;
+            flowValue.textContent =
+                `${Math.round(
+                    Number(flowSlider.value) * 100
+                )}%`;
 
-            spacingMultiplierSlider.value =
-                config.spacingMultiplier;
+            spacingValue.textContent =
+                spacingSlider.value;
 
-            spacingMultiplierValue.textContent =
-                config.spacingMultiplier;
+            roundnessValue.textContent =
+                roundnessSlider.value;
 
-            densityCurveSlider.value =
-                config.densityCurve;
-
-            densityCurveValue.textContent =
-                config.densityCurve;
-
-            opacityCurveSlider.value =
-                config.opacityCurve;
-
-            opacityCurveValue.textContent =
-                config.opacityCurve;
-
-            densityCompensationToggle.checked =
-                config.densityCompensation;
+            angleValue.textContent =
+                angleSlider.value;
         }
 
-        // =========================
-        // Actions
-        // =========================
-
-        function clearCanvas() {
-            painter.clear();
-            statusDiv.textContent = 'Canvas cleared';
-        }
-
-        function toggleEraser() {
-            painter.toggleEraser();
-
-            if (painter.isErasing()) {
-                eraserBtn.textContent = '🗑️ Eraser';
-                eraserBtn.classList.add('active');
-                statusDiv.textContent = 'Eraser Mode - Click Draw to go back';
-            } else {
-                eraserBtn.textContent = '✏️ Draw';
-                eraserBtn.classList.remove('active');
-                statusDiv.textContent = 'Drawing Mode';
-            }
-        }
-
-        // =========================
-        // Update UI from Controls
-        // =========================
-
-        function updateSize() {
-            const size = Number(sizeSlider.value);
-            painter.setSize(size);
-            sizeValue.textContent = `${size}px`;
-            statusDiv.textContent = `Brush Size: ${size}px`;
-        }
-
-        function updateRadius() {
-            const radius = Number(radiusSlider.value);
-            painter.setRadius(radius);
-            radiusValue.textContent = `${radius}px`;
-            statusDiv.textContent = `Lazy Radius: ${radius}px`;
-        }
-
-        function updateFriction() {
-            const friction = Number(frictionSlider.value);
-            painter.setFriction(friction);
-            frictionValue.textContent = `${Math.round(friction * 100)}%`;
-            statusDiv.textContent = `Friction: ${Math.round(friction * 100)}%`;
-        }
-
-        function updateOpacity() {
-            const opacity = Number(opacitySlider.value);
-            painter.setOpacity(opacity);
-            opacityValue.textContent = `${Math.round(opacity * 100)}%`;
-            statusDiv.textContent = `Opacity: ${Math.round(opacity * 100)}%`;
-        }
-
-        function updateColor() {
-            painter.setColor(colorPicker.value);
-            statusDiv.textContent = `Color: ${colorPicker.value}`;
-        }
-
-        function updateSpacingMin() {
-            const value =
-                Number(spacingMinSlider.value);
-
-            painter.configureBrushEngine({
-                spacingMin: value
-            });
-
-            spacingMinValue.textContent =
-                value.toFixed(1);
-
-            statusDiv.textContent =
-                `Spacing Min: ${value}`;
-        }
-
-        function updateSpacingMax() {
-            const value =
-                Number(spacingMaxSlider.value);
-
-            painter.configureBrushEngine({
-                spacingMax: value
-            });
-
-            spacingMaxValue.textContent =
-                value.toFixed(1);
-
-            statusDiv.textContent =
-                `Spacing Max: ${value}`;
-        }
-
-        function updateSpacingMultiplier() {
-            const value =
-                Number(spacingMultiplierSlider.value);
-
-            painter.configureBrushEngine({
-                spacingMultiplier: value
-            });
-
-            spacingMultiplierValue.textContent =
-                value.toFixed(2);
-
-            statusDiv.textContent =
-                `Spacing Multiplier: ${value}`;
-        }
-
-        function updateDensityCurve() {
-            const value =
-                Number(densityCurveSlider.value);
-
-            painter.configureBrushEngine({
-                densityCurve: value
-            });
-
-            densityCurveValue.textContent =
-                value.toFixed(2);
-
-            statusDiv.textContent =
-                `Density Curve: ${value}`;
-        }
-
-        function updateOpacityCurve() {
-            const value =
-                Number(opacityCurveSlider.value);
-
-            painter.configureBrushEngine({
-                opacityCurve: value
-            });
-
-            opacityCurveValue.textContent =
-                value.toFixed(2);
-
-            statusDiv.textContent =
-                `Opacity Curve: ${value}`;
-        }
-
-        function updateDensityCompensation() {
-            const value =
-                densityCompensationToggle.checked;
-
-            painter.configureBrushEngine({
-                densityCompensation: value
-            });
-
-            statusDiv.textContent =
-                `Density Compensation: ${value}`;
-        }
-
-        // =========================
+        // ========================================
         // Events
-        // =========================
+        // ========================================
 
-        clearBtn.addEventListener('click', clearCanvas);
-        eraserBtn.addEventListener('click', toggleEraser);
+        clearBtn.addEventListener(
+            'click',
+            () => {
+                painter.clear();
 
-        // Preset buttons
-        presetBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const preset = btn.dataset.preset;
-                applyPreset(preset);
-            });
+                status.textContent =
+                    'Canvas Cleared';
+            }
+        );
+
+        undoBtn.addEventListener(
+            'click',
+            () => {
+                painter.undo();
+
+                status.textContent =
+                    'Undo';
+            }
+        );
+
+        redoBtn.addEventListener(
+            'click',
+            () => {
+                painter.redo();
+
+                status.textContent =
+                    'Redo';
+            }
+        );
+
+        [
+            colorPicker,
+            sizeSlider,
+            opacitySlider,
+            flowSlider,
+            spacingSlider,
+            roundnessSlider,
+            angleSlider,
+            smoothToggle,
+            spacingToggle
+        ].forEach(el => {
+
+            el.addEventListener(
+                'input',
+                () => {
+
+                    updateConfig();
+
+                    refreshValues();
+
+                    status.textContent =
+                        'Brush Updated';
+                }
+            );
         });
 
-        colorPicker.addEventListener('input', updateColor);
-        sizeSlider.addEventListener('input', updateSize);
-        radiusSlider.addEventListener('input', updateRadius);
-        frictionSlider.addEventListener('input', updateFriction);
-        opacitySlider.addEventListener('input', updateOpacity);
+        // ========================================
+        // Init
+        // ========================================
 
-        spacingMinSlider.addEventListener(
-            'input',
-            updateSpacingMin
+        refreshValues();
+        updateConfig();
+
+        console.log(
+            'Fuderu New Brush Engine Ready'
         );
 
-        spacingMaxSlider.addEventListener(
-            'input',
-            updateSpacingMax
-        );
-
-        spacingMultiplierSlider.addEventListener(
-            'input',
-            updateSpacingMultiplier
-        );
-
-        densityCurveSlider.addEventListener(
-            'input',
-            updateDensityCurve
-        );
-
-        opacityCurveSlider.addEventListener(
-            'input',
-            updateOpacityCurve
-        );
-
-        densityCompensationToggle.addEventListener(
-            'change',
-            updateDensityCompensation
-        );
-
-        // =========================
-        // Ready
-        // =========================
-
-        console.log('Fuderu Canvas Ready with Presets!');
-        console.log('Available presets: pencil, marker, watercolor, airbrush, charcoal, calligraphy');
     </script>
+
 </body>
 
 </html>

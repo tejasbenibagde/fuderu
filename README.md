@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  Lazy brush physics • Interpolation • Adaptive spacing • Canvas rendering
+  interpolation • adaptive spacing • modular brushes • canvas rendering
 </p>
 
 ---
@@ -21,23 +21,25 @@
 
 ---
 
-## ✨ Features
+# ✨ Features
 
-- 🎨 Lazy brush movement
-- ⚡ Smooth interpolation engine
-- 🖌️ Built-in canvas renderer
+- 🎨 Built-in canvas drawing engine
+- ⚡ Smooth interpolation rendering
 - 📏 Adaptive brush spacing
-- 🌫️ Opacity compensation
-- 🗑️ Eraser support
-- 📱 Pointer + touch input
-- 🖥️ High-DPI canvas scaling
+- 🖼️ Custom image-based brushes
+- 🌫️ Flow + opacity rendering
+- 🧭 Brush angle + roundness support
+- ↩️ Undo / Redo history
+- 📱 Pointer + touch support
+- 🖥️ High-DPI canvas rendering
 - 🔧 Runtime brush configuration
-- 🧠 Framework agnostic architecture
-- 🧹 Automatic cleanup systems
+- 🧩 Runtime module system
+- 🧠 Framework-agnostic architecture
+- 🧹 Automatic cleanup lifecycle
 
 ---
 
-## 📦 Installation
+# 📦 Installation
 
 ```bash
 npm install fuderu
@@ -45,74 +47,116 @@ npm install fuderu
 
 ---
 
-## 🚀 Quick Start
+# 🚀 Quick Start
 
 ```ts
 import { Canvas } from "fuderu";
 
 const painter = new Canvas({
   canvas: "#canvas",
+
   brush: {
     color: "#000000",
-    size: 10,
+    size: 20,
+    spacing: 0.5,
   },
 });
 
 // Runtime updates
 painter.loadConfig({
   color: "#ff6b6b",
-  size: 20,
+  size: 32,
 });
 
+// Undo / Redo
+painter.undo();
+painter.redo();
+
+// Clear canvas
 painter.clear();
 ```
 
 ---
 
-## 🧠 Philosophy
+# 🖼️ Image Brushes
+
+```ts
+await painter.loadImage(
+  "/brushes/star.png"
+);
+```
+
+Fuderu supports custom image-based brush stamps using transparent images.
+
+---
+
+# 🧠 Philosophy
 
 Fuderu focuses on:
 
 - Lightweight rendering systems
-- Smooth and predictable drawing
+- Predictable drawing behavior
 - Framework-agnostic APIs
 - Runtime configurability
-- Extensible brush architecture
-- High-performance drawing primitives
+- Extensible brush pipelines
+- Performance-oriented rendering
+- TypeScript-first architecture
 
 ---
 
-## 🚧 Current Status
+# 🧱 Architecture
+
+```txt
+Canvas Layer
+  ↓
+Input Normalization
+  ↓
+Brush Engine
+  ↓
+Interpolation Engine
+  ↓
+Module Pipeline
+  ↓
+Stamp Generation
+  ↓
+Canvas Renderer
+```
+
+---
+
+# 🚧 Current Status
 
 Fuderu is currently evolving rapidly before `v1.0.0`.
 
 Minor releases may include breaking changes while:
+
+- rendering systems evolve
 - module APIs stabilize
-- rendering pipelines evolve
-- experimental systems mature
+- experimental architecture matures
 
 Currently tested in:
 
-- ✅ Vitest + jsdom
-- ✅ Vanilla TypeScript
+- ✅ Vanilla HTML/TypeScript
 - ✅ React
 - ✅ Next.js
+- ✅ Vitest + jsdom
 
 ---
 
-## 🔮 Planned
+# 🔮 Planned
 
-- Pressure sensitivity
-- Brush modules
-- Pattern brushes
-- Dynamic shape systems
-- Preset brushes
+- Pressure-sensitive dynamics
+- Velocity-based brush behavior
+- Pattern + procedural brushes
+- Dynamic brush modules
+- Brush preset systems
 - OffscreenCanvas support
+- Worker-based rendering
 - Rust/WASM acceleration
 - Framework bindings
 
 ---
 
-## 📄 License
+# 📄 License
 
 [MIT](https://github.com/tejasbenibagde/fuderu/blob/main/LICENSE)

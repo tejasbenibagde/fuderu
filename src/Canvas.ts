@@ -1,3 +1,5 @@
+// src/Canvas.ts
+
 import { Brush } from "./Brush";
 import type { BrushConfig } from "./types/config";
 
@@ -8,7 +10,7 @@ export interface CanvasOptions {
 
 export class Canvas {
   private canvas: HTMLCanvasElement;
-  private brush: Brush;
+  public brush: Brush;
 
   private isDrawing = false;
 
@@ -137,6 +139,14 @@ export class Canvas {
 
   redo(): void {
     this.brush.redo();
+  }
+
+  setSmooth(enabled: boolean): void {
+    this.brush.isSmooth = enabled;
+  }
+
+  setSpacing(enabled: boolean): void {
+    this.brush.isSpacing = enabled;
   }
 
   loadConfig(config: BrushConfig): void {

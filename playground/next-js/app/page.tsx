@@ -1,3 +1,5 @@
+// app/page.tsx
+
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { CustomTrigger } from "@/components/layout/sidebar-trigger";
 

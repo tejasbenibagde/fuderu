@@ -3,129 +3,120 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, user-scalable=no" />
 
-    <title>Fuderu - New Brush Engine Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Fuderu Demo</title>
 
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            user-select: none;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+            background: #0f172a;
+            color: white;
+            font-family: sans-serif;
             min-height: 100vh;
             padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
 
         .container {
-            width: 100%;
             max-width: 1400px;
-            background: #0f172a;
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow:
-                0 10px 30px rgba(0, 0, 0, 0.4);
+            margin: auto;
         }
 
         canvas {
             width: 100%;
             height: 700px;
-            display: block;
             background: white;
-            border-radius: 14px;
-            cursor: crosshair;
+            border-radius: 16px;
+            display: block;
             touch-action: none;
+            cursor: crosshair;
         }
 
         .toolbar {
-            margin-top: 18px;
+            margin-top: 16px;
             display: flex;
             flex-wrap: wrap;
             gap: 12px;
-            align-items: center;
         }
 
         .group {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 10px 14px;
             display: flex;
             align-items: center;
             gap: 10px;
-            background: #1e293b;
-            padding: 10px 14px;
-            border-radius: 12px;
         }
 
         .group label {
-            color: white;
             font-size: 13px;
             font-weight: 600;
         }
 
         .group input[type="range"] {
-            width: 140px;
+            width: 120px;
         }
 
         .value {
-            min-width: 48px;
+            min-width: 45px;
             text-align: center;
-            color: #93c5fd;
+            color: #60a5fa;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: bold;
         }
 
         button {
             border: none;
-            outline: none;
-            cursor: pointer;
             background: #2563eb;
             color: white;
-            padding: 10px 18px;
-            border-radius: 12px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            cursor: pointer;
             font-weight: 600;
             transition: 0.2s ease;
         }
 
         button:hover {
-            transform: translateY(-2px);
             background: #3b82f6;
-        }
-
-        button.active {
-            background: #ef4444;
+            transform: translateY(-1px);
         }
 
         .status {
             margin-left: auto;
-            color: #93c5fd;
             background: #1e293b;
             padding: 10px 16px;
             border-radius: 999px;
+            color: #93c5fd;
             font-size: 13px;
             font-weight: 600;
         }
 
         .info {
-            margin-top: 16px;
+            margin-top: 18px;
             background: #1e293b;
-            padding: 14px;
             border-radius: 14px;
-            color: white;
-            font-size: 13px;
-            line-height: 1.6;
+            padding: 16px;
+            line-height: 1.7;
+            font-size: 14px;
         }
 
         .info span {
             color: #60a5fa;
-            font-weight: 700;
+            font-weight: bold;
+        }
+
+        .success {
+            color: #4ade80;
+        }
+
+        .warning {
+            color: #facc15;
         }
     </style>
 </head>
@@ -153,25 +144,15 @@
             <div class="group">
                 <label>🎨 Color</label>
 
-                <input
-                    type="color"
-                    id="colorPicker"
-                    value="#000000" />
+                <input type="color" id="colorPicker" value="#000000" />
             </div>
 
             <div class="group">
                 <label>📏 Size</label>
 
-                <input
-                    type="range"
-                    id="sizeSlider"
-                    min="1"
-                    max="120"
-                    value="20" />
+                <input type="range" id="sizeSlider" min="1" max="120" value="20" />
 
-                <span
-                    class="value"
-                    id="sizeValue">
+                <span class="value" id="sizeValue">
                     20
                 </span>
             </div>
@@ -179,17 +160,9 @@
             <div class="group">
                 <label>✨ Opacity</label>
 
-                <input
-                    type="range"
-                    id="opacitySlider"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value="1" />
+                <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="1" />
 
-                <span
-                    class="value"
-                    id="opacityValue">
+                <span class="value" id="opacityValue">
                     100%
                 </span>
             </div>
@@ -197,17 +170,9 @@
             <div class="group">
                 <label>💧 Flow</label>
 
-                <input
-                    type="range"
-                    id="flowSlider"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value="1" />
+                <input type="range" id="flowSlider" min="0" max="1" step="0.01" value="1" />
 
-                <span
-                    class="value"
-                    id="flowValue">
+                <span class="value" id="flowValue">
                     100%
                 </span>
             </div>
@@ -215,120 +180,103 @@
             <div class="group">
                 <label>🌀 Spacing</label>
 
-                <input
-                    type="range"
-                    id="spacingSlider"
-                    min="0.1"
-                    max="5"
-                    step="0.1"
-                    value="0.5" />
+                <input type="range" id="spacingSlider" min="0.1" max="5" step="0.1" value="0.5" />
 
-                <span
-                    class="value"
-                    id="spacingValue">
+                <span class="value" id="spacingValue">
                     0.5
-                </span>
-            </div>
-
-            <div class="group">
-                <label>✒️ Roundness</label>
-
-                <input
-                    type="range"
-                    id="roundnessSlider"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value="1" />
-
-                <span
-                    class="value"
-                    id="roundnessValue">
-                    1
-                </span>
-            </div>
-
-            <div class="group">
-                <label>🔄 Angle</label>
-
-                <input
-                    type="range"
-                    id="angleSlider"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value="0" />
-
-                <span
-                    class="value"
-                    id="angleValue">
-                    0
                 </span>
             </div>
 
             <div class="group">
                 <label>🧠 Smooth</label>
 
-                <input
-                    type="checkbox"
-                    id="smoothToggle"
-                    checked />
+                <input type="checkbox" id="smoothToggle" checked />
             </div>
 
             <div class="group">
-                <label>📍 Spacing</label>
+                <label>📍 Interpolation</label>
 
-                <input
-                    type="checkbox"
-                    id="spacingToggle"
-                    checked />
+                <input type="checkbox" id="spacingToggle" checked />
             </div>
 
-            <div
-                class="status"
-                id="status">
+            <div class="group">
+                <label>🖼️ Brush Image</label>
+
+                <input type="file" id="imageInput" accept="image/png,image/webp,image/jpeg" />
+            </div>
+
+            <button id="removeImageBtn">
+                Remove Brush Image
+            </button>
+
+            <div class="status" id="status">
                 Ready
             </div>
 
         </div>
 
         <div class="info">
-            <span>Fuderu New Engine</span><br />
 
-            • Bezier interpolation system<br />
-            • Pressure-sensitive point engine<br />
-            • Brush image support<br />
-            • Undo / Redo system<br />
-            • Module-based architecture<br />
-            • Real-time rendering queue
+            <span>Fuderu Current Verified Features</span><br /><br />
+
+            <span class="success">✅ Verified In Real Usage</span><br />
+
+            • Runtime brush config updates<br />
+            • Brush interpolation rendering<br />
+            • Adaptive spacing system<br />
+            • Density compensation system<br />
+            • High-DPI canvas rendering<br />
+            • Pointer/mouse/touch support<br />
+            • Runtime brush size updates<br />
+            • Runtime opacity updates<br />
+            • Runtime flow updates<br />
+            • Runtime color updates<br />
+            • Canvas clearing<br />
+            • Undo / Redo stack<br />
+            • Coordinate normalization<br />
+            • Canvas resize preservation<br />
+            • Smooth brush movement<br />
+            • Canvas cleanup lifecycle<br />
+            • Runtime interpolation toggles<br />
+            • Runtime smoothing toggles<br />
+
+            <br />
+
+            <span class="warning">🚧 Still Experimental / Needs Validation</span><br />
+
+            • Brush image loading in real-world apps<br />
+            • Complex brush accumulation behavior<br />
+            • Very large canvas performance<br />
+            • Multi-device touch validation<br />
+            • Mobile browser rendering consistency<br />
+
         </div>
 
     </div>
 
     <script type="module">
 
-        import { Canvas } from '../src/canvas.ts';
+        import { Canvas } from '../src/Canvas.ts';
 
-        // ========================================
+        // =====================================================
         // Canvas
-        // ========================================
+        // =====================================================
 
         const painter = new Canvas({
             canvas: '#canvas',
+
             brush: {
                 size: 20,
                 opacity: 1,
                 flow: 1,
                 color: '#000000',
-                angle: 0,
-                roundness: 1,
                 spacing: 0.5
             }
         });
 
-        // ========================================
+        // =====================================================
         // Elements
-        // ========================================
+        // =====================================================
 
         const clearBtn =
             document.getElementById('clearBtn');
@@ -348,17 +296,17 @@
         const opacitySlider =
             document.getElementById('opacitySlider');
 
+        const imageInput =
+            document.getElementById('imageInput');
+
+        const removeImageBtn =
+            document.getElementById('removeImageBtn');
+
         const flowSlider =
             document.getElementById('flowSlider');
 
         const spacingSlider =
             document.getElementById('spacingSlider');
-
-        const roundnessSlider =
-            document.getElementById('roundnessSlider');
-
-        const angleSlider =
-            document.getElementById('angleSlider');
 
         const smoothToggle =
             document.getElementById('smoothToggle');
@@ -369,7 +317,9 @@
         const status =
             document.getElementById('status');
 
+        // =====================================================
         // Values
+        // =====================================================
 
         const sizeValue =
             document.getElementById('sizeValue');
@@ -383,57 +333,42 @@
         const spacingValue =
             document.getElementById('spacingValue');
 
-        const roundnessValue =
-            document.getElementById('roundnessValue');
+        // =====================================================
+        // Config
+        // =====================================================
 
-        const angleValue =
-            document.getElementById('angleValue');
+        function updateBrush() {
 
-        // ========================================
-        // Update Config
-        // ========================================
+            painter.loadConfig({
+                color: colorPicker.value,
 
-        function updateConfig() {
+                size: Number(sizeSlider.value),
 
-            const config = {
-                size:
-                    Number(sizeSlider.value),
+                opacity: Number(opacitySlider.value),
 
-                opacity:
-                    Number(opacitySlider.value),
+                flow: Number(flowSlider.value),
 
-                flow:
-                    Number(flowSlider.value),
+                spacing: Number(spacingSlider.value)
+            });
 
-                color:
-                    colorPicker.value,
+            // Since brush is now public
+            // we can directly control runtime behavior
 
-                spacing:
-                    Number(spacingSlider.value),
+            painter.brush.isSmooth =
+                smoothToggle.checked;
 
-                roundness:
-                    Number(roundnessSlider.value),
+            painter.brush.isSpacing =
+                spacingToggle.checked;
 
-                angle:
-                    Number(angleSlider.value)
-            };
-
-            painter.loadConfig(config);
-
-            painter.setSmooth(
-                smoothToggle.checked
-            );
-
-            painter.setSpacing(
-                spacingToggle.checked
-            );
+            status.textContent =
+                'Brush Updated';
         }
 
-        // ========================================
-        // UI Updates
-        // ========================================
+        // =====================================================
+        // UI
+        // =====================================================
 
-        function refreshValues() {
+        function updateValues() {
 
             sizeValue.textContent =
                 sizeSlider.value;
@@ -450,21 +385,37 @@
 
             spacingValue.textContent =
                 spacingSlider.value;
-
-            roundnessValue.textContent =
-                roundnessSlider.value;
-
-            angleValue.textContent =
-                angleSlider.value;
         }
 
-        // ========================================
+        // =====================================================
         // Events
-        // ========================================
+        // =====================================================
+
+        [
+            colorPicker,
+            sizeSlider,
+            opacitySlider,
+            flowSlider,
+            spacingSlider,
+            smoothToggle,
+            spacingToggle
+        ].forEach(el => {
+
+            el.addEventListener(
+                'input',
+                () => {
+
+                    updateBrush();
+
+                    updateValues();
+                }
+            );
+        });
 
         clearBtn.addEventListener(
             'click',
             () => {
+
                 painter.clear();
 
                 status.textContent =
@@ -475,6 +426,7 @@
         undoBtn.addEventListener(
             'click',
             () => {
+
                 painter.undo();
 
                 status.textContent =
@@ -485,6 +437,7 @@
         redoBtn.addEventListener(
             'click',
             () => {
+
                 painter.redo();
 
                 status.textContent =
@@ -492,41 +445,67 @@
             }
         );
 
-        [
-            colorPicker,
-            sizeSlider,
-            opacitySlider,
-            flowSlider,
-            spacingSlider,
-            roundnessSlider,
-            angleSlider,
-            smoothToggle,
-            spacingToggle
-        ].forEach(el => {
+        // =====================================================
+        // Brush Image Testing
+        // =====================================================
 
-            el.addEventListener(
-                'input',
-                () => {
+        imageInput.addEventListener(
+            'change',
+            async (e) => {
 
-                    updateConfig();
+                const file =
+                    e.target.files?.[0];
 
-                    refreshValues();
+                if (!file) return;
+
+                try {
 
                     status.textContent =
-                        'Brush Updated';
+                        'Loading Brush Image...';
+
+                    const url =
+                        URL.createObjectURL(file);
+
+                    await painter.loadImage(url);
+
+                    status.textContent =
+                        'Brush Image Loaded ✅';
+
+                    console.log(
+                        '[Fuderu] Brush image loaded successfully'
+                    );
+
+                } catch (err) {
+
+                    console.error(err);
+
+                    status.textContent =
+                        'Brush Image Failed ❌';
                 }
-            );
-        });
+            }
+        );
 
-        // ========================================
+        removeImageBtn.addEventListener(
+            'click',
+            () => {
+
+                painter.brush.removeImage();
+
+                status.textContent =
+                    'Brush Image Removed';
+            }
+        );
+
+        // =====================================================
         // Init
-        // ========================================
+        // =====================================================
 
-        refreshValues();
-        updateConfig();
+        updateBrush();
+
+        updateValues();
 
         console.log(
-            'Fuderu New Brush Engine Ready'
+            'Fuderu Ready'
         );
 
     </script>

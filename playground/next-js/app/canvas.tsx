@@ -1,4 +1,3 @@
-// app/canvas.tsx
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -16,8 +15,6 @@ const Canvas = () => {
 
     const {
         size,
-        radius,
-        friction,
         opacity,
         color,
         eraser,
@@ -25,7 +22,7 @@ const Canvas = () => {
     } = useBrushStore();
 
     // =========================
-    // Create Canvas Engine Once
+    // Create Engine
     // =========================
 
     useEffect(() => {
@@ -35,12 +32,15 @@ const Canvas = () => {
             new FuderuCanvas({
                 canvas: canvasRef.current,
 
-                size,
-                radius,
-                friction,
-                opacity,
-                color,
-                eraser,
+                brush: {
+                    size,
+                    opacity,
+                    color,
+                    spacing: 0.5,
+                    flow: 1,
+                    roundness: 1,
+                    angle: 0,
+                },
             });
 
         canvasEngineRef.current = engine;
@@ -60,7 +60,9 @@ const Canvas = () => {
 
         if (!engine) return;
 
-        engine.setSize(size);
+        engine.loadConfig({
+            size,
+        });
     }, [size]);
 
     useEffect(() => {
@@ -69,25 +71,9 @@ const Canvas = () => {
 
         if (!engine) return;
 
-        engine.setRadius(radius);
-    }, [radius]);
-
-    useEffect(() => {
-        const engine =
-            canvasEngineRef.current;
-
-        if (!engine) return;
-
-        engine.setFriction(friction);
-    }, [friction]);
-
-    useEffect(() => {
-        const engine =
-            canvasEngineRef.current;
-
-        if (!engine) return;
-
-        engine.setOpacity(opacity);
+        engine.loadConfig({
+            opacity,
+        });
     }, [opacity]);
 
     useEffect(() => {
@@ -96,8 +82,14 @@ const Canvas = () => {
 
         if (!engine) return;
 
-        engine.setColor(color);
+        engine.loadConfig({
+            color,
+        });
     }, [color]);
+
+    // =========================
+    // Eraser
+    // =========================
 
     useEffect(() => {
         const engine =
@@ -105,11 +97,10 @@ const Canvas = () => {
 
         if (!engine) return;
 
-        if (eraser) {
-            engine.enableEraser();
-        } else {
-            engine.disableEraser();
-        }
+        engine.brush.blendMode =
+            eraser
+                ? "destination-out"
+                : "source-over";
     }, [eraser]);
 
     // =========================

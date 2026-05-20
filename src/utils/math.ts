@@ -1,5 +1,5 @@
 // src/utils/math.ts
-import { Point } from "./bezier";
+import { Vec2 } from "../types/point";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Distance                                 */
@@ -73,7 +73,7 @@ export const getPointBetween = (
     p2x: number,
     p2y: number,
     t: number = 0.5
-): Point => {
+): Vec2 => {
     return {
         x: p1x + (p2x - p1x) * t,
         y: p1y + (p2y - p1y) * t,

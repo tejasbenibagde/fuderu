@@ -1,4 +1,4 @@
-export { Brush } from './Brush'
-
-export { type BrushConfig, type BrushBasicConfig } from './types/config'
-export { type Module } from './types/modules'
+export { Canvas } from './Canvas';
+export { Brush } from './Brush';
+export * from "./utils";
+export * from "./types";

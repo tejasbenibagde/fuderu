@@ -1,15 +1,13 @@
 // src/utils/bezier.ts
 
+import type { Vec2 } from "../types/point";
+
 // Important Note:- This file may be moved in different language like Rust for faster performance
 
 /* -------------------------------------------------------------------------- */
 /*                                   Types                                   */
 /* -------------------------------------------------------------------------- */
 
-export interface Point {
-    x: number;
-    y: number;
-}
 
 const EPSILON = 1e-6;
 const DEFAULT_SEGMENTS = 100;
@@ -63,7 +61,7 @@ export const quadraticBezier = (
     pty: number,
     p2x: number,
     p2y: number
-): Point => {
+): Vec2 => {
     t = clamp01(t);
 
     const mt = 1 - t;
@@ -147,12 +145,12 @@ export const getEquidistantBezierPoints = (
     p2y: number,
     space: number,
     segments: number = 200
-): Point[] => {
+): Vec2[] => {
     if (space <= EPSILON) {
         return [];
     }
 
-    const points: Point[] = [];
+    const points: Vec2[] = [];
 
     const totalLength = getQuadraticBezierDistance(
         p1x,
@@ -238,7 +236,7 @@ export const getControlPoint = (
     p3x: number,
     p3y: number,
     ratio: number = 0.25
-): Point => {
+): Vec2 => {
     return {
         x: p2x + (p1x - p3x) * ratio,
         y: p2y + (p1y - p3y) * ratio,
@@ -256,7 +254,7 @@ export const getAllControlPoint = (
     p3x: number,
     p3y: number,
     ratio: number = 0.25
-): [Point, Point] => {
+): [Vec2, Vec2] => {
     return [
         {
             x: p2x + (p1x - p3x) * ratio,

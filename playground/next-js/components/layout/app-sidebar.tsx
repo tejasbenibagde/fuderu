@@ -1,3 +1,5 @@
+// components/layout/app-sidebar.tsx
+
 "use client";
 
 import {
@@ -22,20 +24,30 @@ import { useBrushStore } from "../playground/brush-store";
 export function AppSidebar() {
   const {
     size,
-    radius,
-    friction,
     opacity,
     color,
-    eraser,
+
+    spacing,
+    flow,
+    roundness,
+    image,
+
+    smooth,
 
     setSize,
-    setRadius,
-    setFriction,
     setOpacity,
     setColor,
-    setEraser,
+
+    setSpacing,
+    setFlow,
+    setRoundness,
+    setImage,
+
+    setSmooth,
 
     clearCanvas,
+    undoCanvas,
+    redoCanvas,
   } = useBrushStore();
 
   return (
@@ -56,7 +68,7 @@ export function AppSidebar() {
             </span>
 
             <span className="text-xs text-muted-foreground">
-              Nextjs Playground
+              Next.js Playground
             </span>
           </div>
         </div>
@@ -71,18 +83,44 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <BrushControls
               size={size}
-              radius={radius}
-              friction={friction}
               opacity={opacity}
               color={color}
-              eraser={eraser}
+              spacing={spacing}
+              flow={flow}
+              roundness={roundness}
+              smooth={smooth}
               onSizeChange={setSize}
-              onRadiusChange={setRadius}
-              onFrictionChange={setFriction}
-              onOpacityChange={setOpacity}
-              onColorChange={setColor}
-              onEraserChange={setEraser}
-              onClear={clearCanvas}
+              image={image}
+              onOpacityChange={
+                setOpacity
+              }
+              onColorChange={
+                setColor
+              }
+              onSpacingChange={
+                setSpacing
+              }
+              onFlowChange={
+                setFlow
+              }
+              onRoundnessChange={
+                setRoundness
+              }
+              onSmoothChange={
+                setSmooth
+              }
+              onImageChange={
+                setImage
+              }
+              onClear={
+                clearCanvas
+              }
+              onUndo={
+                undoCanvas
+              }
+              onRedo={
+                redoCanvas
+              }
             />
           </SidebarGroupContent>
         </SidebarGroup>

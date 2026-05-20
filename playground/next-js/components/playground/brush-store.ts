@@ -2,69 +2,94 @@ import { create } from "zustand";
 
 type BrushStore = {
   size: number;
-  radius: number;
-  friction: number;
   opacity: number;
   color: string;
-  eraser: boolean;
+
+  spacing: number;
+  flow: number;
+  roundness: number;
+  image: string | null;
+  smooth: boolean;
 
   clearTrigger: number;
+  undoTrigger: number;
+  redoTrigger: number;
 
   setSize: (size: number) => void;
-  setRadius: (radius: number) => void;
-  setFriction: (friction: number) => void;
   setOpacity: (opacity: number) => void;
   setColor: (color: string) => void;
-  setEraser: (eraser: boolean) => void;
+
+  setSpacing: (spacing: number) => void;
+  setFlow: (flow: number) => void;
+  setRoundness: (roundness: number) => void;
+  setImage: (image: string | null) => void;
+  setSmooth: (smooth: boolean) => void;
+
 
   clearCanvas: () => void;
+  undoCanvas: () => void;
+  redoCanvas: () => void;
 };
 
-export const useBrushStore = create<BrushStore>(
-  (set) => ({
-    size: 12,
-    radius: 30,
-    friction: 0.12,
+export const useBrushStore =
+  create<BrushStore>((set) => ({
+    size: 20,
     opacity: 1,
     color: "#000000",
-    eraser: false,
+
+
+    spacing: 0.5,
+    flow: 1,
+    roundness: 1,
+
+    smooth: true,
+    image: null,
 
     clearTrigger: 0,
+    undoTrigger: 0,
+    redoTrigger: 0,
 
     setSize: (size) =>
-      set({
-        size,
-      }),
-
-    setRadius: (radius) =>
-      set({
-        radius,
-      }),
-
-    setFriction: (friction) =>
-      set({
-        friction,
-      }),
+      set({ size }),
 
     setOpacity: (opacity) =>
-      set({
-        opacity,
-      }),
+      set({ opacity }),
 
     setColor: (color) =>
-      set({
-        color,
-      }),
+      set({ color }),
 
-    setEraser: (eraser) =>
-      set({
-        eraser,
-      }),
+    setSpacing: (spacing) =>
+      set({ spacing }),
+
+    setFlow: (flow) =>
+      set({ flow }),
+
+    setRoundness: (roundness) =>
+      set({ roundness }),
+
+    setSmooth: (smooth) =>
+      set({ smooth }),
 
     clearCanvas: () =>
       set((state) => ({
         clearTrigger:
           state.clearTrigger + 1,
       })),
-  })
-);
+
+    setImage: (image: string | null) =>
+      set({
+        image,
+      }),
+
+    undoCanvas: () =>
+      set((state) => ({
+        undoTrigger:
+          state.undoTrigger + 1,
+      })),
+
+    redoCanvas: () =>
+      set((state) => ({
+        redoTrigger:
+          state.redoTrigger + 1,
+      })),
+  }));

@@ -10,16 +10,54 @@ const Canvas = () => {
     const canvasRef =
         useRef<HTMLCanvasElement | null>(null);
 
-    const canvasEngineRef =
+    const engineRef =
         useRef<FuderuCanvas | null>(null);
 
     const {
         size,
         opacity,
         color,
-        eraser,
+        spacing,
+        flow,
+        roundness,
+        smooth,
+        image,
         clearTrigger,
+        undoTrigger,
+        redoTrigger,
     } = useBrushStore();
+
+    // =========================
+    // Resize Canvas Properly
+    // =========================
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+
+        if (!canvas) return;
+
+        const resize = () => {
+            const rect =
+                canvas.getBoundingClientRect();
+
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        };
+
+        resize();
+
+        window.addEventListener(
+            "resize",
+            resize
+        );
+
+        return () => {
+            window.removeEventListener(
+                "resize",
+                resize
+            );
+        };
+    }, []);
 
     // =========================
     // Create Engine
@@ -36,14 +74,15 @@ const Canvas = () => {
                     size,
                     opacity,
                     color,
-                    spacing: 0.5,
-                    flow: 1,
-                    roundness: 1,
-                    angle: 0,
+                    spacing,
+                    flow,
+                    roundness,
                 },
             });
 
-        canvasEngineRef.current = engine;
+        engine.brush.isSmooth = smooth;
+
+        engineRef.current = engine;
 
         return () => {
             engine.destroy();
@@ -51,76 +90,86 @@ const Canvas = () => {
     }, []);
 
     // =========================
-    // Reactive Updates
+    // Reactive Brush Updates
     // =========================
 
     useEffect(() => {
         const engine =
-            canvasEngineRef.current;
+            engineRef.current;
 
         if (!engine) return;
 
-        engine.loadConfig({
+        engine.brush.loadConfig({
             size,
-        });
-    }, [size]);
-
-    useEffect(() => {
-        const engine =
-            canvasEngineRef.current;
-
-        if (!engine) return;
-
-        engine.loadConfig({
             opacity,
-        });
-    }, [opacity]);
-
-    useEffect(() => {
-        const engine =
-            canvasEngineRef.current;
-
-        if (!engine) return;
-
-        engine.loadConfig({
             color,
+            spacing,
+            flow,
+            roundness,
         });
-    }, [color]);
+
+        engine.brush.isSmooth = smooth;
+    }, [
+        size,
+        opacity,
+        color,
+        spacing,
+        flow,
+        roundness,
+        smooth,
+    ]);
 
     // =========================
-    // Eraser
+    // Image Brush
     // =========================
 
     useEffect(() => {
         const engine =
-            canvasEngineRef.current;
+            engineRef.current;
 
         if (!engine) return;
 
-        engine.brush.blendMode =
-            eraser
-                ? "destination-out"
-                : "source-over";
-    }, [eraser]);
+        if (!image) {
+            engine.brush.removeImage();
+            return;
+        }
+
+        engine.loadImage(image);
+    }, [image]);
 
     // =========================
     // Clear
     // =========================
 
     useEffect(() => {
-        const engine =
-            canvasEngineRef.current;
-
-        if (!engine) return;
-
-        engine.clear();
+        engineRef.current?.clear();
     }, [clearTrigger]);
+
+    // =========================
+    // Undo
+    // =========================
+
+    useEffect(() => {
+        if (undoTrigger === 0) return;
+
+        engineRef.current?.undo();
+    }, [undoTrigger]);
+
+    // =========================
+    // Redo
+    // =========================
+
+    useEffect(() => {
+        if (redoTrigger === 0) return;
+
+        engineRef.current?.redo();
+    }, [redoTrigger]);
 
     return (
         <div className="flex-1 bg-muted/30 p-6">
             <canvas
                 ref={canvasRef}
-                className="h-full w-full rounded-2xl border border-dashed bg-background touch-none"
+                className="h-full w-full rounded-2xl border border-dashed bg-background"
             />
         </div>
     );

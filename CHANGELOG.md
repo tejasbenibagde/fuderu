@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0
+## 0.8.1
 
 ### ⚠ Breaking
 
@@ -57,3 +57,7 @@
 - Complex brush accumulation
 - Multi-device touch validation
 - Worker/offscreen rendering prep
+
+
+## 0.8.2
+

@@ -7,6 +7,7 @@ import { PurePoint, Point, PointCallBack } from "./types/point";
 import { getControlPoint, getEquidistantBezierPoints } from "./utils/bezier";
 import { toHashColor } from "./utils/color";
 import { getAngle, getDistance } from "./utils/math";
+import { calculateRotation } from "./utils/rotation";
 
 
 const createCanvas = (width: number = 0, height: number = 0): HTMLCanvasElement => {
@@ -93,6 +94,10 @@ export class Brush {
     // Shape Canvas
     private shapeCanvas?: HTMLCanvasElement;
     private shapeContext?: CanvasRenderingContext2D;
+
+    // Rotation
+    private previousRotationAngle: number = 0;;
+    private lastProcessedPointForRotation?: PurePoint;
 
     private initSourceCanvas(canvas: HTMLCanvasElement) {
         this.canvas = canvas
@@ -206,11 +211,46 @@ export class Brush {
                 : [result];
 
             for (const point of points) {
+
+                let rotation =
+                    this.config.angle * Math.PI * 2;
+
+                // FLOW ROTATION
+                if (this.config.rotation) {
+
+                    // if first point in stroke
+                    if (!this.lastProcessedPointForRotation) {
+
+                        rotation +=
+                            this.config.rotation.offset ?? 0;
+
+                    } else {
+
+                        rotation = calculateRotation(
+                            this.lastProcessedPointForRotation.x,
+                            this.lastProcessedPointForRotation.y,
+                            point.x,
+                            point.y,
+                            this.config.rotation,
+                            this.previousRotationAngle
+                        );
+                    }
+
+                    this.previousRotationAngle = rotation;
+                }
+
+                this.lastProcessedPointForRotation = {
+                    x: point.x,
+                    y: point.y,
+                    pressure: point.pressure
+                };
+
                 this.points.push(
                     this.newPoint(
                         point.x,
                         point.y,
-                        point.pressure
+                        point.pressure,
+                        rotation
                     )
                 );
             }
@@ -219,11 +259,50 @@ export class Brush {
         }
 
         if (!handled) {
+
+            let rotation =
+                this.config.angle * Math.PI * 2;
+
+            if (this.config.rotation) {
+
+                // FIRST POINT
+                if (!this.lastProcessedPointForRotation) {
+
+                    rotation +=
+                        this.config.rotation.offset ?? 0;
+
+                } else {
+
+                    rotation = calculateRotation(
+                        this.lastProcessedPointForRotation.x,
+                        this.lastProcessedPointForRotation.y,
+                        x,
+                        y,
+                        this.config.rotation,
+                        this.previousRotationAngle
+                    );
+                }
+
+                this.previousRotationAngle = rotation;
+            }
+
+            this.lastProcessedPointForRotation = {
+                x,
+                y,
+                pressure
+            };
+
             this.points.push(
-                this.newPoint(x, y, pressure)
+                this.newPoint(
+                    x,
+                    y,
+                    pressure,
+                    rotation
+                )
             );
         }
     }
+
 
     private clamp01(value: number): number {
         return Math.min(Math.max(value, 0), 1);
@@ -234,7 +313,7 @@ export class Brush {
         if (canvas) this.loadContext(canvas)
     }
 
-    private newPoint(x: number, y: number, pressure: number): Point {
+    private newPoint(x: number, y: number, pressure: number, rotation?: number): Point {
         const cnf = { ...this.config }
         for (const [, module] of this.modules) {
             if (module.onChangeConfig) {
@@ -243,10 +322,10 @@ export class Brush {
         }
         cnf.opacity = this.clamp01(cnf.opacity);
         cnf.flow = this.clamp01(cnf.flow);
-        cnf.angle = this.clamp01(cnf.angle);
+        // cnf.angle = this.clamp01(cnf.angle);
         cnf.roundness = this.clamp01(cnf.roundness);
 
-        return { x, y, pressure, config: cnf }
+        return { x, y, pressure, config: cnf, rotation }
     }
     private getMixedCanvas(): [
         HTMLCanvasElement,
@@ -333,85 +412,144 @@ export class Brush {
         this.assertCanvasReady();
 
         if (this.points.length === 0) {
-            return
+            return;
         }
 
         const p = this.points.shift() as Point;
 
-        this.strokeContext!.save()
+        const rotation =
+            p.rotation ??
+            (-p.config.angle * Math.PI * 2);
+
+        this.strokeContext!.save();
 
         // flow
-        this.strokeContext!.globalAlpha = p.config.flow
+        this.strokeContext!.globalAlpha =
+            p.config.flow;
 
         // opacity
-        this.transferContext!.globalAlpha = p.config.opacity
+        this.transferContext!.globalAlpha =
+            p.config.opacity;
 
-        // draw to stroke canvas
+        // IMAGE BRUSH
         if (this.shapeCanvas && this.shapeContext) {
-            // change color
-            if (this.shapeContext.fillStyle !== p.config.color.toLowerCase()) {
 
+            // recolor image
+            if (
+                this.shapeContext.fillStyle !==
+                p.config.color.toLowerCase()
+            ) {
+                const globalCompositeOperation =
+                    this.shapeContext.globalCompositeOperation;
 
-                const globalCompositeOperation = this.shapeContext.globalCompositeOperation
-                this.shapeContext.globalCompositeOperation = "source-atop"
-                this.shapeContext.fillStyle = toHashColor(p.config.color)
-                this.shapeContext.beginPath()
-                this.shapeContext.fillRect(0, 0, this.shapeCanvas.width, this.shapeCanvas.height)
-                this.shapeContext.globalCompositeOperation = globalCompositeOperation
+                this.shapeContext.globalCompositeOperation =
+                    "source-atop";
+
+                this.shapeContext.fillStyle =
+                    toHashColor(p.config.color);
+
+                this.shapeContext.beginPath();
+
+                this.shapeContext.fillRect(
+                    0,
+                    0,
+                    this.shapeCanvas.width,
+                    this.shapeCanvas.height
+                );
+
+                this.shapeContext.globalCompositeOperation =
+                    globalCompositeOperation;
             }
 
-            //rotate
-            this.strokeContext!.translate(p.x, p.y)
-            this.strokeContext!.rotate(-p.config.angle * 360 * Math.PI / 180)
-            this.strokeContext!.translate(-(p.config.size * p.config.roundness / 2), -(p.config.size / this.shapeRatio / 2))
+            const width =
+                p.config.size *
+                p.config.roundness;
 
-            const width = p.config.size * p.config.roundness
-            const height = p.config.size / this.shapeRatio
+            const height =
+                p.config.size /
+                this.shapeRatio;
+
+            this.strokeContext!.translate(
+                p.x,
+                p.y
+            );
+
+            this.strokeContext!.rotate(rotation);
 
             this.strokeContext!.drawImage(
                 this.shapeCanvas,
-                0, 0,
-                width, height,
-            )
+                -width / 2,
+                -height / 2,
+                width,
+                height
+            );
 
-            // rotate back
-            // this.strokeContext.translate(-p.x, -p.y)
-            // this.strokeContext.rotate(p.config.angle * 360 * Math.PI / 180)
-            // this.strokeContext.translate(p.config.size * p.config.roundness / 2, p.config.size / this.shapeRatio / 2)
         } else {
-            const size = p.config.size
-            const roundness = p.config.roundness
-            const smallerRadius = size * roundness
-            this.strokeContext!.beginPath()
-            this.strokeContext!.fillStyle = p.config.color
-            this.strokeContext!.translate(p.x, p.y)
-            this.strokeContext!.rotate(-p.config.angle * 360 * Math.PI / 180)
-            this.strokeContext!.ellipse(0, 0, size, smallerRadius, 0, 0, Math.PI * 2, false)
-            this.strokeContext!.fill()
-            // rotate back
-            // this.strokeContext.translate(-p.x, -p.y)
-            // this.strokeContext.rotate(p.config.angle * 360 * Math.PI / 180)
-            this.strokeContext!.closePath()
+
+            // DEFAULT ELLIPSE BRUSH
+
+            const size = p.config.size;
+
+            const roundness =
+                p.config.roundness;
+
+            const smallerRadius =
+                size * roundness;
+
+            this.strokeContext!.beginPath();
+
+            this.strokeContext!.fillStyle =
+                p.config.color;
+
+            this.strokeContext!.translate(
+                p.x,
+                p.y
+            );
+
+            this.strokeContext!.rotate(rotation);
+
+            this.strokeContext!.ellipse(
+                0,
+                0,
+                size,
+                smallerRadius,
+                0,
+                0,
+                Math.PI * 2,
+                false
+            );
+
+            this.strokeContext!.fill();
+
+            this.strokeContext!.closePath();
         }
 
-        this.strokeContext!.restore()
+        this.strokeContext!.restore();
 
-        // mixin to show canvas
-        if (this.points.length === 0 || this.drawCount >= this.maxPointsPerFrame) {
-            this.mixin()
-            this.drawCount = 0
+        // mixin to visible canvas
+        if (
+            this.points.length === 0 ||
+            this.drawCount >= this.maxPointsPerFrame
+        ) {
+            this.mixin();
+            this.drawCount = 0;
         } else {
-            this.drawCount++
+            this.drawCount++;
         }
 
-        // strokeEnd
+        // stroke end
         if (p.strokeEnd === true) {
-            this.endStroke()
+            this.endStroke();
         }
+
         // callback
-        if (p.callback) try {
-            p.callback()
-        } catch (err) { console.error(err) }
+        if (p.callback) {
+            try {
+                p.callback();
+            } catch (err) {
+                console.error(err);
+            }
+        }
     }
 
 
@@ -489,6 +627,8 @@ export class Brush {
         if (config.angle != null) this.config.angle = config.angle;
         if (config.roundness != null) this.config.roundness = config.roundness;
         if (config.spacing != null) this.config.spacing = config.spacing;
+        if (config.rotation != null) this.config.rotation = config.rotation;
+
     }
 
     /**
@@ -545,80 +685,146 @@ export class Brush {
      * which will be rendered when the render function is called 
      * (interpolation and Bessel calculations will be performed)
      */
+    // Inside the putPoint method, replace the interpolation section with this:
+
     putPoint(x: number, y: number, pressure: number) {
+
+        // FIRST POINT
         if (!this.prePoint || !this.isSpacing) {
-            this.prePrePoint = this.prePoint
-            this.prePoint = { x, y, pressure }
-            // When there is no previous point or spacing is not enabled, simply add it to the coordinate pool without calculating interpolation
+
+            this.prePrePoint = this.prePoint;
+            this.prePoint = { x, y, pressure };
+
             this.processPoint(x, y, pressure);
-        } else {
-            // Calculate whether interpolation is required between the current point and the previous point, and calculate interpolation and Bezier transform
-            const p1: PurePoint = { x, y, pressure }
-            const p2: PurePoint = this.prePoint
-            const p3: PurePoint = this.prePrePoint || p2
-            let distance = getDistance(p2.x, p2.y, p1.x, p1.y)
 
-            let space = this.config.spacing * this.config.size
-            if (space < this.minSpacePixel) space = this.minSpacePixel
-            if (Math.floor(distance / space) <= 0) return
-            if (distance < this.lagDistance + space) return
-            // Update the x and y coordinates to the position of the previous point after moving toward the original x and y coordinates by (distance - lagDistance).
-            const angle = getAngle(p2.x, p2.y, p1.x, p1.y)
-            p1.x = p2.x + Math.cos(angle) * (distance - this.lagDistance)
-            p1.y = p2.y + Math.sin(angle) * (distance - this.lagDistance)
-            distance = distance - this.lagDistance
-            // Get Bezier Control Points
-            const control = getControlPoint(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y)
+            return;
+        }
 
-            // upper one input value point
+        const p1: PurePoint = { x, y, pressure };
+        const p2: PurePoint = this.prePoint;
+        const p3: PurePoint = this.prePrePoint || p2;
 
-            const lastP = { x: p1.x, y: p1.y, pressure: p1.pressure }
+        let distance =
+            getDistance(p2.x, p2.y, p1.x, p1.y);
 
-            if (this.isSmooth) {
-                const points = getEquidistantBezierPoints(p2.x, p2.y, control.x, control.y, p1.x, p1.y, space)
+        let space =
+            this.config.spacing * this.config.size;
 
-                for (const i in points) {
-                    if (!Object.prototype.hasOwnProperty.call(points, i)) {
-                        continue
-                    }
+        if (space < this.minSpacePixel) {
+            space = this.minSpacePixel;
+        }
 
-                    const point = points[i];
-                    const t = parseInt(i) / points.length
-                    const curPressure = p2.pressure + (p1.pressure - p2.pressure) * t
+        if (Math.floor(distance / space) <= 0) {
+            return;
+        }
 
-                    lastP.x = point.x
-                    lastP.y = point.y
-                    lastP.pressure = curPressure
+        if (distance < this.lagDistance + space) {
+            return;
+        }
 
-                    this.processPoint(
-                        point.x,
-                        point.y,
-                        curPressure
-                    );
-                }
-            } else {
-                for (let i = space; i <= distance; i += space) {
-                    const t = i / distance
-                    const curPressure = p2.pressure + (p1.pressure - p2.pressure) * t
+        const angle =
+            getAngle(p2.x, p2.y, p1.x, p1.y);
 
-                    const pointX = p2.x + Math.cos(angle) * i;
-                    const pointY = p2.y + Math.sin(angle) * i;
+        p1.x =
+            p2.x +
+            Math.cos(angle) * (distance - this.lagDistance);
 
-                    lastP.x = pointX
-                    lastP.y = pointY
-                    lastP.pressure = curPressure
+        p1.y =
+            p2.y +
+            Math.sin(angle) * (distance - this.lagDistance);
 
-                    this.processPoint(
-                        pointX,
-                        pointY,
-                        curPressure
-                    );
-                }
+        distance -= this.lagDistance;
+
+        const control = getControlPoint(
+            p1.x,
+            p1.y,
+            p2.x,
+            p2.y,
+            p3.x,
+            p3.y
+        );
+
+        const lastP = {
+            x: p1.x,
+            y: p1.y,
+            pressure: p1.pressure
+        };
+
+        // SMOOTH CURVE
+        if (this.isSmooth) {
+
+            const points =
+                getEquidistantBezierPoints(
+                    p2.x,
+                    p2.y,
+                    control.x,
+                    control.y,
+                    p1.x,
+                    p1.y,
+                    space
+                );
+
+            for (const point of points) {
+
+                const t =
+                    points.indexOf(point) / points.length;
+
+                const curPressure =
+                    p2.pressure +
+                    (p1.pressure - p2.pressure) * t;
+
+                lastP.x = point.x;
+                lastP.y = point.y;
+                lastP.pressure = curPressure;
+
+                // IMPORTANT:
+                // let processPoint calculate rotation naturally
+                this.processPoint(
+                    point.x,
+                    point.y,
+                    curPressure
+                );
             }
 
-            this.prePrePoint = this.prePoint
-            this.prePoint = { x: lastP.x, y: lastP.y, pressure: lastP.pressure }
+        } else {
+
+            for (
+                let i = space;
+                i <= distance;
+                i += space
+            ) {
+
+                const t = i / distance;
+
+                const curPressure =
+                    p2.pressure +
+                    (p1.pressure - p2.pressure) * t;
+
+                const pointX =
+                    p2.x + Math.cos(angle) * i;
+
+                const pointY =
+                    p2.y + Math.sin(angle) * i;
+
+                lastP.x = pointX;
+                lastP.y = pointY;
+                lastP.pressure = curPressure;
+
+                this.processPoint(
+                    pointX,
+                    pointY,
+                    curPressure
+                );
+            }
         }
+
+        this.prePrePoint = this.prePoint;
+
+        this.prePoint = {
+            x: lastP.x,
+            y: lastP.y,
+            pressure: lastP.pressure
+        };
     }
 
     /**
@@ -665,6 +871,8 @@ export class Brush {
     finalizeStroke(callback?: PointCallBack) {
         this.prePoint = void 0
         this.prePrePoint = void 0
+        this.previousRotationAngle = 0;
+        this.lastProcessedPointForRotation = undefined; // Add this line
         if (this.points.length > 0) {
             this.points[this.points.length - 1].strokeEnd = true
         }

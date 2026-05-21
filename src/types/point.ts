@@ -11,6 +11,7 @@ export interface PurePoint extends Vec2 {
 
 export interface Point extends PurePoint {
     config: BrushBasicConfig;
+    rotation?: number;
     strokeEnd?: boolean;
     callback?: PointCallBack;
 }

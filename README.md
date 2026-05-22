@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  interpolation • adaptive spacing • modular brushes • canvas rendering
+  interpolation • adaptive spacing • image brushes • modular rendering
 </p>
 
 ---
@@ -26,7 +26,7 @@
 - 🎨 Built-in canvas drawing engine
 - ⚡ Smooth interpolation rendering
 - 📏 Adaptive brush spacing
-- 🖼️ Custom image-based brushes
+- 🖼️ Custom image-based brushes with path rotation
 - 🌫️ Flow + opacity rendering
 - 🧭 Brush angle + roundness support
 - ↩️ Undo / Redo history
@@ -86,7 +86,7 @@ await painter.loadImage(
 );
 ```
 
-Fuderu supports custom image-based brush stamps using transparent images.
+Fuderu supports custom image-based brush stamps using transparent images with optional direction-aware rotation.
 
 ---
 
@@ -101,6 +101,7 @@ Fuderu focuses on:
 - Extensible brush pipelines
 - Performance-oriented rendering
 - TypeScript-first architecture
+- Direction-aware image brush rotation
 
 ---
 

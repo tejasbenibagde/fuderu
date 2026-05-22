@@ -34,6 +34,7 @@ Focus:
 
 * Modular brush architecture groundwork
 * Brush image support
+* Brush image rotation system
 * Runtime brush configuration
 * Brush interpolation improvements
 * Module registration system
@@ -44,6 +45,7 @@ Potential breaking changes:
 
 * Brush constructor behavior
 * Brush configuration structure
+* Rotation configuration APIs
 * Rendering internals
 * Module hook signatures
 * Internal interpolation flow
@@ -86,16 +88,15 @@ Goals:
 
 # ✅ Currently Implemented
 
-## Brush Engine
-
 | Feature                     | Description                                          |
 | --------------------------- | ---------------------------------------------------- |
 | Brush Interpolation         | Smooth interpolated brush point generation           |
 | Adaptive Brush Spacing      | Dynamic spacing based on brush configuration         |
 | Runtime Brush Configuration | Dynamically update brush settings at runtime         |
-| Advanced Brush Rendering    | Opacity, flow, angle, and roundness support          |
+| Advanced Brush Rendering    | Opacity, flow, angle, roundness, and rotation support |
 | Pressure-Aware Point Input  | Pointer pressure values passed into the brush engine |
 | Brush Image Support         | Custom image-based brush stamps                      |
+| Brush Image Rotation        | Direction-aware image stamp rotation along strokes   |
 | Blend Mode Support          | Custom canvas compositing support                    |
 | Canvas Filter Support       | Canvas filter rendering support                      |
 | Module Registration System  | Runtime module registration/removal                  |
@@ -127,6 +128,7 @@ Goals:
 | Brush initialization          | ✅      |
 | Runtime config updates        | ✅      |
 | Brush interpolation           | ✅      |
+| Brush image rotation          | ✅      |
 | Adaptive spacing calculations | ✅      |
 | Brush image loading           | ✅      |
 | Undo/redo behavior            | ✅      |
@@ -150,6 +152,7 @@ These systems still require broader real-world validation.
 | Multi-device DPR validation | 🚧     |
 | Performance stress testing  | 🚧     |
 | Complex brush accumulation  | 🚧     |
+| Advanced rotation behavior  | 🚧     |
 | Module ecosystem design     | 🚧     |
 
 > The Canvas system currently works in:

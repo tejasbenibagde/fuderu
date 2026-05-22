@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.8.2
+
+### ✨ Added
+
+- Flow-based image brush rotation
+- Runtime brush rotation controls
+- Rotation smoothing support
+- Rotation offset support
+- Rotation jitter/randomization support
+- Path-following image stamp rendering
+
+---
+
+### ✅ Improved
+
+- Image brush direction tracking
+- Stroke interpolation behavior
+- Rotation continuity across curved strokes
+- Playground rotation testing tools
+- Brush image rendering consistency
+
+---
+
+### 🛠 Fixed
+
+- Incorrect first-stamp rotation behavior
+- Rotation desync during fast strokes
+- Brush image angle inconsistencies
+- Playground coordinate/rotation issues
+- Image brush alpha compositing behavior
+
+---
+
+### 🚧 Experimental
+
+- Advanced procedural brush modules
+- Worker/offscreen rendering pipeline
+- Large-scale brush accumulation optimization
+- Future Rust performance acceleration
+
+
 ## 0.8.1
 
 ### ⚠ Breaking
@@ -57,7 +98,4 @@
 - Complex brush accumulation
 - Multi-device touch validation
 - Worker/offscreen rendering prep
-
-
-## 0.8.2
 

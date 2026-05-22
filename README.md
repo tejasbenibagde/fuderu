@@ -1,8 +1,20 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tejasbenibagde/fuderu/main/public/fuderu.png">
-    <img src="https://raw.githubusercontent.com/tejasbenibagde/fuderu/main/public/fuderu.png" alt="Fuderu" width="100%">
-  </picture>
+  <img 
+    src="https://raw.githubusercontent.com/tejasbenibagde/fuderu/main/public/icon.png" 
+    alt="Fuderu Logo" 
+    width="70"
+    style="vertical-align: middle;"
+  />
+  <span 
+    style="
+      font-size: 52px;
+      font-weight: 700;
+      margin-left: 12px;
+      vertical-align: middle;
+    "
+  >
+    Fuderu
+  </span>
 </p>
 
 <p align="center">

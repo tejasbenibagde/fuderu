@@ -1,21 +1,18 @@
-<p align="center">
+<table align="center">
+<tr>
+<td align="center">
   <img 
     src="https://raw.githubusercontent.com/tejasbenibagde/fuderu/main/public/icon.png" 
-    alt="Fuderu Logo" 
-    width="70"
-    style="vertical-align: middle;"
+    alt="Fuderu Logo"
+    width="80"
   />
-  <span 
-    style="
-      font-size: 52px;
-      font-weight: 700;
-      margin-left: 12px;
-      vertical-align: middle;
-    "
-  >
-    Fuderu
-  </span>
-</p>
+</td>
+
+<td align="left">
+  <h1>Fuderu</12>
+</td>
+</tr>
+</table>
 
 <p align="center">
   Lightweight extensible drawing engine for the web.

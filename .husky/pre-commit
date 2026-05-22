@@ -1,4 +1,5 @@
 rm -rf dist
 npm run test:ci
+npm run format
 npm run lint
 npm run build

@@ -8,11 +8,11 @@ Before `v1.0.0`, internal rendering systems, module APIs, and brush behavior may
 
 This means:
 
-* Breaking changes are possible in minor releases
-* Internal rendering pipelines may be refactored
-* Module APIs are still experimental
-* Rendering behavior may change between versions
-* Some systems are foundations for future features rather than fully finalized APIs
+- Breaking changes are possible in minor releases
+- Internal rendering pipelines may be refactored
+- Module APIs are still experimental
+- Rendering behavior may change between versions
+- Some systems are foundations for future features rather than fully finalized APIs
 
 ---
 
@@ -32,23 +32,23 @@ This means:
 
 Focus:
 
-* Modular brush architecture groundwork
-* Brush image support
-* Brush image rotation system
-* Runtime brush configuration
-* Brush interpolation improvements
-* Module registration system
-* Pressure-aware point input
-* Rendering pipeline cleanup
+- Modular brush architecture groundwork
+- Brush image support
+- Brush image rotation system
+- Runtime brush configuration
+- Brush interpolation improvements
+- Module registration system
+- Pressure-aware point input
+- Rendering pipeline cleanup
 
 Potential breaking changes:
 
-* Brush constructor behavior
-* Brush configuration structure
-* Rotation configuration APIs
-* Rendering internals
-* Module hook signatures
-* Internal interpolation flow
+- Brush constructor behavior
+- Brush configuration structure
+- Rotation configuration APIs
+- Rendering internals
+- Module hook signatures
+- Internal interpolation flow
 
 ---
 
@@ -56,20 +56,20 @@ Potential breaking changes:
 
 Focus:
 
-* Rendering lifecycle hooks
-* OffscreenCanvas experimentation
-* Render batching
-* Performance optimizations
-* Worker-ready architecture
-* WASM preparation layer
-* Internal renderer abstraction
+- Rendering lifecycle hooks
+- OffscreenCanvas experimentation
+- Render batching
+- Performance optimizations
+- Worker-ready architecture
+- WASM preparation layer
+- Internal renderer abstraction
 
 Potential breaking changes:
 
-* Renderer interfaces
-* Internal rendering flow
-* Canvas lifecycle behavior
-* Module execution order
+- Renderer interfaces
+- Internal rendering flow
+- Canvas lifecycle behavior
+- Module execution order
 
 ---
 
@@ -77,30 +77,30 @@ Potential breaking changes:
 
 Goals:
 
-* Stable module system
-* Stable rendering lifecycle
-* Stable preset system
-* Stable brush APIs
-* Production-ready rendering APIs
-* Long-term semantic versioning guarantees
+- Stable module system
+- Stable rendering lifecycle
+- Stable preset system
+- Stable brush APIs
+- Production-ready rendering APIs
+- Long-term semantic versioning guarantees
 
 ---
 
 # ✅ Currently Implemented
 
-| Feature                     | Description                                          |
-| --------------------------- | ---------------------------------------------------- |
-| Brush Interpolation         | Smooth interpolated brush point generation           |
-| Adaptive Brush Spacing      | Dynamic spacing based on brush configuration         |
-| Runtime Brush Configuration | Dynamically update brush settings at runtime         |
+| Feature                     | Description                                           |
+| --------------------------- | ----------------------------------------------------- |
+| Brush Interpolation         | Smooth interpolated brush point generation            |
+| Adaptive Brush Spacing      | Dynamic spacing based on brush configuration          |
+| Runtime Brush Configuration | Dynamically update brush settings at runtime          |
 | Advanced Brush Rendering    | Opacity, flow, angle, roundness, and rotation support |
-| Pressure-Aware Point Input  | Pointer pressure values passed into the brush engine |
-| Brush Image Support         | Custom image-based brush stamps                      |
-| Brush Image Rotation        | Direction-aware image stamp rotation along strokes   |
-| Blend Mode Support          | Custom canvas compositing support                    |
-| Canvas Filter Support       | Canvas filter rendering support                      |
-| Module Registration System  | Runtime module registration/removal                  |
-| Undo / Redo Stack           | Canvas history state management                      |
+| Pressure-Aware Point Input  | Pointer pressure values passed into the brush engine  |
+| Brush Image Support         | Custom image-based brush stamps                       |
+| Brush Image Rotation        | Direction-aware image stamp rotation along strokes    |
+| Blend Mode Support          | Custom canvas compositing support                     |
+| Canvas Filter Support       | Canvas filter rendering support                       |
+| Module Registration System  | Runtime module registration/removal                   |
+| Undo / Redo Stack           | Canvas history state management                       |
 
 ---
 
@@ -125,19 +125,19 @@ Goals:
 
 | Test                          | Status |
 | ----------------------------- | ------ |
-| Brush initialization          | ✅      |
-| Runtime config updates        | ✅      |
-| Brush interpolation           | ✅      |
-| Brush image rotation          | ✅      |
-| Adaptive spacing calculations | ✅      |
-| Brush image loading           | ✅      |
-| Undo/redo behavior            | ✅      |
-| Canvas initialization         | ✅      |
-| High-DPI rendering behavior   | ✅      |
-| Coordinate normalization      | ✅      |
-| Canvas cleanup lifecycle      | ✅      |
-| Runtime config loading        | ✅      |
-| Pointer event handling        | ✅      |
+| Brush initialization          | ✅     |
+| Runtime config updates        | ✅     |
+| Brush interpolation           | ✅     |
+| Brush image rotation          | ✅     |
+| Adaptive spacing calculations | ✅     |
+| Brush image loading           | ✅     |
+| Undo/redo behavior            | ✅     |
+| Canvas initialization         | ✅     |
+| High-DPI rendering behavior   | ✅     |
+| Coordinate normalization      | ✅     |
+| Canvas cleanup lifecycle      | ✅     |
+| Runtime config loading        | ✅     |
+| Pointer event handling        | ✅     |
 
 ---
 
@@ -157,9 +157,9 @@ These systems still require broader real-world validation.
 
 > The Canvas system currently works in:
 >
-> * Vanilla HTML/TypeScript environments
-> * React environments
-> * Next.js environments
+> - Vanilla HTML/TypeScript environments
+> - React environments
+> - Next.js environments
 
 ---
 
@@ -183,3 +183,4 @@ Module Pipeline
 Stamp Generation
   ↓
 Canvas Renderer
+```

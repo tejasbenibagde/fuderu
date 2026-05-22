@@ -40,7 +40,6 @@
 - Large-scale brush accumulation optimization
 - Future Rust performance acceleration
 
-
 ## 0.8.1
 
 ### ⚠ Breaking
@@ -98,4 +97,3 @@
 - Complex brush accumulation
 - Multi-device touch validation
 - Worker/offscreen rendering prep
-

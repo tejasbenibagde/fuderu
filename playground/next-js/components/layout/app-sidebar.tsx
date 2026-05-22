@@ -11,11 +11,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "../ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 import { BrushControls } from "./brush-controls";
 
@@ -57,15 +53,11 @@ export function AppSidebar() {
           <Avatar>
             <AvatarImage src="/icon.png" />
 
-            <AvatarFallback>
-              FU
-            </AvatarFallback>
+            <AvatarFallback>FU</AvatarFallback>
           </Avatar>
 
           <div className="flex flex-col">
-            <span className="text-sm font-semibold">
-              Fuderu
-            </span>
+            <span className="text-sm font-semibold">Fuderu</span>
 
             <span className="text-xs text-muted-foreground">
               Next.js Playground
@@ -76,9 +68,7 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>
-            Brush Engine
-          </SidebarGroupLabel>
+          <SidebarGroupLabel>Brush Engine</SidebarGroupLabel>
 
           <SidebarGroupContent>
             <BrushControls
@@ -91,36 +81,16 @@ export function AppSidebar() {
               smooth={smooth}
               onSizeChange={setSize}
               image={image}
-              onOpacityChange={
-                setOpacity
-              }
-              onColorChange={
-                setColor
-              }
-              onSpacingChange={
-                setSpacing
-              }
-              onFlowChange={
-                setFlow
-              }
-              onRoundnessChange={
-                setRoundness
-              }
-              onSmoothChange={
-                setSmooth
-              }
-              onImageChange={
-                setImage
-              }
-              onClear={
-                clearCanvas
-              }
-              onUndo={
-                undoCanvas
-              }
-              onRedo={
-                redoCanvas
-              }
+              onOpacityChange={setOpacity}
+              onColorChange={setColor}
+              onSpacingChange={setSpacing}
+              onFlowChange={setFlow}
+              onRoundnessChange={setRoundness}
+              onSmoothChange={setSmooth}
+              onImageChange={setImage}
+              onClear={clearCanvas}
+              onUndo={undoCanvas}
+              onRedo={redoCanvas}
             />
           </SidebarGroupContent>
         </SidebarGroup>

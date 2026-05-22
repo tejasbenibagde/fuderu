@@ -1,7 +1,6 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,583 +8,512 @@
     <title>Fuderu Demo</title>
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            background: #0f172a;
-            color: white;
-            font-family: sans-serif;
-            min-height: 100vh;
-            padding: 20px;
-        }
+      body {
+        background: #0f172a;
+        color: white;
+        font-family: sans-serif;
+        min-height: 100vh;
+        padding: 20px;
+      }
 
-        .container {
-            max-width: 1400px;
-            margin: auto;
-        }
+      .container {
+        max-width: 1400px;
+        margin: auto;
+      }
 
-        canvas {
-            width: 100%;
-            height: 700px;
-            background: white;
-            border-radius: 16px;
-            display: block;
-            touch-action: none;
-            cursor: crosshair;
-        }
+      canvas {
+        width: 100%;
+        height: 700px;
+        background: white;
+        border-radius: 16px;
+        display: block;
+        touch-action: none;
+        cursor: crosshair;
+      }
 
-        .toolbar {
-            margin-top: 16px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
+      .toolbar {
+        margin-top: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
 
-        .group {
-            background: #1e293b;
-            border-radius: 12px;
-            padding: 10px 14px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+      .group {
+        background: #1e293b;
+        border-radius: 12px;
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
 
-        .group label {
-            font-size: 13px;
-            font-weight: 600;
-        }
+      .group label {
+        font-size: 13px;
+        font-weight: 600;
+      }
 
-        .group input[type="range"] {
-            width: 120px;
-        }
+      .group input[type="range"] {
+        width: 120px;
+      }
 
-        .value {
-            min-width: 45px;
-            text-align: center;
-            color: #60a5fa;
-            font-size: 12px;
-            font-weight: bold;
-        }
+      .value {
+        min-width: 45px;
+        text-align: center;
+        color: #60a5fa;
+        font-size: 12px;
+        font-weight: bold;
+      }
 
-        button {
-            border: none;
-            background: #2563eb;
-            color: white;
-            padding: 10px 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: 0.2s ease;
-        }
+      button {
+        border: none;
+        background: #2563eb;
+        color: white;
+        padding: 10px 16px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: 0.2s ease;
+      }
 
-        button:hover {
-            background: #3b82f6;
-            transform: translateY(-1px);
-        }
+      button:hover {
+        background: #3b82f6;
+        transform: translateY(-1px);
+      }
 
-        .status {
-            margin-left: auto;
-            background: #1e293b;
-            padding: 10px 16px;
-            border-radius: 999px;
-            color: #93c5fd;
-            font-size: 13px;
-            font-weight: 600;
-        }
+      .status {
+        margin-left: auto;
+        background: #1e293b;
+        padding: 10px 16px;
+        border-radius: 999px;
+        color: #93c5fd;
+        font-size: 13px;
+        font-weight: 600;
+      }
 
-        .info {
-            margin-top: 18px;
-            background: #1e293b;
-            border-radius: 14px;
-            padding: 16px;
-            line-height: 1.7;
-            font-size: 14px;
-        }
+      .info {
+        margin-top: 18px;
+        background: #1e293b;
+        border-radius: 14px;
+        padding: 16px;
+        line-height: 1.7;
+        font-size: 14px;
+      }
 
-        .info span {
-            color: #60a5fa;
-            font-weight: bold;
-        }
+      .info span {
+        color: #60a5fa;
+        font-weight: bold;
+      }
 
-        .success {
-            color: #4ade80;
-        }
+      .success {
+        color: #4ade80;
+      }
 
-        .warning {
-            color: #facc15;
-        }
+      .warning {
+        color: #facc15;
+      }
     </style>
-</head>
+  </head>
 
-<body>
-
+  <body>
     <div class="container">
+      <canvas id="canvas"></canvas>
 
-        <canvas id="canvas"></canvas>
+      <div class="toolbar">
+        <button id="clearBtn">🧹 Clear</button>
 
-        <div class="toolbar">
+        <button id="undoBtn">↩️ Undo</button>
 
-            <button id="clearBtn">
-                🧹 Clear
-            </button>
+        <button id="redoBtn">↪️ Redo</button>
 
-            <button id="undoBtn">
-                ↩️ Undo
-            </button>
+        <div class="group">
+          <label>🎨 Color</label>
 
-            <button id="redoBtn">
-                ↪️ Redo
-            </button>
-
-            <div class="group">
-                <label>🎨 Color</label>
-
-                <input type="color" id="colorPicker" value="#000000" />
-            </div>
-
-            <div class="group">
-                <label>📏 Size</label>
-
-                <input type="range" id="sizeSlider" min="1" max="120" value="20" />
-
-                <span class="value" id="sizeValue">
-                    20
-                </span>
-            </div>
-
-            <div class="group">
-                <label>✨ Opacity</label>
-
-                <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="1" />
-
-                <span class="value" id="opacityValue">
-                    100%
-                </span>
-            </div>
-
-            <div class="group">
-                <label>💧 Flow</label>
-
-                <input type="range" id="flowSlider" min="0" max="1" step="0.01" value="1" />
-
-                <span class="value" id="flowValue">
-                    100%
-                </span>
-            </div>
-
-            <div class="group">
-                <label>🌀 Spacing</label>
-
-                <input type="range" id="spacingSlider" min="0.1" max="5" step="0.1" value="0.5" />
-
-                <span class="value" id="spacingValue">
-                    0.5
-                </span>
-            </div>
-
-            <div class="group">
-                <label>🧭 Rotation Mode</label>
-
-                <select id="rotationMode">
-                    <option value="fixed">Fixed</option>
-                    <option value="flow">Flow</option>
-                    <option value="random">Random</option>
-                </select>
-            </div>
-
-            <div class="group">
-                <label>📐 Rotation Offset</label>
-
-                <input type="range" id="rotationOffset" min="0" max="360" value="0" />
-
-                <span class="value" id="rotationOffsetValue">
-                    0°
-                </span>
-            </div>
-
-            <div class="group">
-                <label>🎲 Rotation Jitter</label>
-
-                <input type="range" id="rotationJitter" min="0" max="180" value="0" />
-
-                <span class="value" id="rotationJitterValue">
-                    0°
-                </span>
-            </div>
-
-            <div class="group">
-                <label>🪶 Rotation Smooth</label>
-
-                <input type="range" id="rotationSmoothing" min="0" max="1" step="0.01" value="0.15" />
-
-                <span class="value" id="rotationSmoothingValue">
-                    0.15
-                </span>
-            </div>
-
-            <div class="group">
-                <label>🧠 Smooth</label>
-
-                <input type="checkbox" id="smoothToggle" checked />
-            </div>
-
-            <div class="group">
-                <label>📍 Interpolation</label>
-
-                <input type="checkbox" id="spacingToggle" checked />
-            </div>
-
-            <div class="group">
-                <label>🖼️ Brush Image</label>
-
-                <input type="file" id="imageInput" accept="image/png,image/webp,image/jpeg" />
-            </div>
-
-            <button id="removeImageBtn">
-                Remove Brush Image
-            </button>
-
-            <div class="status" id="status">
-                Ready
-            </div>
-
+          <input type="color" id="colorPicker" value="#000000" />
         </div>
 
-        <div class="info">
+        <div class="group">
+          <label>📏 Size</label>
 
-            <span>Fuderu Current Verified Features</span><br /><br />
+          <input type="range" id="sizeSlider" min="1" max="120" value="20" />
 
-            <span class="success">✅ Verified In Real Usage</span><br />
-
-            • Runtime brush config updates<br />
-            • Brush interpolation rendering<br />
-            • Adaptive spacing system<br />
-            • Density compensation system<br />
-            • High-DPI canvas rendering<br />
-            • Pointer/mouse/touch support<br />
-            • Runtime brush size updates<br />
-            • Runtime opacity updates<br />
-            • Runtime flow updates<br />
-            • Runtime color updates<br />
-            • Canvas clearing<br />
-            • Undo / Redo stack<br />
-            • Coordinate normalization<br />
-            • Canvas resize preservation<br />
-            • Smooth brush movement<br />
-            • Canvas cleanup lifecycle<br />
-            • Runtime interpolation toggles<br />
-            • Runtime smoothing toggles<br />
-
-            <br />
-
-            <span class="warning">🚧 Still Experimental / Needs Validation</span><br />
-
-            • Brush image loading in real-world apps<br />
-            • Complex brush accumulation behavior<br />
-            • Very large canvas performance<br />
-            • Multi-device touch validation<br />
-            • Mobile browser rendering consistency<br />
-
+          <span class="value" id="sizeValue"> 20 </span>
         </div>
 
+        <div class="group">
+          <label>✨ Opacity</label>
+
+          <input
+            type="range"
+            id="opacitySlider"
+            min="0"
+            max="1"
+            step="0.01"
+            value="1"
+          />
+
+          <span class="value" id="opacityValue"> 100% </span>
+        </div>
+
+        <div class="group">
+          <label>💧 Flow</label>
+
+          <input
+            type="range"
+            id="flowSlider"
+            min="0"
+            max="1"
+            step="0.01"
+            value="1"
+          />
+
+          <span class="value" id="flowValue"> 100% </span>
+        </div>
+
+        <div class="group">
+          <label>🌀 Spacing</label>
+
+          <input
+            type="range"
+            id="spacingSlider"
+            min="0.1"
+            max="5"
+            step="0.1"
+            value="0.5"
+          />
+
+          <span class="value" id="spacingValue"> 0.5 </span>
+        </div>
+
+        <div class="group">
+          <label>🧭 Rotation Mode</label>
+
+          <select id="rotationMode">
+            <option value="fixed">Fixed</option>
+            <option value="flow">Flow</option>
+            <option value="random">Random</option>
+          </select>
+        </div>
+
+        <div class="group">
+          <label>📐 Rotation Offset</label>
+
+          <input type="range" id="rotationOffset" min="0" max="360" value="0" />
+
+          <span class="value" id="rotationOffsetValue"> 0° </span>
+        </div>
+
+        <div class="group">
+          <label>🎲 Rotation Jitter</label>
+
+          <input type="range" id="rotationJitter" min="0" max="180" value="0" />
+
+          <span class="value" id="rotationJitterValue"> 0° </span>
+        </div>
+
+        <div class="group">
+          <label>🪶 Rotation Smooth</label>
+
+          <input
+            type="range"
+            id="rotationSmoothing"
+            min="0"
+            max="1"
+            step="0.01"
+            value="0.15"
+          />
+
+          <span class="value" id="rotationSmoothingValue"> 0.15 </span>
+        </div>
+
+        <div class="group">
+          <label>🧠 Smooth</label>
+
+          <input type="checkbox" id="smoothToggle" checked />
+        </div>
+
+        <div class="group">
+          <label>📍 Interpolation</label>
+
+          <input type="checkbox" id="spacingToggle" checked />
+        </div>
+
+        <div class="group">
+          <label>🖼️ Brush Image</label>
+
+          <input
+            type="file"
+            id="imageInput"
+            accept="image/png,image/webp,image/jpeg"
+          />
+        </div>
+
+        <button id="removeImageBtn">Remove Brush Image</button>
+
+        <div class="status" id="status">Ready</div>
+      </div>
+
+      <div class="info">
+        <span>Fuderu Current Verified Features</span><br /><br />
+
+        <span class="success">✅ Verified In Real Usage</span><br />
+
+        • Runtime brush config updates<br />
+        • Brush interpolation rendering<br />
+        • Adaptive spacing system<br />
+        • Density compensation system<br />
+        • High-DPI canvas rendering<br />
+        • Pointer/mouse/touch support<br />
+        • Runtime brush size updates<br />
+        • Runtime opacity updates<br />
+        • Runtime flow updates<br />
+        • Runtime color updates<br />
+        • Canvas clearing<br />
+        • Undo / Redo stack<br />
+        • Coordinate normalization<br />
+        • Canvas resize preservation<br />
+        • Smooth brush movement<br />
+        • Canvas cleanup lifecycle<br />
+        • Runtime interpolation toggles<br />
+        • Runtime smoothing toggles<br />
+
+        <br />
+
+        <span class="warning">🚧 Still Experimental / Needs Validation</span
+        ><br />
+
+        • Brush image loading in real-world apps<br />
+        • Complex brush accumulation behavior<br />
+        • Very large canvas performance<br />
+        • Multi-device touch validation<br />
+        • Mobile browser rendering consistency<br />
+      </div>
     </div>
 
     <script type="module">
+      import { Canvas } from "../src/Canvas.ts";
 
-        import { Canvas } from '../src/Canvas.ts';
+      // =====================================================
+      // Canvas
+      // =====================================================
 
-        // =====================================================
-        // Canvas
-        // =====================================================
+      const painter = new Canvas({
+        canvas: "#canvas",
 
-        const painter = new Canvas({
-            canvas: '#canvas',
+        brush: {
+          size: 20,
+          opacity: 1,
+          flow: 1,
+          color: "#000000",
+          spacing: 0.5,
 
-            brush: {
-                size: 20,
-                opacity: 1,
-                flow: 1,
-                color: '#000000',
-                spacing: 0.5,
+          rotation: {
+            mode: "fixed",
+            offset: 0,
+            jitter: 0,
+            smoothing: 0.15,
+          },
+        },
+      });
 
-                rotation: {
-                    mode: "fixed",
-                    offset: 0,
-                    jitter: 0,
-                    smoothing: 0.15
-                }
-            }
+      // =====================================================
+      // Elements
+      // =====================================================
+
+      const clearBtn = document.getElementById("clearBtn");
+
+      const undoBtn = document.getElementById("undoBtn");
+
+      const redoBtn = document.getElementById("redoBtn");
+
+      const colorPicker = document.getElementById("colorPicker");
+
+      const sizeSlider = document.getElementById("sizeSlider");
+
+      const opacitySlider = document.getElementById("opacitySlider");
+
+      const imageInput = document.getElementById("imageInput");
+
+      const removeImageBtn = document.getElementById("removeImageBtn");
+
+      const flowSlider = document.getElementById("flowSlider");
+
+      const spacingSlider = document.getElementById("spacingSlider");
+
+      const smoothToggle = document.getElementById("smoothToggle");
+
+      const spacingToggle = document.getElementById("spacingToggle");
+
+      const status = document.getElementById("status");
+
+      const rotationMode = document.getElementById("rotationMode");
+
+      const rotationOffset = document.getElementById("rotationOffset");
+
+      const rotationJitter = document.getElementById("rotationJitter");
+
+      const rotationSmoothing = document.getElementById("rotationSmoothing");
+
+      const rotationOffsetValue = document.getElementById(
+        "rotationOffsetValue",
+      );
+
+      const rotationJitterValue = document.getElementById(
+        "rotationJitterValue",
+      );
+
+      const rotationSmoothingValue = document.getElementById(
+        "rotationSmoothingValue",
+      );
+
+      // =====================================================
+      // Values
+      // =====================================================
+
+      const sizeValue = document.getElementById("sizeValue");
+
+      const opacityValue = document.getElementById("opacityValue");
+
+      const flowValue = document.getElementById("flowValue");
+
+      const spacingValue = document.getElementById("spacingValue");
+
+      // =====================================================
+      // Config
+      // =====================================================
+
+      function updateBrush() {
+        painter.loadConfig({
+          color: colorPicker.value,
+          size: Number(sizeSlider.value),
+          opacity: Number(opacitySlider.value),
+          flow: Number(flowSlider.value),
+          spacing: Number(spacingSlider.value),
+          rotation: {
+            mode: rotationMode.value,
+            offset: (Number(rotationOffset.value) / 360) * Math.PI * 2,
+            jitter: (Number(rotationJitter.value) / 360) * Math.PI * 2,
+            smoothing: Number(rotationSmoothing.value),
+          },
         });
 
-        // =====================================================
-        // Elements
-        // =====================================================
+        painter.brush.isSmooth = smoothToggle.checked;
+        painter.brush.isSpacing = spacingToggle.checked;
+        status.textContent = "Brush Updated";
+      }
 
-        const clearBtn =
-            document.getElementById('clearBtn');
+      // =====================================================
+      // UI
+      // =====================================================
 
-        const undoBtn =
-            document.getElementById('undoBtn');
+      function updateValues() {
+        sizeValue.textContent = sizeSlider.value;
 
-        const redoBtn =
-            document.getElementById('redoBtn');
+        opacityValue.textContent = `${Math.round(
+          Number(opacitySlider.value) * 100,
+        )}%`;
 
-        const colorPicker =
-            document.getElementById('colorPicker');
+        flowValue.textContent = `${Math.round(
+          Number(flowSlider.value) * 100,
+        )}%`;
 
-        const sizeSlider =
-            document.getElementById('sizeSlider');
+        spacingValue.textContent = spacingSlider.value;
 
-        const opacitySlider =
-            document.getElementById('opacitySlider');
+        rotationOffsetValue.textContent = `${rotationOffset.value}°`;
 
-        const imageInput =
-            document.getElementById('imageInput');
+        rotationJitterValue.textContent = `${rotationJitter.value}°`;
 
-        const removeImageBtn =
-            document.getElementById('removeImageBtn');
+        rotationSmoothingValue.textContent = rotationSmoothing.value;
+      }
 
-        const flowSlider =
-            document.getElementById('flowSlider');
+      // =====================================================
+      // Events
+      // =====================================================
 
-        const spacingSlider =
-            document.getElementById('spacingSlider');
+      [
+        colorPicker,
+        sizeSlider,
+        opacitySlider,
+        flowSlider,
+        spacingSlider,
+        smoothToggle,
+        spacingToggle,
+        rotationMode,
+        rotationOffset,
+        rotationJitter,
+        rotationSmoothing,
+      ].forEach((el) => {
+        el.addEventListener("input", () => {
+          updateBrush();
 
-        const smoothToggle =
-            document.getElementById('smoothToggle');
-
-        const spacingToggle =
-            document.getElementById('spacingToggle');
-
-        const status =
-            document.getElementById('status');
-
-        const rotationMode =
-            document.getElementById('rotationMode');
-
-        const rotationOffset =
-            document.getElementById('rotationOffset');
-
-        const rotationJitter =
-            document.getElementById('rotationJitter');
-
-        const rotationSmoothing =
-            document.getElementById('rotationSmoothing');
-
-        const rotationOffsetValue =
-            document.getElementById('rotationOffsetValue');
-
-        const rotationJitterValue =
-            document.getElementById('rotationJitterValue');
-
-        const rotationSmoothingValue =
-            document.getElementById('rotationSmoothingValue');
-
-        // =====================================================
-        // Values
-        // =====================================================
-
-        const sizeValue =
-            document.getElementById('sizeValue');
-
-        const opacityValue =
-            document.getElementById('opacityValue');
-
-        const flowValue =
-            document.getElementById('flowValue');
-
-        const spacingValue =
-            document.getElementById('spacingValue');
-
-
-
-        // =====================================================
-        // Config
-        // =====================================================
-
-        function updateBrush() {
-            painter.loadConfig({
-                color: colorPicker.value,
-                size: Number(sizeSlider.value),
-                opacity: Number(opacitySlider.value),
-                flow: Number(flowSlider.value),
-                spacing: Number(spacingSlider.value),
-                rotation: {
-                    mode: rotationMode.value,
-                    offset: (Number(rotationOffset.value) / 360) * Math.PI * 2,
-                    jitter: (Number(rotationJitter.value) / 360) * Math.PI * 2,
-                    smoothing: Number(rotationSmoothing.value)
-                }
-            });
-
-            painter.brush.isSmooth = smoothToggle.checked;
-            painter.brush.isSpacing = spacingToggle.checked;
-            status.textContent = 'Brush Updated';
-        }
-
-        // =====================================================
-        // UI
-        // =====================================================
-
-        function updateValues() {
-
-            sizeValue.textContent =
-                sizeSlider.value;
-
-            opacityValue.textContent =
-                `${Math.round(
-                    Number(opacitySlider.value) * 100
-                )}%`;
-
-            flowValue.textContent =
-                `${Math.round(
-                    Number(flowSlider.value) * 100
-                )}%`;
-
-            spacingValue.textContent =
-                spacingSlider.value;
-
-            rotationOffsetValue.textContent =
-                `${rotationOffset.value}°`;
-
-            rotationJitterValue.textContent =
-                `${rotationJitter.value}°`;
-
-            rotationSmoothingValue.textContent =
-                rotationSmoothing.value;
-        }
-
-        // =====================================================
-        // Events
-        // =====================================================
-
-        [
-            colorPicker,
-            sizeSlider,
-            opacitySlider,
-            flowSlider,
-            spacingSlider,
-            smoothToggle,
-            spacingToggle,
-            rotationMode,
-            rotationOffset,
-            rotationJitter,
-            rotationSmoothing
-        ].forEach(el => {
-
-            el.addEventListener(
-                'input',
-                () => {
-
-                    updateBrush();
-
-                    updateValues();
-                }
-            );
+          updateValues();
         });
+      });
 
-        clearBtn.addEventListener(
-            'click',
-            () => {
+      clearBtn.addEventListener("click", () => {
+        painter.clear();
 
-                painter.clear();
+        status.textContent = "Canvas Cleared";
+      });
 
-                status.textContent =
-                    'Canvas Cleared';
-            }
-        );
+      undoBtn.addEventListener("click", () => {
+        painter.undo();
 
-        undoBtn.addEventListener(
-            'click',
-            () => {
+        status.textContent = "Undo";
+      });
 
-                painter.undo();
+      redoBtn.addEventListener("click", () => {
+        painter.redo();
 
-                status.textContent =
-                    'Undo';
-            }
-        );
+        status.textContent = "Redo";
+      });
 
-        redoBtn.addEventListener(
-            'click',
-            () => {
+      // =====================================================
+      // Brush Image Testing
+      // =====================================================
 
-                painter.redo();
+      imageInput.addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
 
-                status.textContent =
-                    'Redo';
-            }
-        );
+        if (!file) return;
 
-        // =====================================================
-        // Brush Image Testing
-        // =====================================================
+        try {
+          status.textContent = "Loading Brush Image...";
 
-        imageInput.addEventListener(
-            'change',
-            async (e) => {
+          const url = URL.createObjectURL(file);
 
-                const file =
-                    e.target.files?.[0];
+          await painter.loadImage(url);
 
-                if (!file) return;
+          status.textContent = "Brush Image Loaded ✅";
 
-                try {
+          console.log("[Fuderu] Brush image loaded successfully");
+        } catch (err) {
+          console.error(err);
 
-                    status.textContent =
-                        'Loading Brush Image...';
+          status.textContent = "Brush Image Failed ❌";
+        }
+      });
 
-                    const url =
-                        URL.createObjectURL(file);
+      removeImageBtn.addEventListener("click", () => {
+        painter.brush.removeImage();
 
-                    await painter.loadImage(url);
+        status.textContent = "Brush Image Removed";
+      });
 
-                    status.textContent =
-                        'Brush Image Loaded ✅';
+      // =====================================================
+      // Init
+      // =====================================================
 
-                    console.log(
-                        '[Fuderu] Brush image loaded successfully'
-                    );
+      updateBrush();
 
-                } catch (err) {
+      updateValues();
 
-                    console.error(err);
-
-                    status.textContent =
-                        'Brush Image Failed ❌';
-                }
-            }
-        );
-
-        removeImageBtn.addEventListener(
-            'click',
-            () => {
-
-                painter.brush.removeImage();
-
-                status.textContent =
-                    'Brush Image Removed';
-            }
-        );
-
-        // =====================================================
-        // Init
-        // =====================================================
-
-        updateBrush();
-
-        updateValues();
-
-        console.log(
-            'Fuderu Ready'
-        );
-
+      console.log("Fuderu Ready");
     </script>
-
-</body>
-
+  </body>
 </html>

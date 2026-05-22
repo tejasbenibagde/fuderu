@@ -4,7 +4,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { CustomTrigger } from "@/components/layout/sidebar-trigger";
 
 import { SidebarInset } from "@/components/ui/sidebar";
-import Canvas from "./canvas"
+import Canvas from "./canvas";
 
 export default function Home() {
   return (
@@ -18,9 +18,7 @@ export default function Home() {
             <CustomTrigger />
 
             <div className="flex flex-col">
-              <span className="text-sm font-semibold">
-                Brush Playground
-              </span>
+              <span className="text-sm font-semibold">Brush Playground</span>
 
               <span className="text-xs text-muted-foreground">
                 Next.js Environment

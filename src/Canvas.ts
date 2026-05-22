@@ -31,10 +31,7 @@ export class Canvas {
     this.setupCanvas();
 
     // NEW BRUSH
-    this.brush = new Brush(
-      this.canvas,
-      options.brush
-    );
+    this.brush = new Brush(this.canvas, options.brush);
 
     this.bindEvents();
   }
@@ -59,20 +56,11 @@ export class Canvas {
   }
 
   private bindEvents(): void {
-    this.canvas.addEventListener(
-      "pointerdown",
-      this.handlePointerDown
-    );
+    this.canvas.addEventListener("pointerdown", this.handlePointerDown);
 
-    this.canvas.addEventListener(
-      "pointermove",
-      this.handlePointerMove
-    );
+    this.canvas.addEventListener("pointermove", this.handlePointerMove);
 
-    window.addEventListener(
-      "pointerup",
-      this.handlePointerUp
-    );
+    window.addEventListener("pointerup", this.handlePointerUp);
   }
 
   private getPoint(e: PointerEvent) {
@@ -85,34 +73,22 @@ export class Canvas {
     };
   }
 
-  private handlePointerDown = (
-    e: PointerEvent
-  ) => {
+  private handlePointerDown = (e: PointerEvent) => {
     this.isDrawing = true;
 
     const p = this.getPoint(e);
 
-    this.brush.putPoint(
-      p.x,
-      p.y,
-      p.pressure
-    );
+    this.brush.putPoint(p.x, p.y, p.pressure);
 
     this.brush.render();
   };
 
-  private handlePointerMove = (
-    e: PointerEvent
-  ) => {
+  private handlePointerMove = (e: PointerEvent) => {
     if (!this.isDrawing) return;
 
     const p = this.getPoint(e);
 
-    this.brush.putPoint(
-      p.x,
-      p.y,
-      p.pressure
-    );
+    this.brush.putPoint(p.x, p.y, p.pressure);
 
     this.brush.render();
   };
@@ -153,26 +129,15 @@ export class Canvas {
     this.brush.loadConfig(config);
   }
 
-  loadImage(
-    img: HTMLImageElement | HTMLCanvasElement | string
-  ): Promise<void> {
+  loadImage(img: HTMLImageElement | HTMLCanvasElement | string): Promise<void> {
     return this.brush.loadImageAsync(img);
   }
 
   destroy(): void {
-    this.canvas.removeEventListener(
-      "pointerdown",
-      this.handlePointerDown
-    );
+    this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
 
-    this.canvas.removeEventListener(
-      "pointermove",
-      this.handlePointerMove
-    );
+    this.canvas.removeEventListener("pointermove", this.handlePointerMove);
 
-    window.removeEventListener(
-      "pointerup",
-      this.handlePointerUp
-    );
+    window.removeEventListener("pointerup", this.handlePointerUp);
   }
 }

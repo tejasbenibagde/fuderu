@@ -90,9 +90,7 @@ painter.clear();
 # 🖼️ Image Brushes
 
 ```ts
-await painter.loadImage(
-  "/brushes/star.png"
-);
+await painter.loadImage("/brushes/star.png");
 ```
 
 Fuderu supports custom image-based brush stamps using transparent images with optional direction-aware rotation.

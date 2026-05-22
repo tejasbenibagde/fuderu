@@ -19,7 +19,9 @@ npm run playground
 ```
 
 ### Next.js Playground
+
 Move into the Next.js playground directory:
+
 ```node
 cd playground/nextjs
 npm install

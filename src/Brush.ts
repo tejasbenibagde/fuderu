@@ -99,6 +99,12 @@ export class Brush {
     private previousRotationAngle: number = 0;;
     private lastProcessedPointForRotation?: PurePoint;
 
+    // Stroke history for retroactive redraw
+    // First-point rotation patch
+    private _pendingFirstPointIndex?: number;
+    // Stroke history for retroactive redraw
+    private strokeHistory: Point[] = [];
+
     private initSourceCanvas(canvas: HTMLCanvasElement) {
         this.canvas = canvas
         this.context = getContext(this.canvas)
@@ -215,16 +221,35 @@ export class Brush {
                 let rotation =
                     this.config.angle * Math.PI * 2;
 
-                // FLOW ROTATION
                 if (this.config.rotation) {
 
-                    // if first point in stroke
                     if (!this.lastProcessedPointForRotation) {
 
                         rotation +=
                             this.config.rotation.offset ?? 0;
 
+                        this._pendingFirstPointIndex =
+                            this.points.length;
+
                     } else {
+
+                        // Patch the first point's rotation now
+                        // that we know the real direction
+                        if (this._pendingFirstPointIndex !== undefined) {
+                            const firstPt =
+                                this.points[this._pendingFirstPointIndex];
+
+                            if (firstPt) {
+                                const realAngle = Math.atan2(
+                                    point.y - this.lastProcessedPointForRotation.y,
+                                    point.x - this.lastProcessedPointForRotation.x
+                                ) + (this.config.rotation.offset ?? 0);
+
+                                firstPt.rotation = realAngle;
+                            }
+
+                            this._pendingFirstPointIndex = undefined;
+                        }
 
                         rotation = calculateRotation(
                             this.lastProcessedPointForRotation.x,
@@ -265,13 +290,35 @@ export class Brush {
 
             if (this.config.rotation) {
 
-                // FIRST POINT
                 if (!this.lastProcessedPointForRotation) {
 
                     rotation +=
                         this.config.rotation.offset ?? 0;
 
+                    // Record index of this first point
+                    // so we can patch it when point 2 arrives
+                    this._pendingFirstPointIndex =
+                        this.points.length;
+
                 } else {
+
+                    // Second point just arrived — patch
+                    // the first point's rotation in the queue
+                    if (this._pendingFirstPointIndex !== undefined) {
+                        const firstPt =
+                            this.points[this._pendingFirstPointIndex];
+
+                        if (firstPt) {
+                            const realAngle = Math.atan2(
+                                y - this.lastProcessedPointForRotation.y,
+                                x - this.lastProcessedPointForRotation.x
+                            ) + (this.config.rotation.offset ?? 0);
+
+                            firstPt.rotation = realAngle;
+                        }
+
+                        this._pendingFirstPointIndex = undefined;
+                    }
 
                     rotation = calculateRotation(
                         this.lastProcessedPointForRotation.x,
@@ -417,6 +464,9 @@ export class Brush {
 
         const p = this.points.shift() as Point;
 
+        // Record into stroke history for future post-processing
+        this.strokeHistory.push(p);
+
         const rotation =
             p.rotation ??
             (-p.config.angle * Math.PI * 2);
@@ -424,12 +474,14 @@ export class Brush {
         this.strokeContext!.save();
 
         // flow
-        this.strokeContext!.globalAlpha =
-            p.config.flow;
+        this.strokeContext!.globalAlpha = p.config.flow;
 
-        // opacity
-        this.transferContext!.globalAlpha =
-            p.config.opacity;
+        // // opacity
+        // this.transferContext!.globalAlpha = p.config.opacity;
+
+        // final alpha
+        this.strokeContext!.globalAlpha =
+            p.config.flow * p.config.opacity;
 
         // IMAGE BRUSH
         if (this.shapeCanvas && this.shapeContext) {
@@ -469,12 +521,16 @@ export class Brush {
                 p.config.size /
                 this.shapeRatio;
 
-            this.strokeContext!.translate(
-                p.x,
-                p.y
-            );
-
+            this.strokeContext!.translate(p.x, p.y);
             this.strokeContext!.rotate(rotation);
+
+            // Apply per-stamp edge alpha if set
+            // (used for tip fade; edgeAlpha is 0.0–1.0)
+            if (p.edgeAlpha !== undefined) {
+                const prev = this.strokeContext!.globalAlpha;
+                this.strokeContext!.globalAlpha =
+                    prev * p.edgeAlpha;
+            }
 
             this.strokeContext!.drawImage(
                 this.shapeCanvas,
@@ -692,10 +748,12 @@ export class Brush {
         // FIRST POINT
         if (!this.prePoint || !this.isSpacing) {
 
+            // store first point only
+            // do NOT render yet because
+            // direction is unknown
+
             this.prePrePoint = this.prePoint;
             this.prePoint = { x, y, pressure };
-
-            this.processPoint(x, y, pressure);
 
             return;
         }
@@ -869,24 +927,29 @@ export class Brush {
      * and the beginning of the current pen, as well as other bugs
      */
     finalizeStroke(callback?: PointCallBack) {
-        this.prePoint = void 0
-        this.prePrePoint = void 0
+        this.prePoint = void 0;
+        this.prePrePoint = void 0;
         this.previousRotationAngle = 0;
-        this.lastProcessedPointForRotation = undefined; // Add this line
+        this.lastProcessedPointForRotation = undefined;
+        this._pendingFirstPointIndex = undefined;
+        this.strokeHistory = [];
+
         if (this.points.length > 0) {
-            this.points[this.points.length - 1].strokeEnd = true
-        }
-        if (this.points.length > 0) {
-            this.points[this.points.length - 1].strokeEnd = true
+            this.points[this.points.length - 1].strokeEnd = true;
         } else {
-            this.endStroke()
+            this.endStroke();
         }
+
         if (callback) {
             if (this.points.length === 0) {
                 try {
-                    callback()
-                } catch (err) { console.error(err) }
-            } else this.points[this.points.length - 1].callback = callback
+                    callback();
+                } catch (err) {
+                    console.error(err);
+                }
+            } else {
+                this.points[this.points.length - 1].callback = callback;
+            }
         }
     }
 

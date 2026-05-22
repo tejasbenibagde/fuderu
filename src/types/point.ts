@@ -14,6 +14,7 @@ export interface Point extends PurePoint {
     rotation?: number;
     strokeEnd?: boolean;
     callback?: PointCallBack;
+    edgeAlpha?: number;
 }
 
 export type PointCallBack = () => void;

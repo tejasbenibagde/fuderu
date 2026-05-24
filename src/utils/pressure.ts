@@ -1,9 +1,9 @@
 // src/utils/pressure.ts
 
 interface MPPoint {
-    x: number;
-    y: number;
-    pressure: number;
+  x: number;
+  y: number;
+  pressure: number;
 }
 
 /**
@@ -17,63 +17,70 @@ interface MPPoint {
  * @param maxRange Pixel distance considered "fast" → pressure falls (default 100)
  */
 export class MousePressure {
-    private readonly MIDDLE_PRESSURE = 0.5;
-    private readonly MAX_PRESSURE = 0.8;
-    private readonly MIN_PRESSURE = 0.2;
-    private readonly STEP = 0.01;
+  private readonly MIDDLE_PRESSURE = 0.5;
+  private readonly MAX_PRESSURE = 0.8;
+  private readonly MIN_PRESSURE = 0.2;
+  private readonly STEP = 0.01;
 
-    private K: number;
-    private minRange: number;
-    private maxRange: number;
+  private K: number;
+  private minRange: number;
+  private maxRange: number;
 
-    private _status = false;
-    private prePoint?: MPPoint;
+  private _status = false;
+  private prePoint?: MPPoint;
 
-    constructor(k = 3, minRange = 10, maxRange = 100) {
-        this.K = k;
-        this.minRange = minRange;
-        this.maxRange = maxRange;
-        this._status = true;
+  constructor(k = 3, minRange = 10, maxRange = 100) {
+    this.K = k;
+    this.minRange = minRange;
+    this.maxRange = maxRange;
+    this._status = true;
+  }
+
+  getPressure(x: number, y: number): number {
+    if (!this._status) return this.MIDDLE_PRESSURE;
+
+    if (!this.prePoint) {
+      this.prePoint = { x, y, pressure: this.MIDDLE_PRESSURE };
+      return this.MIDDLE_PRESSURE;
     }
 
-    getPressure(x: number, y: number): number {
-        if (!this._status) return this.MIDDLE_PRESSURE;
+    const distance = Math.sqrt(
+      (x - this.prePoint.x) ** 2 + (y - this.prePoint.y) ** 2,
+    );
 
-        if (!this.prePoint) {
-            this.prePoint = { x, y, pressure: this.MIDDLE_PRESSURE };
-            return this.MIDDLE_PRESSURE;
-        }
+    let range = this.prePoint.pressure;
 
-        const distance = Math.sqrt(
-            (x - this.prePoint.x) ** 2 +
-            (y - this.prePoint.y) ** 2
-        );
+    const t = 1 + (10 - 1) * (1 - Math.exp(-this.K * distance));
 
-        let range = this.prePoint.pressure;
-
-        const t = 1 + (10 - 1) * (1 - Math.exp(-this.K * distance));
-
-        if (distance < this.minRange) {
-            range += this.STEP * t;
-        } else if (distance > this.maxRange) {
-            range -= this.STEP * t;
-        } else {
-            if (range < this.MIDDLE_PRESSURE) range += this.STEP * t;
-            else if (range > this.MIDDLE_PRESSURE) range -= this.STEP * t;
-        }
-
-        range = Math.min(this.MAX_PRESSURE, Math.max(this.MIN_PRESSURE, range));
-
-        this.prePoint = { x, y, pressure: range };
-        return range;
+    if (distance < this.minRange) {
+      range += this.STEP * t;
+    } else if (distance > this.maxRange) {
+      range -= this.STEP * t;
+    } else {
+      if (range < this.MIDDLE_PRESSURE) range += this.STEP * t;
+      else if (range > this.MIDDLE_PRESSURE) range -= this.STEP * t;
     }
 
-    /** Call this after every stroke ends */
-    reset() {
-        this.prePoint = void 0;
-    }
+    range = Math.min(this.MAX_PRESSURE, Math.max(this.MIN_PRESSURE, range));
 
-    close() { this._status = false; this.reset(); }
-    open() { this._status = true; this.reset(); }
-    status() { return this._status; }
+    this.prePoint = { x, y, pressure: range };
+    return range;
+  }
+
+  /** Call this after every stroke ends */
+  reset() {
+    this.prePoint = void 0;
+  }
+
+  close() {
+    this._status = false;
+    this.reset();
+  }
+  open() {
+    this._status = true;
+    this.reset();
+  }
+  status() {
+    return this._status;
+  }
 }

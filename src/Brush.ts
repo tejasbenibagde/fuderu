@@ -344,16 +344,20 @@ export class Brush {
     rotation?: number,
   ): Point {
     const cnf = { ...this.config };
+
+    // Base Pressure Modulation
+    cnf.opacity = this.clamp01(cnf.opacity);
+    cnf.flow = cnf.flow * this.clamp01(pressure);
+    cnf.roundness = this.clamp01(cnf.roundness);
+    cnf.size = cnf.size * this.clamp01(pressure);
+
+    // Dynamic Pressure Modulation
     for (const [, module] of this.modules) {
       if (module.onChangeConfig) {
         module.onChangeConfig(cnf, pressure);
       }
     }
 
-    cnf.opacity = this.clamp01(cnf.opacity);
-    cnf.flow = cnf.flow * this.clamp01(pressure);
-    cnf.roundness = this.clamp01(cnf.roundness);
-    cnf.size = cnf.size * this.clamp01(pressure);
     return { x, y, pressure, config: cnf, rotation };
   }
   private getMixedCanvas(): [HTMLCanvasElement, CanvasRenderingContext2D] {

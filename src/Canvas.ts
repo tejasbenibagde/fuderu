@@ -17,16 +17,16 @@ export class Canvas {
   private isDrawing = false;
 
   /**
-    * The underlying pressure simulator.
-    * You can call .open() / .close() at runtime,
-    * or adjust K/minRange/maxRange by replacing it entirely.
-    */
+   * The underlying pressure simulator.
+   * You can call .open() / .close() at runtime,
+   * or adjust K/minRange/maxRange by replacing it entirely.
+   */
   public mousePressure: MousePressure;
 
   /**
-     * When true, mouse/touch events with no real pressure
-     * will use simulated pressure instead of a flat 1.0.
-     */
+   * When true, mouse/touch events with no real pressure
+   * will use simulated pressure instead of a flat 1.0.
+   */
   public pressureSimulation: boolean;
 
   constructor(options: CanvasOptions) {
@@ -79,7 +79,11 @@ export class Canvas {
     const y = e.clientY - rect.top;
 
     const hasRealPressure = e.pointerType === "pen" && e.pressure > 0;
-    const pressure = hasRealPressure ? e.pressure : this.pressureSimulation ? this.mousePressure.getPressure(x, y) : 1;
+    const pressure = hasRealPressure
+      ? e.pressure
+      : this.pressureSimulation
+        ? this.mousePressure.getPressure(x, y)
+        : 1;
 
     return { x, y, pressure };
   }
@@ -113,15 +117,26 @@ export class Canvas {
   // PUBLIC API
   // =========================
 
-  clear(): void { this.brush.clear(); }
-  undo(): void { this.brush.undo(); }
-  redo(): void { this.brush.redo(); }
+  clear(): void {
+    this.brush.clear();
+  }
+  undo(): void {
+    this.brush.undo();
+  }
+  redo(): void {
+    this.brush.redo();
+  }
 
-  setSmooth(enabled: boolean): void { this.brush.isSmooth = enabled; }
-  setSpacing(enabled: boolean): void { this.brush.isSpacing = enabled; }
+  setSmooth(enabled: boolean): void {
+    this.brush.isSmooth = enabled;
+  }
+  setSpacing(enabled: boolean): void {
+    this.brush.isSpacing = enabled;
+  }
 
-  loadConfig(config: BrushConfig): void { this.brush.loadConfig(config); }
-
+  loadConfig(config: BrushConfig): void {
+    this.brush.loadConfig(config);
+  }
 
   loadImage(img: HTMLImageElement | HTMLCanvasElement | string): Promise<void> {
     return this.brush.loadImageAsync(img);

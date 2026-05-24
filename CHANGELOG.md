@@ -10,6 +10,8 @@
 - Rotation offset support
 - Rotation jitter/randomization support
 - Path-following image stamp rendering
+- Added the modular features like Jitter, Spacing, Angle Jitters, Round Jitters, etc.
+- Added the pressure simulations.
 
 ---
 

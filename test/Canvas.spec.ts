@@ -1,7 +1,9 @@
-import { describe, expect, it, beforeAll, vi } from "vitest";
+import { describe, expect, it, beforeAll, beforeEach, vi } from "vitest";
 import { Canvas } from "../src/Canvas";
 
 const mockBrushInstance = {
+  isSmooth: true,
+  isSpacing: true,
   putPoint: vi.fn(),
   render: vi.fn(),
   finalizeStroke: vi.fn(),
@@ -73,6 +75,12 @@ beforeAll(() => {
   });
 });
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockBrushInstance.isSmooth = true;
+  mockBrushInstance.isSpacing = true;
+});
+
 describe("Canvas", () => {
   const createCanvas = () => {
     const canvas = document.createElement("canvas");
@@ -123,6 +131,17 @@ describe("Canvas", () => {
     expect(canvas.height).toBe(500);
   });
 
+  it("should enable pressure simulation by default", () => {
+    const canvas = createCanvas();
+
+    const instance = new Canvas({
+      canvas,
+    });
+
+    expect(instance.pressureSimulation).toBe(true);
+    expect(instance.mousePressure.status()).toBe(true);
+  });
+
   it("should expose clear method", () => {
     const canvas = createCanvas();
 
@@ -171,6 +190,34 @@ describe("Canvas", () => {
     expect(mockBrushInstance.loadConfig).toHaveBeenCalledWith(config);
   });
 
+  it("should expose smoothing and spacing toggles", () => {
+    const canvas = createCanvas();
+
+    const instance = new Canvas({
+      canvas,
+    });
+
+    instance.setSmooth(false);
+    instance.setSpacing(false);
+
+    expect(mockBrushInstance.isSmooth).toBe(false);
+    expect(mockBrushInstance.isSpacing).toBe(false);
+  });
+
+  it("should expose loadImage method", async () => {
+    const canvas = createCanvas();
+    const imageCanvas = document.createElement("canvas");
+
+    mockBrushInstance.loadImageAsync.mockResolvedValueOnce(undefined);
+
+    const instance = new Canvas({
+      canvas,
+    });
+
+    await expect(instance.loadImage(imageCanvas)).resolves.toBeUndefined();
+    expect(mockBrushInstance.loadImageAsync).toHaveBeenCalledWith(imageCanvas);
+  });
+
   it("should destroy event listeners safely", () => {
     const canvas = createCanvas();
 
@@ -213,5 +260,68 @@ describe("Canvas", () => {
     expect(mockBrushInstance.render).toHaveBeenCalled();
 
     expect(mockBrushInstance.finalizeStroke).toHaveBeenCalled();
+  });
+
+  it("should use real pen pressure when available", () => {
+    const canvas = createCanvas();
+
+    new Canvas({
+      canvas,
+    });
+
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        clientX: 100,
+        clientY: 100,
+        pointerType: "pen",
+        pressure: 0.42,
+      }),
+    );
+
+    expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(
+      100,
+      100,
+      expect.closeTo(0.42),
+    );
+  });
+
+  it("should simulate mouse pressure when enabled", () => {
+    const canvas = createCanvas();
+
+    new Canvas({
+      canvas,
+      pressureSimulation: true,
+    });
+
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        clientX: 100,
+        clientY: 100,
+        pointerType: "mouse",
+        pressure: 0,
+      }),
+    );
+
+    expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(100, 100, 0.5);
+  });
+
+  it("should use flat pressure when pressure simulation is disabled", () => {
+    const canvas = createCanvas();
+
+    new Canvas({
+      canvas,
+      pressureSimulation: false,
+    });
+
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        clientX: 100,
+        clientY: 100,
+        pointerType: "mouse",
+        pressure: 0,
+      }),
+    );
+
+    expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(100, 100, 1);
   });
 });

@@ -1,12 +1,14 @@
-import { describe, expect, it, beforeAll, vi } from "vitest";
+import { describe, expect, it, beforeAll, beforeEach, vi } from "vitest";
 import { Brush } from "../src/Brush";
+
+let mockContext: CanvasRenderingContext2D;
 
 // ─────────────────────────────────────────────
 // Shared mock context (covers every canvas the
 // Brush creates internally: ori, stroke, transfer)
 // ─────────────────────────────────────────────
 beforeAll(() => {
-  const mockContext = {
+  mockContext = {
     clearRect: vi.fn(),
     drawImage: vi.fn(),
     getImageData: vi.fn(() => ({
@@ -37,6 +39,10 @@ beforeAll(() => {
       return null;
     },
   );
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
 });
 
 // ─────────────────────────────────────────────
@@ -291,5 +297,62 @@ describe("Brush — modules", () => {
     const id1 = brush.useModule(module);
     const id2 = brush.useModule(module);
     expect(id1).toBe(id2);
+  });
+
+  it("applies base pressure modulation before module config changes", () => {
+    const brush = new Brush(createMockCanvas());
+    const onChangeConfig = vi.fn();
+
+    brush.isSmooth = false;
+    brush.useModule({ onChangeConfig });
+
+    brush.putPoint(0, 0, 0.5);
+    brush.putPoint(100, 0, 0.5);
+
+    expect(onChangeConfig).toHaveBeenCalled();
+
+    const [config, pressure] = onChangeConfig.mock.calls[0];
+
+    expect(pressure).toBe(0.5);
+    expect(config.size).toBe(10);
+    expect(config.flow).toBe(0.5);
+    expect(config.opacity).toBe(1);
+  });
+
+  it("allows point modules to emit multiple points", () => {
+    const brush = new Brush(createMockCanvas());
+    const onChangePoint = vi.fn((point) => [
+      point,
+      { ...point, x: point.x + 1 },
+    ]);
+    const onChangeConfig = vi.fn();
+
+    brush.isSmooth = false;
+    brush.useModule({ onChangePoint, onChangeConfig });
+
+    brush.putPoint(0, 0, 1);
+    brush.putPoint(100, 0, 1);
+
+    expect(onChangePoint).toHaveBeenCalled();
+    expect(onChangeConfig.mock.calls.length).toBeGreaterThan(
+      onChangePoint.mock.calls.length,
+    );
+  });
+
+  it("runs mixin and end-stroke module hooks when a stroke ends", () => {
+    const brush = new Brush(createMockCanvas());
+    const onMixinCanvas = vi.fn(
+      (
+        canvas: HTMLCanvasElement,
+        context: CanvasRenderingContext2D,
+      ): [HTMLCanvasElement, CanvasRenderingContext2D] => [canvas, context],
+    );
+    const onEndStroke = vi.fn();
+
+    brush.useModule({ onMixinCanvas, onEndStroke });
+    brush.finalizeStroke();
+
+    expect(onMixinCanvas).toHaveBeenCalled();
+    expect(onEndStroke).toHaveBeenCalled();
   });
 });

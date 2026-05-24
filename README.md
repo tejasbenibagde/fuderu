@@ -1,14 +1,10 @@
-<table align="center">
-<tr>
-<td align="center">
+<p align="center">
   <img
-    src="https://raw.githubusercontent.com/tejasbenibagde/fuderu/main/public/icon.png"
+    src="https://raw.githubusercontent.com/tejasbenibagde/fuderu/main/public/fuderu.png"
     alt="Fuderu Logo"
-    width="80"
+    width="420"
   />
-</td>
-</tr>
-</table>
+</p>
 
 <p align="center">
   Lightweight, extensible canvas drawing engine for the web.

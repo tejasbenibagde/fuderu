@@ -1,9 +1,6 @@
 // src/modules/pattern.ts
 
-import {
-  PatternBasicConfig,
-  PatternConfig,
-} from "../types/pattern";
+import { PatternBasicConfig, PatternConfig } from "../types/pattern";
 
 const defaultConfig: PatternBasicConfig = {
   scale: 1.0,
@@ -28,13 +25,11 @@ export class PatternModule {
 
   private patternCanvas = document.createElement("canvas");
 
-  private patternContext =
-    this.patternCanvas.getContext("2d")!;
+  private patternContext = this.patternCanvas.getContext("2d")!;
 
   private blendCanvas = document.createElement("canvas");
 
-  private blendContext =
-    this.blendCanvas.getContext("2d")!;
+  private blendContext = this.blendCanvas.getContext("2d")!;
 
   constructor(config?: PatternConfig) {
     this.config = {
@@ -51,9 +46,7 @@ export class PatternModule {
 
   // ─────────────────────────────────────────────
 
-  private async loadImageFromUrl(
-    url: string,
-  ): Promise<HTMLCanvasElement> {
+  private async loadImageFromUrl(url: string): Promise<HTMLCanvasElement> {
     return new Promise((resolve, reject) => {
       const image = new Image();
 
@@ -67,9 +60,7 @@ export class PatternModule {
     });
   }
 
-  private imageToCanvas(
-    image: HTMLImageElement,
-  ): HTMLCanvasElement {
+  private imageToCanvas(image: HTMLImageElement): HTMLCanvasElement {
     const canvas = document.createElement("canvas");
 
     canvas.width = image.naturalWidth;
@@ -122,13 +113,7 @@ export class PatternModule {
       ctx.filter = filter.trim();
     }
 
-    ctx.drawImage(
-      image,
-      0,
-      0,
-      scaled.width,
-      scaled.height,
-    );
+    ctx.drawImage(image, 0, 0, scaled.width, scaled.height);
 
     if (tint) {
       ctx.globalCompositeOperation = "multiply";
@@ -151,28 +136,15 @@ export class PatternModule {
     this.blendCanvas.height = canvasHeight;
 
     this.pattern =
-      this.patternContext.createPattern(
-        scaled,
-        "repeat",
-      ) ?? undefined;
+      this.patternContext.createPattern(scaled, "repeat") ?? undefined;
 
     if (!this.pattern) return;
 
-    this.patternContext.clearRect(
-      0,
-      0,
-      canvasWidth,
-      canvasHeight,
-    );
+    this.patternContext.clearRect(0, 0, canvasWidth, canvasHeight);
 
     this.patternContext.fillStyle = this.pattern;
 
-    this.patternContext.fillRect(
-      0,
-      0,
-      canvasWidth,
-      canvasHeight,
-    );
+    this.patternContext.fillRect(0, 0, canvasWidth, canvasHeight);
   }
 
   removePattern(): void {
@@ -196,24 +168,17 @@ export class PatternModule {
       this.blendCanvas.height,
     );
 
-    this.blendContext.drawImage(
-      this.patternCanvas,
-      0,
-      0,
-    );
+    this.blendContext.drawImage(this.patternCanvas, 0, 0);
 
-    this.blendContext.globalCompositeOperation =
-      "destination-in";
+    this.blendContext.globalCompositeOperation = "destination-in";
 
     this.blendContext.drawImage(strokeCanvas, 0, 0);
 
-    this.blendContext.globalCompositeOperation =
-      this.config.blendMode;
+    this.blendContext.globalCompositeOperation = this.config.blendMode;
 
     this.blendContext.drawImage(strokeCanvas, 0, 0);
 
-    this.blendContext.globalCompositeOperation =
-      "source-over";
+    this.blendContext.globalCompositeOperation = "source-over";
 
     return [this.blendCanvas, this.blendContext];
   }

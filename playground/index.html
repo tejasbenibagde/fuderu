@@ -1,671 +1,735 @@
 <!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fuderu Demo</title>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fuderu Demo</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+      body {
+        background: #0f172a;
+        color: white;
+        font-family: sans-serif;
+        min-height: 100vh;
+        padding: 20px;
+      }
 
-    body {
-      background: #0f172a;
-      color: white;
-      font-family: sans-serif;
-      min-height: 100vh;
-      padding: 20px;
-    }
+      .container {
+        max-width: 1400px;
+        margin: auto;
+      }
 
-    .container {
-      max-width: 1400px;
-      margin: auto;
-    }
+      canvas {
+        width: 100%;
+        height: 700px;
+        background: white;
+        border-radius: 16px;
+        display: block;
+        touch-action: none;
+        cursor: crosshair;
+      }
 
-    canvas {
-      width: 100%;
-      height: 700px;
-      background: white;
-      border-radius: 16px;
-      display: block;
-      touch-action: none;
-      cursor: crosshair;
-    }
+      .toolbar {
+        margin-top: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
 
-    .toolbar {
-      margin-top: 16px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
+      .group {
+        background: #1e293b;
+        border-radius: 12px;
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
 
-    .group {
-      background: #1e293b;
-      border-radius: 12px;
-      padding: 10px 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+      .group label {
+        font-size: 13px;
+        font-weight: 600;
+      }
 
-    .group label {
-      font-size: 13px;
-      font-weight: 600;
-    }
+      .group input[type="range"] {
+        width: 120px;
+      }
 
-    .group input[type="range"] {
-      width: 120px;
-    }
+      .group.pressure-group {
+        border: 1px solid #334155;
+      }
 
-    .group.pressure-group {
-      border: 1px solid #334155;
-    }
+      .value {
+        min-width: 45px;
+        text-align: center;
+        color: #60a5fa;
+        font-size: 12px;
+        font-weight: bold;
+      }
 
-    .value {
-      min-width: 45px;
-      text-align: center;
-      color: #60a5fa;
-      font-size: 12px;
-      font-weight: bold;
-    }
+      button {
+        border: none;
+        background: #2563eb;
+        color: white;
+        padding: 10px 16px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: 0.2s ease;
+      }
 
-    button {
-      border: none;
-      background: #2563eb;
-      color: white;
-      padding: 10px 16px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: 0.2s ease;
-    }
+      button:hover {
+        background: #3b82f6;
+        transform: translateY(-1px);
+      }
 
-    button:hover {
-      background: #3b82f6;
-      transform: translateY(-1px);
-    }
+      .status {
+        margin-left: auto;
+        background: #1e293b;
+        padding: 10px 16px;
+        border-radius: 999px;
+        color: #93c5fd;
+        font-size: 13px;
+        font-weight: 600;
+      }
 
-    .status {
-      margin-left: auto;
-      background: #1e293b;
-      padding: 10px 16px;
-      border-radius: 999px;
-      color: #93c5fd;
-      font-size: 13px;
-      font-weight: 600;
-    }
+      /* Live pressure meter */
+      .pressure-meter {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 220px;
+      }
 
-    /* Live pressure meter */
-    .pressure-meter {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 10px 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 220px;
-    }
+      .pressure-meter label {
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
 
-    .pressure-meter label {
-      font-size: 13px;
-      font-weight: 600;
-      white-space: nowrap;
-    }
+      .pressure-bar-track {
+        flex: 1;
+        height: 8px;
+        background: #0f172a;
+        border-radius: 99px;
+        overflow: hidden;
+      }
 
-    .pressure-bar-track {
-      flex: 1;
-      height: 8px;
-      background: #0f172a;
-      border-radius: 99px;
-      overflow: hidden;
-    }
+      .pressure-bar-fill {
+        height: 100%;
+        width: 50%;
+        border-radius: 99px;
+        background: linear-gradient(90deg, #3b82f6, #06b6d4);
+        transition: width 0.05s linear;
+      }
 
-    .pressure-bar-fill {
-      height: 100%;
-      width: 50%;
-      border-radius: 99px;
-      background: linear-gradient(90deg, #3b82f6, #06b6d4);
-      transition: width 0.05s linear;
-    }
+      .pressure-value {
+        min-width: 38px;
+        text-align: right;
+        color: #60a5fa;
+        font-size: 12px;
+        font-weight: bold;
+      }
 
-    .pressure-value {
-      min-width: 38px;
-      text-align: right;
-      color: #60a5fa;
-      font-size: 12px;
-      font-weight: bold;
-    }
+      .info {
+        margin-top: 18px;
+        background: #1e293b;
+        border-radius: 14px;
+        padding: 16px;
+        line-height: 1.7;
+        font-size: 14px;
+      }
 
-    .info {
-      margin-top: 18px;
-      background: #1e293b;
-      border-radius: 14px;
-      padding: 16px;
-      line-height: 1.7;
-      font-size: 14px;
-    }
+      .info span {
+        color: #60a5fa;
+        font-weight: bold;
+      }
 
-    .info span {
-      color: #60a5fa;
-      font-weight: bold;
-    }
+      .success {
+        color: #4ade80;
+      }
 
-    .success {
-      color: #4ade80;
-    }
+      .warning {
+        color: #facc15;
+      }
+    </style>
+  </head>
 
-    .warning {
-      color: #facc15;
-    }
-  </style>
-</head>
+  <body>
+    <div class="container">
+      <canvas id="canvas"></canvas>
 
-<body>
-  <div class="container">
-    <canvas id="canvas"></canvas>
+      <div class="toolbar">
+        <button id="clearBtn">🧹 Clear</button>
+        <button id="undoBtn">↩️ Undo</button>
+        <button id="redoBtn">↪️ Redo</button>
 
-    <div class="toolbar">
-      <button id="clearBtn">🧹 Clear</button>
-      <button id="undoBtn">↩️ Undo</button>
-      <button id="redoBtn">↪️ Redo</button>
-
-      <div class="group">
-        <label>🎨 Color</label>
-        <input type="color" id="colorPicker" value="#000000" />
-      </div>
-
-      <div class="group">
-        <label>📏 Size</label>
-        <input type="range" id="sizeSlider" min="1" max="120" value="20" />
-        <span class="value" id="sizeValue">20</span>
-      </div>
-
-      <div class="group">
-        <label>✨ Opacity</label>
-        <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="1" />
-        <span class="value" id="opacityValue">100%</span>
-      </div>
-
-      <div class="group">
-        <label>💧 Flow</label>
-        <input type="range" id="flowSlider" min="0" max="1" step="0.01" value="1" />
-        <span class="value" id="flowValue">100%</span>
-      </div>
-
-      <div class="group">
-        <label>🌀 Spacing</label>
-        <input type="range" id="spacingSlider" min="0.1" max="5" step="0.1" value="0.5" />
-        <span class="value" id="spacingValue">0.5</span>
-      </div>
-
-      <div class="group">
-        <label>🧭 Rotation Mode</label>
-        <select id="rotationMode">
-          <option value="fixed">Fixed</option>
-          <option value="flow">Flow</option>
-          <option value="random">Random</option>
-        </select>
-      </div>
-
-      <div class="group">
-        <label>📐 Rotation Offset</label>
-        <input type="range" id="rotationOffset" min="0" max="360" value="0" />
-        <span class="value" id="rotationOffsetValue">0°</span>
-      </div>
-
-      <div class="group">
-        <label>🎲 Rotation Jitter</label>
-        <input type="range" id="rotationJitter" min="0" max="180" value="0" />
-        <span class="value" id="rotationJitterValue">0°</span>
-      </div>
-
-      <div class="group">
-        <label>🪶 Rotation Smooth</label>
-        <input type="range" id="rotationSmoothing" min="0" max="1" step="0.01" value="0.15" />
-        <span class="value" id="rotationSmoothingValue">0.15</span>
-      </div>
-
-      <div class="group">
-        <label>🧠 Smooth</label>
-        <input type="checkbox" id="smoothToggle" checked />
-      </div>
-
-      <div class="group">
-        <label>📍 Interpolation</label>
-        <input type="checkbox" id="spacingToggle" checked />
-      </div>
-
-      <div class="group">
-        <label>🖼️ Brush Image</label>
-        <input type="file" id="imageInput" accept="image/png,image/webp,image/jpeg" />
-      </div>
-
-      <button id="removeImageBtn">Remove Brush Image</button>
-
-      <!-- PRESSURE SIMULATION -->
-      <div class="group pressure-group">
-        <label>🖊️ Pressure Sim</label>
-        <input type="checkbox" id="pressureToggle" checked />
-      </div>
-
-      <div class="group pressure-group">
-        <label>⚡ Pressure K</label>
-        <input type="range" id="pressureK" min="1" max="10" step="0.1" value="3" />
-        <span class="value" id="pressureKValue">3.0</span>
-      </div>
-
-      <div class="group pressure-group">
-        <label>🐢 Min Range</label>
-        <input type="range" id="pressureMin" min="1" max="50" value="10" />
-        <span class="value" id="pressureMinValue">10px</span>
-      </div>
-
-      <div class="group pressure-group">
-        <label>🐇 Max Range</label>
-        <input type="range" id="pressureMax" min="20" max="300" value="100" />
-        <span class="value" id="pressureMaxValue">100px</span>
-      </div>
-
-      <!-- LIVE PRESSURE METER -->
-      <div class="pressure-meter">
-        <label>📊 Live Pressure</label>
-        <div class="pressure-bar-track">
-          <div class="pressure-bar-fill" id="pressureBarFill"></div>
+        <div class="group">
+          <label>🎨 Color</label>
+          <input type="color" id="colorPicker" value="#000000" />
         </div>
-        <span class="pressure-value" id="pressureLiveValue">0.50</span>
+
+        <div class="group">
+          <label>📏 Size</label>
+          <input type="range" id="sizeSlider" min="1" max="120" value="20" />
+          <span class="value" id="sizeValue">20</span>
+        </div>
+
+        <div class="group">
+          <label>✨ Opacity</label>
+          <input
+            type="range"
+            id="opacitySlider"
+            min="0"
+            max="1"
+            step="0.01"
+            value="1"
+          />
+          <span class="value" id="opacityValue">100%</span>
+        </div>
+
+        <div class="group">
+          <label>💧 Flow</label>
+          <input
+            type="range"
+            id="flowSlider"
+            min="0"
+            max="1"
+            step="0.01"
+            value="1"
+          />
+          <span class="value" id="flowValue">100%</span>
+        </div>
+
+        <div class="group">
+          <label>🌀 Spacing</label>
+          <input
+            type="range"
+            id="spacingSlider"
+            min="0.1"
+            max="5"
+            step="0.1"
+            value="0.5"
+          />
+          <span class="value" id="spacingValue">0.5</span>
+        </div>
+
+        <div class="group">
+          <label>🧭 Rotation Mode</label>
+          <select id="rotationMode">
+            <option value="fixed">Fixed</option>
+            <option value="flow">Flow</option>
+            <option value="random">Random</option>
+          </select>
+        </div>
+
+        <div class="group">
+          <label>📐 Rotation Offset</label>
+          <input type="range" id="rotationOffset" min="0" max="360" value="0" />
+          <span class="value" id="rotationOffsetValue">0°</span>
+        </div>
+
+        <div class="group">
+          <label>🎲 Rotation Jitter</label>
+          <input type="range" id="rotationJitter" min="0" max="180" value="0" />
+          <span class="value" id="rotationJitterValue">0°</span>
+        </div>
+
+        <div class="group">
+          <label>🪶 Rotation Smooth</label>
+          <input
+            type="range"
+            id="rotationSmoothing"
+            min="0"
+            max="1"
+            step="0.01"
+            value="0.15"
+          />
+          <span class="value" id="rotationSmoothingValue">0.15</span>
+        </div>
+
+        <div class="group">
+          <label>🧠 Smooth</label>
+          <input type="checkbox" id="smoothToggle" checked />
+        </div>
+
+        <div class="group">
+          <label>📍 Interpolation</label>
+          <input type="checkbox" id="spacingToggle" checked />
+        </div>
+
+        <div class="group">
+          <label>🖼️ Brush Image</label>
+          <input
+            type="file"
+            id="imageInput"
+            accept="image/png,image/webp,image/jpeg"
+          />
+        </div>
+
+        <button id="removeImageBtn">Remove Brush Image</button>
+
+        <!-- PRESSURE SIMULATION -->
+        <div class="group pressure-group">
+          <label>🖊️ Pressure Sim</label>
+          <input type="checkbox" id="pressureToggle" checked />
+        </div>
+
+        <div class="group pressure-group">
+          <label>⚡ Pressure K</label>
+          <input
+            type="range"
+            id="pressureK"
+            min="1"
+            max="10"
+            step="0.1"
+            value="3"
+          />
+          <span class="value" id="pressureKValue">3.0</span>
+        </div>
+
+        <div class="group pressure-group">
+          <label>🐢 Min Range</label>
+          <input type="range" id="pressureMin" min="1" max="50" value="10" />
+          <span class="value" id="pressureMinValue">10px</span>
+        </div>
+
+        <div class="group pressure-group">
+          <label>🐇 Max Range</label>
+          <input type="range" id="pressureMax" min="20" max="300" value="100" />
+          <span class="value" id="pressureMaxValue">100px</span>
+        </div>
+
+        <!-- LIVE PRESSURE METER -->
+        <div class="pressure-meter">
+          <label>📊 Live Pressure</label>
+          <div class="pressure-bar-track">
+            <div class="pressure-bar-fill" id="pressureBarFill"></div>
+          </div>
+          <span class="pressure-value" id="pressureLiveValue">0.50</span>
+        </div>
+
+        <div class="group">
+          <label>🎲 Size Jitter</label>
+          <input
+            type="range"
+            id="sizeJitter"
+            min="0"
+            max="1"
+            step="0.01"
+            value="0.2"
+          />
+          <span class="value" id="sizeJitterValue">0.20</span>
+        </div>
+
+        <div class="group">
+          <label>🌀 Angle Jitter</label>
+          <input
+            type="range"
+            id="angleJitter"
+            min="0"
+            max="1"
+            step="0.01"
+            value="0.1"
+          />
+          <span class="value" id="angleJitterValue">0.10</span>
+        </div>
+
+        <div class="group">
+          <label>🥚 Round Jitter</label>
+          <input
+            type="range"
+            id="roundJitter"
+            min="0"
+            max="1"
+            step="0.01"
+            value="0.15"
+          />
+          <span class="value" id="roundJitterValue">0.15</span>
+        </div>
+
+        <div class="status" id="status">Ready</div>
       </div>
 
       <div class="group">
-        <label>🎲 Size Jitter</label>
-        <input type="range" id="sizeJitter" min="0" max="1" step="0.01" value="0.2" />
-        <span class="value" id="sizeJitterValue">0.20</span>
+        <label>🌫️ Spread</label>
+        <input
+          type="range"
+          id="spreadRadius"
+          min="0"
+          max="20"
+          step="1"
+          value="4"
+        />
+        <span class="value" id="spreadRadiusValue">4</span>
       </div>
 
-      <div class="group">
-        <label>🌀 Angle Jitter</label>
-        <input type="range" id="angleJitter" min="0" max="1" step="0.01" value="0.1" />
-        <span class="value" id="angleJitterValue">0.10</span>
+      <div class="info">
+        <span>Fuderu Current Verified Features</span><br /><br />
+
+        <span class="success">✅ Verified In Real Usage</span><br />
+        • Runtime brush config updates<br />
+        • Brush interpolation rendering<br />
+        • Adaptive spacing system<br />
+        • Density compensation system<br />
+        • High-DPI canvas rendering<br />
+        • Pointer/mouse/touch support<br />
+        • Runtime brush size updates<br />
+        • Runtime opacity updates<br />
+        • Runtime flow updates<br />
+        • Runtime color updates<br />
+        • Canvas clearing<br />
+        • Undo / Redo stack<br />
+        • Coordinate normalization<br />
+        • Canvas resize preservation<br />
+        • Smooth brush movement<br />
+        • Canvas cleanup lifecycle<br />
+        • Runtime interpolation toggles<br />
+        • Runtime smoothing toggles<br />
+        • Mouse pressure simulation (speed → pressure)<br />
+        • Live pressure meter<br />
+
+        <br />
+
+        <span class="warning">🚧 Still Experimental / Needs Validation</span
+        ><br />
+        • Brush image loading in real-world apps<br />
+        • Complex brush accumulation behavior<br />
+        • Very large canvas performance<br />
+        • Multi-device touch validation<br />
+        • Mobile browser rendering consistency<br />
       </div>
-
-      <div class="group">
-        <label>🥚 Round Jitter</label>
-        <input type="range" id="roundJitter" min="0" max="1" step="0.01" value="0.15" />
-        <span class="value" id="roundJitterValue">0.15</span>
-      </div>
-
-      <div class="status" id="status">Ready</div>
     </div>
 
-    <div class="group">
-      <label>🌫️ Spread</label>
-      <input type="range" id="spreadRadius" min="0" max="20" step="1" value="4" />
-      <span class="value" id="spreadRadiusValue">4</span>
-    </div>
+    <script type="module">
+      // FIX: MousePressure imported here so updatePressure() can call
+      //      `new MousePressure(...)` in this module scope.
+      import { Canvas } from "../src/Canvas.ts";
+      import { MousePressure } from "../src/utils/pressure.ts";
 
-    <div class="info">
-      <span>Fuderu Current Verified Features</span><br /><br />
+      // Modules
+      import { DynamicShapeModule } from "../src/modules/dynamicShape.ts";
+      import { DynamicTransparencyModule } from "../src/modules/dynamicTransparency.ts";
+      import { SpreadModule } from "../src/modules/spread.ts";
+      import { PatternModule } from "../src/modules/pattern.ts";
 
-      <span class="success">✅ Verified In Real Usage</span><br />
-      • Runtime brush config updates<br />
-      • Brush interpolation rendering<br />
-      • Adaptive spacing system<br />
-      • Density compensation system<br />
-      • High-DPI canvas rendering<br />
-      • Pointer/mouse/touch support<br />
-      • Runtime brush size updates<br />
-      • Runtime opacity updates<br />
-      • Runtime flow updates<br />
-      • Runtime color updates<br />
-      • Canvas clearing<br />
-      • Undo / Redo stack<br />
-      • Coordinate normalization<br />
-      • Canvas resize preservation<br />
-      • Smooth brush movement<br />
-      • Canvas cleanup lifecycle<br />
-      • Runtime interpolation toggles<br />
-      • Runtime smoothing toggles<br />
-      • Mouse pressure simulation (speed → pressure)<br />
-      • Live pressure meter<br />
+      // =====================================================
+      // Canvas
+      // =====================================================
 
-      <br />
+      const painter = new Canvas({
+        canvas: "#canvas",
+        pressureSimulation: true,
+        brush: {
+          size: 20,
+          opacity: 1,
+          flow: 1,
+          color: "#000000",
+          spacing: 0.08,
+          rotation: { mode: "fixed", offset: 0, jitter: 0, smoothing: 0.15 },
+        },
+      });
 
-      <span class="warning">🚧 Still Experimental / Needs Validation</span><br />
-      • Brush image loading in real-world apps<br />
-      • Complex brush accumulation behavior<br />
-      • Very large canvas performance<br />
-      • Multi-device touch validation<br />
-      • Mobile browser rendering consistency<br />
-    </div>
-  </div>
+      // =====================================================
+      // Modules
+      // =====================================================
 
-  <script type="module">
-    // FIX: MousePressure imported here so updatePressure() can call
-    //      `new MousePressure(...)` in this module scope.
-    import { Canvas } from "../src/Canvas.ts";
-    import { MousePressure } from "../src/utils/pressure.ts";
+      // =====================================================
+      // Modules
+      // =====================================================
 
-    // Modules
-    import { DynamicShapeModule } from "../src/modules/dynamicShape.ts";
-    import { DynamicTransparencyModule } from "../src/modules/dynamicTransparency.ts";
-    import { SpreadModule } from "../src/modules/spread.ts";
-    import { PatternModule } from "../src/modules/pattern.ts";
+      const dynamicShape = new DynamicShapeModule({
+        sizeJitter: 0,
+        angleJitter: 0,
+        roundJitter: 0,
+        minDiameter: 0.25,
+        minRoundness: 0.3,
+      });
 
-    // =====================================================
-    // Canvas
-    // =====================================================
+      const dynamicTransparency = new DynamicTransparencyModule({
+        opacityJitter: 0.1,
+        flowJitter: 0.1,
+      });
 
-    const painter = new Canvas({
-      canvas: "#canvas",
-      pressureSimulation: true,
-      brush: {
-        size: 20,
-        opacity: 1,
-        flow: 1,
-        color: "#000000",
-        spacing: 0.08,
-        rotation: { mode: "fixed", offset: 0, jitter: 0, smoothing: 0.15 },
-      },
-    });
+      const spread = new SpreadModule({
+        spreadRange: 0,
+        count: 0,
+      });
 
-    // =====================================================
-    // Modules
-    // =====================================================
+      const pattern = new PatternModule({
+        spacingMultiplier: 1,
+      });
 
-    // =====================================================
-    // Modules
-    // =====================================================
+      // IMPORTANT: use brush.useModule()
+      painter.brush.useModule(dynamicShape);
+      painter.brush.useModule(dynamicTransparency);
+      painter.brush.useModule(spread);
+      painter.brush.useModule(pattern);
 
-    const dynamicShape = new DynamicShapeModule({
-      sizeJitter: 0,
-      angleJitter: 0,
-      roundJitter: 0,
-      minDiameter: 0.25,
-      minRoundness: 0.3,
-    });
+      // =====================================================
+      // Elements
+      // =====================================================
 
-    const dynamicTransparency = new DynamicTransparencyModule({
-      opacityJitter: 0.1,
-      flowJitter: 0.1,
-    });
+      const clearBtn = document.getElementById("clearBtn");
+      const undoBtn = document.getElementById("undoBtn");
+      const redoBtn = document.getElementById("redoBtn");
+      const colorPicker = document.getElementById("colorPicker");
+      const sizeSlider = document.getElementById("sizeSlider");
+      const sizeValue = document.getElementById("sizeValue");
+      const opacitySlider = document.getElementById("opacitySlider");
+      const opacityValue = document.getElementById("opacityValue");
+      const flowSlider = document.getElementById("flowSlider");
+      const flowValue = document.getElementById("flowValue");
+      const spacingSlider = document.getElementById("spacingSlider");
+      const spacingValue = document.getElementById("spacingValue");
+      const smoothToggle = document.getElementById("smoothToggle");
+      const spacingToggle = document.getElementById("spacingToggle");
+      const imageInput = document.getElementById("imageInput");
+      const removeImageBtn = document.getElementById("removeImageBtn");
+      const status = document.getElementById("status");
+      const rotationMode = document.getElementById("rotationMode");
+      const rotationOffset = document.getElementById("rotationOffset");
+      const rotationOffsetValue = document.getElementById(
+        "rotationOffsetValue",
+      );
+      const rotationJitter = document.getElementById("rotationJitter");
+      const rotationJitterValue = document.getElementById(
+        "rotationJitterValue",
+      );
+      const rotationSmoothing = document.getElementById("rotationSmoothing");
+      const rotationSmoothingValue = document.getElementById(
+        "rotationSmoothingValue",
+      );
+      const pressureToggle = document.getElementById("pressureToggle");
+      const pressureK = document.getElementById("pressureK");
+      const pressureKValue = document.getElementById("pressureKValue");
+      const pressureMin = document.getElementById("pressureMin");
+      const pressureMinValue = document.getElementById("pressureMinValue");
+      const pressureMax = document.getElementById("pressureMax");
+      const pressureMaxValue = document.getElementById("pressureMaxValue");
+      const pressureBarFill = document.getElementById("pressureBarFill");
+      const pressureLiveValue = document.getElementById("pressureLiveValue");
+      const canvasEl = document.getElementById("canvas");
 
-    const spread = new SpreadModule({
-      spreadRange: 0,
-      count: 0,
-    });
+      const sizeJitter = document.getElementById("sizeJitter");
+      const sizeJitterValue = document.getElementById("sizeJitterValue");
 
-    const pattern = new PatternModule({
-      spacingMultiplier: 1,
-    });
+      const angleJitter = document.getElementById("angleJitter");
+      const angleJitterValue = document.getElementById("angleJitterValue");
 
-    // IMPORTANT: use brush.useModule()
-    painter.brush.useModule(dynamicShape);
-    painter.brush.useModule(dynamicTransparency);
-    painter.brush.useModule(spread);
-    painter.brush.useModule(pattern);
+      const roundJitter = document.getElementById("roundJitter");
+      const roundJitterValue = document.getElementById("roundJitterValue");
 
-    // =====================================================
-    // Elements
-    // =====================================================
+      const spreadRadius = document.getElementById("spreadRadius");
+      const spreadRadiusValue = document.getElementById("spreadRadiusValue");
 
-    const clearBtn = document.getElementById("clearBtn");
-    const undoBtn = document.getElementById("undoBtn");
-    const redoBtn = document.getElementById("redoBtn");
-    const colorPicker = document.getElementById("colorPicker");
-    const sizeSlider = document.getElementById("sizeSlider");
-    const sizeValue = document.getElementById("sizeValue");
-    const opacitySlider = document.getElementById("opacitySlider");
-    const opacityValue = document.getElementById("opacityValue");
-    const flowSlider = document.getElementById("flowSlider");
-    const flowValue = document.getElementById("flowValue");
-    const spacingSlider = document.getElementById("spacingSlider");
-    const spacingValue = document.getElementById("spacingValue");
-    const smoothToggle = document.getElementById("smoothToggle");
-    const spacingToggle = document.getElementById("spacingToggle");
-    const imageInput = document.getElementById("imageInput");
-    const removeImageBtn = document.getElementById("removeImageBtn");
-    const status = document.getElementById("status");
-    const rotationMode = document.getElementById("rotationMode");
-    const rotationOffset = document.getElementById("rotationOffset");
-    const rotationOffsetValue = document.getElementById(
-      "rotationOffsetValue",
-    );
-    const rotationJitter = document.getElementById("rotationJitter");
-    const rotationJitterValue = document.getElementById(
-      "rotationJitterValue",
-    );
-    const rotationSmoothing = document.getElementById("rotationSmoothing");
-    const rotationSmoothingValue = document.getElementById(
-      "rotationSmoothingValue",
-    );
-    const pressureToggle = document.getElementById("pressureToggle");
-    const pressureK = document.getElementById("pressureK");
-    const pressureKValue = document.getElementById("pressureKValue");
-    const pressureMin = document.getElementById("pressureMin");
-    const pressureMinValue = document.getElementById("pressureMinValue");
-    const pressureMax = document.getElementById("pressureMax");
-    const pressureMaxValue = document.getElementById("pressureMaxValue");
-    const pressureBarFill = document.getElementById("pressureBarFill");
-    const pressureLiveValue = document.getElementById("pressureLiveValue");
-    const canvasEl = document.getElementById("canvas");
+      // =====================================================
+      // Live pressure meter
+      //
+      // Listens to pointermove on the canvas and reads the
+      // current simulated pressure so you can see exactly
+      // what value is being sent to the brush right now.
+      // =====================================================
 
-    const sizeJitter = document.getElementById("sizeJitter");
-    const sizeJitterValue = document.getElementById("sizeJitterValue");
+      canvasEl.addEventListener("pointermove", (e) => {
+        let p;
 
-    const angleJitter = document.getElementById("angleJitter");
-    const angleJitterValue = document.getElementById("angleJitterValue");
+        if (!painter.pressureSimulation) {
+          // Sim is off — either real stylus or flat 1.0
+          p = e.pointerType === "pen" && e.pressure > 0 ? e.pressure : 1.0;
+        } else {
+          // Peek at the simulator with the current cursor position.
+          // Canvas.ts calls getPressure() on its own pointermove handler
+          // which fires after this one (same element, same event, listeners
+          // run in registration order). So we call it here first — the
+          // simulator's internal state will advance twice per move event,
+          // but since both calls use the same (x, y) the delta is zero and
+          // the output is identical. Net effect: meter is always in sync.
+          const rect = canvasEl.getBoundingClientRect();
+          p = painter.mousePressure.getPressure(
+            e.clientX - rect.left,
+            e.clientY - rect.top,
+          );
+        }
 
-    const roundJitter = document.getElementById("roundJitter");
-    const roundJitterValue = document.getElementById("roundJitterValue");
+        pressureBarFill.style.width = `${(p * 100).toFixed(1)}%`;
+        pressureLiveValue.textContent = p.toFixed(2);
+      });
 
-    const spreadRadius = document.getElementById("spreadRadius");
-    const spreadRadiusValue = document.getElementById("spreadRadiusValue");
+      canvasEl.addEventListener("pointerleave", () => {
+        pressureBarFill.style.width = "50%";
+        pressureLiveValue.textContent = "0.50";
+      });
 
+      // =====================================================
+      // Brush config
+      // =====================================================
 
+      function updateBrush() {
+        try {
+          painter.loadConfig({
+            color: colorPicker.value,
+            size: Number(sizeSlider.value),
+            opacity: Number(opacitySlider.value),
+            flow: Number(flowSlider.value),
+            spacing: Number(spacingSlider.value),
+            rotation: {
+              mode: rotationMode.value,
+              offset: (Number(rotationOffset.value) / 360) * Math.PI * 2,
+              jitter: (Number(rotationJitter.value) / 360) * Math.PI * 2,
+              smoothing: Number(rotationSmoothing.value),
+            },
+          });
 
-    // =====================================================
-    // Live pressure meter
-    //
-    // Listens to pointermove on the canvas and reads the
-    // current simulated pressure so you can see exactly
-    // what value is being sent to the brush right now.
-    // =====================================================
+          painter.brush.isSmooth = smoothToggle.checked;
+          painter.brush.isSpacing = spacingToggle.checked;
 
-    canvasEl.addEventListener("pointermove", (e) => {
-      let p;
+          dynamicShape.bindConfig({
+            sizeJitter: Number(sizeJitter.value),
+            angleJitter: Number(angleJitter.value),
+            roundJitter: Number(roundJitter.value),
+          });
 
-      if (!painter.pressureSimulation) {
-        // Sim is off — either real stylus or flat 1.0
-        p = e.pointerType === "pen" && e.pressure > 0 ? e.pressure : 1.0;
-      } else {
-        // Peek at the simulator with the current cursor position.
-        // Canvas.ts calls getPressure() on its own pointermove handler
-        // which fires after this one (same element, same event, listeners
-        // run in registration order). So we call it here first — the
-        // simulator's internal state will advance twice per move event,
-        // but since both calls use the same (x, y) the delta is zero and
-        // the output is identical. Net effect: meter is always in sync.
-        const rect = canvasEl.getBoundingClientRect();
-        p = painter.mousePressure.getPressure(
-          e.clientX - rect.left,
-          e.clientY - rect.top,
-        );
+          spread.bindConfig({
+            ...spread.config,
+            spreadRange: (parseFloat(spreadRadius.value) || 0) / 20,
+            count: (parseFloat(spreadRadius.value) || 0) <= 0 ? 1 : 2,
+          });
+
+          status.textContent = "Brush Updated";
+        } catch (err) {
+          console.error(err);
+        }
+      }
+      // =====================================================
+      // Pressure config
+      // =====================================================
+
+      function updatePressure() {
+        painter.pressureSimulation = pressureToggle.checked;
+
+        if (pressureToggle.checked) {
+          painter.mousePressure = new MousePressure(
+            Number(pressureK.value),
+            Number(pressureMin.value),
+            Number(pressureMax.value),
+          );
+        } else {
+          painter.mousePressure.close();
+        }
+
+        pressureKValue.textContent = Number(pressureK.value).toFixed(1);
+        pressureMinValue.textContent = `${pressureMin.value}px`;
+        pressureMaxValue.textContent = `${pressureMax.value}px`;
+
+        status.textContent = pressureToggle.checked
+          ? "Pressure Sim ON"
+          : "Pressure Sim OFF";
       }
 
-      pressureBarFill.style.width = `${(p * 100).toFixed(1)}%`;
-      pressureLiveValue.textContent = p.toFixed(2);
-    });
+      // =====================================================
+      // UI labels
+      // =====================================================
 
-    canvasEl.addEventListener("pointerleave", () => {
-      pressureBarFill.style.width = "50%";
-      pressureLiveValue.textContent = "0.50";
-    });
-
-    // =====================================================
-    // Brush config
-    // =====================================================
-
-    function updateBrush() {
-      try {
-        painter.loadConfig({
-          color: colorPicker.value,
-          size: Number(sizeSlider.value),
-          opacity: Number(opacitySlider.value),
-          flow: Number(flowSlider.value),
-          spacing: Number(spacingSlider.value),
-          rotation: {
-            mode: rotationMode.value,
-            offset: (Number(rotationOffset.value) / 360) * Math.PI * 2,
-            jitter: (Number(rotationJitter.value) / 360) * Math.PI * 2,
-            smoothing: Number(rotationSmoothing.value),
-          },
-        });
-
-        painter.brush.isSmooth = smoothToggle.checked;
-        painter.brush.isSpacing = spacingToggle.checked;
-
-        dynamicShape.bindConfig({
-          sizeJitter: Number(sizeJitter.value),
-          angleJitter: Number(angleJitter.value),
-          roundJitter: Number(roundJitter.value),
-        });
-
-        spread.bindConfig({
-          ...spread.config,
-          spreadRange: (parseFloat(spreadRadius.value) || 0) / 20,
-          count: (parseFloat(spreadRadius.value) || 0) <= 0 ? 1 : 2,
-        });
-
-        status.textContent = "Brush Updated";
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    // =====================================================
-    // Pressure config
-    // =====================================================
-
-    function updatePressure() {
-      painter.pressureSimulation = pressureToggle.checked;
-
-      if (pressureToggle.checked) {
-        painter.mousePressure = new MousePressure(
-          Number(pressureK.value),
-          Number(pressureMin.value),
-          Number(pressureMax.value),
-        );
-      } else {
-        painter.mousePressure.close();
+      function updateValues() {
+        sizeValue.textContent = sizeSlider.value;
+        opacityValue.textContent = `${Math.round(Number(opacitySlider.value) * 100)}%`;
+        flowValue.textContent = `${Math.round(Number(flowSlider.value) * 100)}%`;
+        spacingValue.textContent = spacingSlider.value;
+        rotationOffsetValue.textContent = `${rotationOffset.value}°`;
+        rotationJitterValue.textContent = `${rotationJitter.value}°`;
+        rotationSmoothingValue.textContent = rotationSmoothing.value;
+        sizeJitterValue.textContent = Number(sizeJitter.value).toFixed(2);
+        angleJitterValue.textContent = Number(angleJitter.value).toFixed(2);
+        roundJitterValue.textContent = Number(roundJitter.value).toFixed(2);
+        spreadRadiusValue.textContent = spreadRadius.value;
       }
 
+      // =====================================================
+      // Events
+      // =====================================================
+
+      [
+        colorPicker,
+        sizeSlider,
+        opacitySlider,
+        flowSlider,
+        spacingSlider,
+        smoothToggle,
+        spacingToggle,
+        rotationMode,
+        rotationOffset,
+        rotationJitter,
+        sizeJitter,
+        angleJitter,
+        roundJitter,
+        spreadRadius,
+        rotationSmoothing,
+      ].forEach((el) =>
+        el.addEventListener("input", () => {
+          updateBrush();
+          updateValues();
+        }),
+      );
+
+      [pressureToggle, pressureK, pressureMin, pressureMax].forEach((el) =>
+        el.addEventListener("input", updatePressure),
+      );
+
+      clearBtn.addEventListener("click", () => {
+        painter.clear();
+        status.textContent = "Canvas Cleared";
+      });
+
+      undoBtn.addEventListener("click", () => {
+        painter.undo();
+        status.textContent = "Undo";
+      });
+
+      redoBtn.addEventListener("click", () => {
+        painter.redo();
+        status.textContent = "Redo";
+      });
+
+      imageInput.addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+          status.textContent = "Loading Brush Image...";
+          const url = URL.createObjectURL(file);
+          await painter.loadImage(url);
+          status.textContent = "Brush Image Loaded ✅";
+        } catch (err) {
+          console.error(err);
+          status.textContent = "Brush Image Failed ❌";
+        }
+      });
+
+      removeImageBtn.addEventListener("click", () => {
+        painter.brush.removeImage();
+        status.textContent = "Brush Image Removed";
+      });
+
+      // =====================================================
+      // Init
+      // =====================================================
+
+      updateBrush();
+      updateValues();
       pressureKValue.textContent = Number(pressureK.value).toFixed(1);
       pressureMinValue.textContent = `${pressureMin.value}px`;
       pressureMaxValue.textContent = `${pressureMax.value}px`;
 
-      status.textContent = pressureToggle.checked
-        ? "Pressure Sim ON"
-        : "Pressure Sim OFF";
-    }
-
-    // =====================================================
-    // UI labels
-    // =====================================================
-
-    function updateValues() {
-      sizeValue.textContent = sizeSlider.value;
-      opacityValue.textContent = `${Math.round(Number(opacitySlider.value) * 100)}%`;
-      flowValue.textContent = `${Math.round(Number(flowSlider.value) * 100)}%`;
-      spacingValue.textContent = spacingSlider.value;
-      rotationOffsetValue.textContent = `${rotationOffset.value}°`;
-      rotationJitterValue.textContent = `${rotationJitter.value}°`;
-      rotationSmoothingValue.textContent = rotationSmoothing.value;
-      sizeJitterValue.textContent = Number(sizeJitter.value).toFixed(2);
-      angleJitterValue.textContent = Number(angleJitter.value).toFixed(2);
-      roundJitterValue.textContent = Number(roundJitter.value).toFixed(2);
-      spreadRadiusValue.textContent = spreadRadius.value;
-    }
-
-    // =====================================================
-    // Events
-    // =====================================================
-
-    [
-      colorPicker,
-      sizeSlider,
-      opacitySlider,
-      flowSlider,
-      spacingSlider,
-      smoothToggle,
-      spacingToggle,
-      rotationMode,
-      rotationOffset,
-      rotationJitter,
-      sizeJitter,
-      angleJitter,
-      roundJitter,
-      spreadRadius,
-      rotationSmoothing,
-    ].forEach((el) =>
-      el.addEventListener("input", () => {
-        updateBrush();
-        updateValues();
-      }),
-    );
-
-    [pressureToggle, pressureK, pressureMin, pressureMax].forEach((el) =>
-      el.addEventListener("input", updatePressure),
-    );
-
-    clearBtn.addEventListener("click", () => {
-      painter.clear();
-      status.textContent = "Canvas Cleared";
-    });
-
-    undoBtn.addEventListener("click", () => {
-      painter.undo();
-      status.textContent = "Undo";
-    });
-
-    redoBtn.addEventListener("click", () => {
-      painter.redo();
-      status.textContent = "Redo";
-    });
-
-    imageInput.addEventListener("change", async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      try {
-        status.textContent = "Loading Brush Image...";
-        const url = URL.createObjectURL(file);
-        await painter.loadImage(url);
-        status.textContent = "Brush Image Loaded ✅";
-      } catch (err) {
-        console.error(err);
-        status.textContent = "Brush Image Failed ❌";
-      }
-    });
-
-    removeImageBtn.addEventListener("click", () => {
-      painter.brush.removeImage();
-      status.textContent = "Brush Image Removed";
-    });
-
-    // =====================================================
-    // Init
-    // =====================================================
-
-    updateBrush();
-    updateValues();
-    pressureKValue.textContent = Number(pressureK.value).toFixed(1);
-    pressureMinValue.textContent = `${pressureMin.value}px`;
-    pressureMaxValue.textContent = `${pressureMax.value}px`;
-
-    console.log("Fuderu Ready");
-  </script>
-</body>
-
+      console.log("Fuderu Ready");
+    </script>
+  </body>
 </html>

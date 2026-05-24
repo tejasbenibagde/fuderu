@@ -2,21 +2,21 @@
 
 import { BrushBasicConfig } from "../types/config";
 import {
-    DynamicTransparencyBasicConfig,
-    DynamicTransparencyConfig,
+  DynamicTransparencyBasicConfig,
+  DynamicTransparencyConfig,
 } from "../types/dynamicTransparency";
 
 import { clamp } from "../utils/math";
 import { randomRound } from "../utils/random";
 
 const defaultConfig: DynamicTransparencyBasicConfig = {
-    opacityJitter: 0.0,
-    opacityJitterTrigger: "none",
-    minOpacityJitter: 0.0,
+  opacityJitter: 0.0,
+  opacityJitterTrigger: "none",
+  minOpacityJitter: 0.0,
 
-    flowJitter: 0.0,
-    flowJitterTrigger: "none",
-    minFlowJitter: 0.0,
+  flowJitter: 0.0,
+  flowJitterTrigger: "none",
+  minFlowJitter: 0.0,
 };
 
 /**
@@ -29,87 +29,79 @@ const defaultConfig: DynamicTransparencyBasicConfig = {
  * - organic accumulation
  */
 export class DynamicTransparencyModule {
-    config: DynamicTransparencyBasicConfig;
+  config: DynamicTransparencyBasicConfig;
 
-    private strokeOpacity: number = -1;
+  private strokeOpacity: number = -1;
 
-    constructor(config?: DynamicTransparencyConfig) {
-        this.config = {
-            ...defaultConfig,
-            ...Object.fromEntries(
-                Object.entries(config ?? {}).filter(([, v]) => v != null),
-            ),
-        } as DynamicTransparencyBasicConfig;
+  constructor(config?: DynamicTransparencyConfig) {
+    this.config = {
+      ...defaultConfig,
+      ...Object.fromEntries(
+        Object.entries(config ?? {}).filter(([, v]) => v != null),
+      ),
+    } as DynamicTransparencyBasicConfig;
+  }
+
+  bindConfig(config: DynamicTransparencyBasicConfig): void {
+    this.config = config;
+  }
+
+  // ─────────────────────────────────────────────
+
+  private changeOpacity(opacity: number, pressure: number): number {
+    if (this.strokeOpacity !== -1) {
+      return this.strokeOpacity;
     }
 
-    bindConfig(config: DynamicTransparencyBasicConfig): void {
-        this.config = config;
+    let next = opacity;
+
+    if (this.config.opacityJitterTrigger === "pressure") {
+      next *= pressure * 2;
     }
 
-    // ─────────────────────────────────────────────
+    const jitter = next * this.config.opacityJitter;
 
-    private changeOpacity(opacity: number, pressure: number): number {
-        if (this.strokeOpacity !== -1) {
-            return this.strokeOpacity;
-        }
+    next = clamp(randomRound(next - jitter, next, 100), 0, 1);
 
-        let next = opacity;
+    const floor = opacity * this.config.minOpacityJitter;
 
-        if (this.config.opacityJitterTrigger === "pressure") {
-            next *= pressure * 2;
-        }
+    if (next < floor) next = floor;
 
-        const jitter = next * this.config.opacityJitter;
+    this.strokeOpacity = next;
 
-        next = clamp(
-            randomRound(next - jitter, next, 100),
-            0,
-            1,
-        );
+    return next;
+  }
 
-        const floor = opacity * this.config.minOpacityJitter;
+  private changeFlow(flow: number, pressure: number): number {
+    let next = flow;
 
-        if (next < floor) next = floor;
-
-        this.strokeOpacity = next;
-
-        return next;
+    if (this.config.flowJitterTrigger === "pressure") {
+      next *= pressure * 2;
     }
 
-    private changeFlow(flow: number, pressure: number): number {
-        let next = flow;
+    const jitter = next * this.config.flowJitter;
 
-        if (this.config.flowJitterTrigger === "pressure") {
-            next *= pressure * 2;
-        }
+    next = clamp(randomRound(next - jitter, next, 100), 0, 1);
 
-        const jitter = next * this.config.flowJitter;
+    const floor = flow * this.config.minFlowJitter;
 
-        next = clamp(
-            randomRound(next - jitter, next, 100),
-            0,
-            1,
-        );
+    if (next < floor) next = floor;
 
-        const floor = flow * this.config.minFlowJitter;
+    return next;
+  }
 
-        if (next < floor) next = floor;
+  // ─────────────────────────────────────────────
 
-        return next;
-    }
+  onChangeConfig(config: BrushBasicConfig, pressure: number): void {
+    config.opacity = this.changeOpacity(config.opacity, pressure);
 
-    // ─────────────────────────────────────────────
+    config.flow = this.changeFlow(config.flow, pressure);
+  }
 
-    onChangeConfig(config: BrushBasicConfig, pressure: number): void {
-        config.opacity = this.changeOpacity(config.opacity, pressure);
-
-        config.flow = this.changeFlow(config.flow, pressure);
-    }
-
-    /**
-     * Reset cached stroke opacity after stroke ends.
-     */
-    onEndStroke(): void {
-        this.strokeOpacity = -1;
-    }
+  /**
+   * Reset cached stroke opacity after stroke ends.
+   */
+  onEndStroke(): void {
+    this.strokeOpacity = -1;
+  }
 }

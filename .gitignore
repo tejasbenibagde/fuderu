@@ -1,5 +1,48 @@
-package-lock.json
-/lib/
-dist/
+# dependencies
 node_modules/
-coverage
+.pnp
+.pnp.*
+
+# build outputs
+dist/
+build/
+out/
+.next/
+.vite/
+
+# local library build scratch at repo root only
+/lib/
+
+# test and coverage artifacts
+coverage/
+.nyc_output/
+
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# local environment
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# deployment and framework caches
+.vercel/
+.netlify/
+.turbo/
+
+# TypeScript / Next generated files
+*.tsbuildinfo
+next-env.d.ts
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

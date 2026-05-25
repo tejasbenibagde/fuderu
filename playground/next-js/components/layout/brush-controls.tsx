@@ -672,7 +672,9 @@ export function BrushControls() {
 
         <div className="flex items-center gap-2 rounded-md border bg-muted/20 px-2 py-2 text-xs text-muted-foreground">
           <IconPhoto className="size-4 shrink-0" />
-          <span className="min-w-0 truncate">Transparent PNG stamps work best.</span>
+          <span className="min-w-0 truncate">
+            Transparent PNG stamps work best.
+          </span>
         </div>
       </ControlSection>
     </div>

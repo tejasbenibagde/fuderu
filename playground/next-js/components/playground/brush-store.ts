@@ -184,8 +184,7 @@ export const useBrushStore = create<BrushStore>((set) => ({
   setRotationJitter: (rotationJitter) => set({ rotationJitter }),
   setRotationSmoothing: (rotationSmoothing) => set({ rotationSmoothing }),
 
-  setDynamicShapeEnabled: (dynamicShapeEnabled) =>
-    set({ dynamicShapeEnabled }),
+  setDynamicShapeEnabled: (dynamicShapeEnabled) => set({ dynamicShapeEnabled }),
   setSizeJitter: (sizeJitter) => set({ sizeJitter }),
   setSizeJitterTrigger: (sizeJitterTrigger) => set({ sizeJitterTrigger }),
   setMinDiameter: (minDiameter) => set({ minDiameter }),

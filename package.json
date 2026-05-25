@@ -35,6 +35,7 @@
     "type": "git",
     "url": "git+https://github.com/tejasbenibagde/fuderu.git"
   },
+  "homepage": "https://fuderu.vercel.app/",
   "directories": {
     "lib": "lib"
   },

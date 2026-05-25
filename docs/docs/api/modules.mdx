@@ -1,0 +1,58 @@
+---
+sidebar_position: 4
+title: Module API
+---
+
+# Module API
+
+Modules are plain objects or classes that implement one or more hook methods.
+
+```ts
+interface Module {
+  onChangeConfig?(config: BrushBasicConfig, pressure: number): void;
+  onChangePoint?(
+    point: PurePoint,
+    config: BrushBasicConfig,
+  ): PurePoint | PurePoint[];
+  onMixinCanvas?(
+    strokeCanvas: HTMLCanvasElement,
+    strokeContext: CanvasRenderingContext2D,
+  ): [HTMLCanvasElement, CanvasRenderingContext2D];
+  onEndStroke?(): void;
+}
+```
+
+## Hooks
+
+### `onChangePoint`
+
+Runs before a point becomes a rendered stamp. Return one point to transform the
+input, or multiple points to create extra stamps.
+
+### `onChangeConfig`
+
+Runs for each stamp with a copy of the active brush config. Mutate this config
+to change size, angle, opacity, flow, roundness, and other per-stamp behavior.
+
+### `onMixinCanvas`
+
+Runs when the current stroke is composited onto the visible canvas. Return a
+canvas/context pair to replace or post-process the stroke canvas.
+
+### `onEndStroke`
+
+Runs after a stroke is committed. Use it to reset cached stroke-local state.
+
+## Custom Module Example
+
+```ts
+import type { BrushBasicConfig, Module } from "fuderu";
+
+class PressureColorModule implements Module {
+  onChangeConfig(config: BrushBasicConfig, pressure: number): void {
+    config.color = pressure > 0.5 ? "#111111" : "#888888";
+  }
+}
+
+brush.useModule(new PressureColorModule());
+```

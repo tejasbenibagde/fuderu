@@ -1,0 +1,96 @@
+---
+sidebar_position: 4
+title: Modules
+---
+
+# Modules
+
+Modules let you change points, per-stamp config, stroke compositing, or
+stroke-end behavior without replacing the brush engine.
+
+```ts
+import { Brush, DynamicShapeModule, SpreadModule } from "fuderu";
+
+const brush = new Brush(canvas, {
+  color: "#111111",
+  size: 24,
+});
+
+const shapeId = brush.useModule(
+  new DynamicShapeModule({
+    sizeJitter: 0.4,
+    sizeJitterTrigger: "pressure",
+  }),
+);
+
+brush.useModule(
+  new SpreadModule({
+    spreadRange: 0.3,
+    count: 3,
+  }),
+);
+```
+
+Remove a module with the id returned by `useModule`:
+
+```ts
+brush.removeModule(shapeId);
+```
+
+## Dynamic Shape
+
+`DynamicShapeModule` changes size, angle, and roundness per stamp.
+
+```ts
+new DynamicShapeModule({
+  sizeJitter: 0.35,
+  minDiameter: 0.25,
+  angleJitter: 0.15,
+  roundJitter: 0.2,
+  minRoundness: 0.4,
+});
+```
+
+## Dynamic Transparency
+
+`DynamicTransparencyModule` changes opacity per stroke and flow per stamp.
+
+```ts
+new DynamicTransparencyModule({
+  opacityJitter: 0.2,
+  minOpacityJitter: 0.5,
+  flowJitter: 0.35,
+  minFlowJitter: 0.2,
+});
+```
+
+## Spread
+
+`SpreadModule` creates extra nearby points for spray, splatter, and foliage-like
+effects.
+
+```ts
+new SpreadModule({
+  spreadRange: 0.6,
+  count: 5,
+  countJitter: 0.4,
+});
+```
+
+## Pattern
+
+`PatternModule` composites a repeated texture into the stroke.
+
+```ts
+import { PatternModule } from "fuderu";
+
+const pattern = new PatternModule({
+  scale: 0.75,
+  brightness: 10,
+  contrast: 20,
+  blendMode: "multiply",
+});
+
+await pattern.loadPattern("/textures/paper.png", canvas.width, canvas.height);
+brush.useModule(pattern);
+```

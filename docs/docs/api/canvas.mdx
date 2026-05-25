@@ -1,0 +1,109 @@
+---
+sidebar_position: 1
+title: Canvas
+---
+
+# Canvas API
+
+`Canvas` wraps an `HTMLCanvasElement`, an underlying `Brush`, and pointer event
+handling.
+
+```ts
+import { Canvas } from "fuderu";
+```
+
+## Constructor
+
+```ts
+new Canvas(options: CanvasOptions);
+```
+
+```ts
+interface CanvasOptions {
+  canvas: HTMLCanvasElement | string;
+  brush?: BrushConfig;
+  pressureSimulation?: boolean;
+}
+```
+
+- `canvas`: a canvas element or a selector that resolves to one.
+- `brush`: optional initial brush config.
+- `pressureSimulation`: defaults to `true`.
+
+## Properties
+
+### `brush`
+
+```ts
+brush: Brush;
+```
+
+The underlying brush instance.
+
+### `mousePressure`
+
+```ts
+mousePressure: MousePressure;
+```
+
+The pressure simulator used for mouse and touch input.
+
+### `pressureSimulation`
+
+```ts
+pressureSimulation: boolean;
+```
+
+Toggles simulated pressure for non-pen input.
+
+## Methods
+
+### `loadConfig`
+
+```ts
+loadConfig(config: BrushConfig): void;
+```
+
+Updates the underlying brush config.
+
+### `loadImage`
+
+```ts
+loadImage(img: HTMLImageElement | HTMLCanvasElement | string): Promise<void>;
+```
+
+Loads an image brush.
+
+### `setSmooth`
+
+```ts
+setSmooth(enabled: boolean): void;
+```
+
+Enables or disables curve smoothing.
+
+### `setSpacing`
+
+```ts
+setSpacing(enabled: boolean): void;
+```
+
+Enables or disables spacing-based interpolation.
+
+### `undo`, `redo`, `clear`
+
+```ts
+undo(): void;
+redo(): void;
+clear(): void;
+```
+
+History and canvas helpers.
+
+### `destroy`
+
+```ts
+destroy(): void;
+```
+
+Removes pointer event listeners.

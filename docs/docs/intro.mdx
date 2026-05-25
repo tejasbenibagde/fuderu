@@ -1,0 +1,48 @@
+---
+sidebar_position: 1
+title: Introduction
+---
+
+# Fuderu
+
+Fuderu is a lightweight canvas drawing engine for the web. It focuses on brush
+stroke rendering: smooth interpolation, adaptive spacing, pressure-aware stamps,
+image brushes, and a small module system for brush effects.
+
+Use Fuderu when you want to build drawing tools, sketch surfaces, annotation
+experiences, image editors, or custom creative controls without committing to a
+specific frontend framework.
+
+## What You Get
+
+- `Canvas`, a convenience wrapper that wires pointer events to a canvas.
+- `Brush`, a standalone engine for custom integrations and advanced control.
+- Smooth curves and spacing-based stroke interpolation.
+- Stylus pressure support plus optional mouse and touch pressure simulation.
+- Runtime brush configuration for size, color, opacity, flow, angle, roundness,
+  spacing, and stamp rotation.
+- Transparent image brushes with recoloring and rotation.
+- Built-in modules for dynamic shape, dynamic transparency, spread, and pattern
+  texture effects.
+- TypeScript types exported with the package.
+
+## Package Shape
+
+```ts
+import {
+  Brush,
+  Canvas,
+  DynamicShapeModule,
+  DynamicTransparencyModule,
+  PatternModule,
+  SpreadModule,
+} from "fuderu";
+```
+
+For most apps, start with `Canvas`. Reach for `Brush` when you already manage
+events yourself or need to integrate Fuderu into a custom rendering loop.
+
+## Status
+
+Fuderu is pre-`1.0`. The core brush, canvas, image, pressure, and module systems
+are implemented, but public APIs may still change while the library stabilizes.

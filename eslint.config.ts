@@ -11,5 +11,15 @@ export default defineConfig([
     languageOptions: { globals: globals.browser },
   },
   tseslint.configs.recommended,
-  globalIgnores(["dist", "playground", "**/*.d.ts", "**/node_modules/**"]),
+  globalIgnores([
+    "dist",
+    "build",
+    "playground",
+    "**/dist/**",
+    "**/build/**",
+    "**/.docusaurus/**",
+    "**/.cache/**",
+    "**/*.d.ts",
+    "**/node_modules/**",
+  ]),
 ]);

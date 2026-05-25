@@ -1,0 +1,63 @@
+---
+sidebar_position: 3
+title: Image Brushes
+---
+
+# Image Brushes
+
+Fuderu can use a transparent image or canvas as the brush stamp. Pixels with
+content become the brush shape, and Fuderu recolors the stamp using the active
+brush color.
+
+```ts
+await painter.loadImage("/brushes/star.png");
+
+painter.loadConfig({
+  color: "#f97316",
+  size: 36,
+});
+```
+
+With a standalone brush:
+
+```ts
+await brush.loadImageAsync("/brushes/leaf.png");
+```
+
+## Supported Sources
+
+`Brush.loadImage` accepts:
+
+- `HTMLImageElement`
+- `HTMLCanvasElement`
+- image URL string
+
+`Canvas.loadImage` returns a promise and delegates to the underlying brush.
+
+## Rotation
+
+Image brushes are most expressive when paired with rotation:
+
+```ts
+painter.loadConfig({
+  rotation: {
+    mode: "flow",
+    smoothing: 0.15,
+    offset: 0,
+  },
+});
+```
+
+Available rotation modes:
+
+- `fixed`: keep the configured angle.
+- `flow`: rotate stamps along the stroke direction.
+- `random`: choose randomized stamp rotation.
+
+## Removing The Image
+
+```ts
+painter.brush.removeImage();
+```
+
+After removing the image, the brush returns to the default ellipse stamp.

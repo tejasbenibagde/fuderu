@@ -1,0 +1,49 @@
+---
+sidebar_position: 1
+title: Installation
+---
+
+# Installation
+
+Install Fuderu from npm:
+
+```bash
+npm install fuderu
+```
+
+Fuderu ships ESM, UMD, and TypeScript declarations from the `dist` directory.
+
+```ts
+import { Canvas, Brush } from "fuderu";
+```
+
+## Browser Requirements
+
+Fuderu targets browser environments with:
+
+- `HTMLCanvasElement`
+- `CanvasRenderingContext2D`
+- pointer events
+- `requestAnimationFrame`
+
+The library is framework-agnostic. You can use it from vanilla TypeScript,
+React, Next.js client components, Vue, Svelte, or any other browser UI layer.
+
+## Canvas Sizing
+
+The `Canvas` wrapper reads the element's layout size and scales the backing
+canvas by `window.devicePixelRatio`.
+
+Give the canvas a real CSS size before constructing `Canvas`:
+
+```html
+<canvas id="paint" style="width: 800px; height: 500px"></canvas>
+```
+
+```ts
+import { Canvas } from "fuderu";
+
+const painter = new Canvas({
+  canvas: "#paint",
+});
+```

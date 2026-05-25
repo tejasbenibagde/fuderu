@@ -1,0 +1,113 @@
+---
+sidebar_position: 2
+title: Brush
+---
+
+# Brush API
+
+`Brush` is the lower-level stroke engine. It receives points, interpolates them,
+renders stamps, manages image brushes, and owns undo/redo state.
+
+```ts
+import { Brush } from "fuderu";
+```
+
+## Constructor
+
+```ts
+new Brush(canvas?: HTMLCanvasElement, config?: BrushConfig);
+```
+
+If no canvas is provided, call `loadContext` before drawing.
+
+## Properties
+
+```ts
+config: BrushBasicConfig;
+isSmooth: boolean;
+isSpacing: boolean;
+blendMode: CanvasRenderingContext2D["globalCompositeOperation"];
+filter: CanvasRenderingContext2D["filter"];
+maxUndoRedoStackSize: number;
+```
+
+- `config`: active brush settings.
+- `isSmooth`: enables curve smoothing. Defaults to `true`.
+- `isSpacing`: enables interpolation spacing. Defaults to `true`.
+- `blendMode`: composite mode used when mixing the stroke onto the visible canvas.
+- `filter`: canvas filter used during mix-in.
+- `maxUndoRedoStackSize`: undo history limit. `0` disables history.
+
+## Drawing
+
+### `putPoint`
+
+```ts
+putPoint(x: number, y: number, pressure: number): void;
+```
+
+Adds an input point to the stroke queue.
+
+### `render`
+
+```ts
+render(): void;
+```
+
+Renders queued points. It is safe to call repeatedly while drawing.
+
+### `finalizeStroke`
+
+```ts
+finalizeStroke(callback?: () => void): void;
+```
+
+Ends the current stroke, resets stroke-local state, and commits the stroke.
+
+## Configuration
+
+### `loadConfig`
+
+```ts
+loadConfig(config: BrushConfig): void;
+```
+
+Partially updates the active config.
+
+### `bindConfig`
+
+```ts
+bindConfig(config: BrushBasicConfig): void;
+```
+
+Replaces the config object reference. This is useful when binding to external
+state.
+
+## Canvas And Image
+
+```ts
+loadContext(canvas: HTMLCanvasElement): void;
+loadImage(
+  img: HTMLImageElement | HTMLCanvasElement | string,
+  callback?: (isSuc: boolean) => void,
+): void;
+loadImageAsync(img: HTMLImageElement | HTMLCanvasElement | string): Promise<void>;
+removeImage(): void;
+```
+
+## History And Cleanup
+
+```ts
+undo(): void;
+redo(): void;
+clear(): void;
+```
+
+## Modules
+
+```ts
+useModule(module: Module): string;
+removeModule(uniqueId: string): boolean;
+```
+
+`useModule` returns a unique id. Store it if you need to remove the module later.

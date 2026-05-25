@@ -1,0 +1,58 @@
+---
+sidebar_position: 2
+title: Quick Start
+---
+
+# Quick Start
+
+The fastest way to draw is to create a canvas element and pass it to `Canvas`.
+
+```html
+<canvas id="paint" style="width: 800px; height: 500px"></canvas>
+```
+
+```ts
+import { Canvas } from "fuderu";
+
+const painter = new Canvas({
+  canvas: "#paint",
+  pressureSimulation: true,
+  brush: {
+    color: "#111111",
+    size: 20,
+    spacing: 0.5,
+  },
+});
+```
+
+`Canvas` attaches pointer handlers automatically. When the user presses and
+drags, points are sent to the underlying `Brush`.
+
+## Update The Brush
+
+Brush settings can be changed at runtime:
+
+```ts
+painter.loadConfig({
+  color: "#ff6b6b",
+  size: 32,
+  opacity: 0.8,
+  flow: 0.9,
+});
+```
+
+## Undo, Redo, And Clear
+
+```ts
+painter.undo();
+painter.redo();
+painter.clear();
+```
+
+## Clean Up
+
+When a component unmounts or the drawing surface is removed, detach listeners:
+
+```ts
+painter.destroy();
+```

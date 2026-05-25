@@ -1,0 +1,52 @@
+---
+sidebar_position: 1
+title: Canvas Wrapper
+---
+
+# Canvas Wrapper
+
+`Canvas` is the ergonomic entry point. It accepts either a canvas element or a
+query selector, creates a `Brush`, configures the canvas for the current device
+pixel ratio, and binds pointer events.
+
+```ts
+import { Canvas } from "fuderu";
+
+const painter = new Canvas({
+  canvas: document.querySelector("canvas")!,
+  pressureSimulation: true,
+  brush: {
+    color: "#222222",
+    size: 18,
+    roundness: 0.8,
+  },
+});
+```
+
+## Pressure
+
+Real pen pressure is used when the pointer is a pen and `event.pressure` is
+available. Mouse and touch input can use simulated pressure:
+
+```ts
+const painter = new Canvas({
+  canvas: "#paint",
+  pressureSimulation: true,
+});
+```
+
+Set `pressureSimulation` to `false` to use a flat pressure of `1` for mouse and
+touch input.
+
+## Access The Brush
+
+The wrapper exposes the underlying brush:
+
+```ts
+painter.brush.blendMode = "multiply";
+painter.brush.filter = "blur(0.2px)";
+painter.brush.maxUndoRedoStackSize = 20;
+```
+
+Use this when the high-level wrapper is still useful, but you need a lower-level
+brush feature.

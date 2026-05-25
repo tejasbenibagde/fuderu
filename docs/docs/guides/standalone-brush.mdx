@@ -1,0 +1,66 @@
+---
+sidebar_position: 2
+title: Standalone Brush
+---
+
+# Standalone Brush
+
+Use `Brush` directly when your app already owns event handling, input
+normalization, replay, collaboration, or a custom drawing loop.
+
+```ts
+import { Brush } from "fuderu";
+
+const canvas = document.querySelector("canvas")!;
+
+const brush = new Brush(canvas, {
+  color: "#111111",
+  size: 24,
+  spacing: 0.45,
+});
+```
+
+## Drawing Points
+
+Call `putPoint` with `x`, `y`, and `pressure`, then ask the brush to render its
+queue.
+
+```ts
+brush.putPoint(x, y, pressure);
+brush.render();
+```
+
+When the stroke ends, finalize it:
+
+```ts
+brush.finalizeStroke();
+```
+
+Finalizing resets stroke-local state and commits the stroke to the undo stack.
+
+## Loading A Canvas Later
+
+You can construct a brush first and load the canvas later:
+
+```ts
+const brush = new Brush(undefined, {
+  color: "#222222",
+  size: 16,
+});
+
+brush.loadContext(canvas);
+```
+
+## Runtime Behavior
+
+```ts
+brush.isSmooth = true;
+brush.isSpacing = true;
+brush.blendMode = "source-over";
+brush.filter = "none";
+```
+
+- `isSmooth` enables curve smoothing.
+- `isSpacing` enables spacing-based interpolation.
+- `blendMode` maps to `CanvasRenderingContext2D.globalCompositeOperation`.
+- `filter` maps to `CanvasRenderingContext2D.filter`.

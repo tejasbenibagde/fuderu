@@ -1,0 +1,68 @@
+---
+sidebar_position: 3
+title: Configuration
+---
+
+# Brush Configuration
+
+Brush config controls the stamp used for each rendered point.
+
+```ts
+interface BrushBasicConfig {
+  size: number;
+  opacity: number;
+  flow: number;
+  color: string;
+  angle: number;
+  roundness: number;
+  spacing: number;
+  rotation?: RotationConfig;
+}
+```
+
+`BrushConfig` is the partial version accepted by constructors and `loadConfig`.
+
+## Defaults
+
+```ts
+{
+  size: 20,
+  opacity: 1,
+  flow: 1,
+  color: "#000000",
+  angle: 0,
+  roundness: 1,
+  spacing: 0.5,
+}
+```
+
+## Fields
+
+| Field       | Description                                                    |
+| ----------- | -------------------------------------------------------------- |
+| `size`      | Base stamp size in pixels. Pressure also scales size.          |
+| `opacity`   | Final stamp opacity from `0` to `1`.                           |
+| `flow`      | Per-stamp paint flow from `0` to `1`.                          |
+| `color`     | CSS color used to fill ellipse stamps or recolor image stamps. |
+| `angle`     | Base stamp angle as a fraction of one turn, from `0` to `1`.   |
+| `roundness` | Ellipse/image width ratio from `0` to `1`.                     |
+| `spacing`   | Distance between stamps as a multiplier of brush size.         |
+| `rotation`  | Optional stamp rotation behavior.                              |
+
+## Rotation
+
+```ts
+rotation?: {
+  mode?: "fixed" | "flow" | "random";
+  offset?: number;
+  jitter?: number;
+  smoothing?: number;
+};
+```
+
+- `fixed`: uses the configured angle.
+- `flow`: follows the direction of the stroke.
+- `random`: varies rotation between stamps.
+- `offset`: adds an offset to calculated rotation.
+- `jitter`: adds random rotation variation.
+- `smoothing`: smooths flow-based direction changes.

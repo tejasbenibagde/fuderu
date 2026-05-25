@@ -12,7 +12,7 @@ const config: Config = {
   },
 
   url: "https://tejasbenibagde.github.io",
-  baseUrl: "/fuderu/",
+  baseUrl: "/",
   organizationName: "tejasbenibagde",
   projectName: "fuderu",
 

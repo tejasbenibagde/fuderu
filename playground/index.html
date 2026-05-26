@@ -580,7 +580,9 @@
 
       function updateEraserButton() {
         if (!eraserBtn) return;
-        eraserBtn.textContent = eraserEnabled ? "🧽 Eraser On" : "🧽 Eraser Off";
+        eraserBtn.textContent = eraserEnabled
+          ? "🧽 Eraser On"
+          : "🧽 Eraser Off";
         eraserBtn.style.background = eraserEnabled ? "#dc2626" : "#2563eb";
       }
 
@@ -617,7 +619,9 @@
           });
 
           updateEraserButton();
-          status.textContent = eraserEnabled ? "Eraser Enabled" : "Brush Updated";
+          status.textContent = eraserEnabled
+            ? "Eraser Enabled"
+            : "Brush Updated";
         } catch (err) {
           console.error(err);
         }

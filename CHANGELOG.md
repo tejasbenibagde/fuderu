@@ -7,7 +7,6 @@
 - Added eraser mode support to the brush engine with proper `destination-out` compositing.
 - Added eraser toggle support in the vanilla playground and Next.js playground.
 
-
 ## 0.8.2
 
 ### Added

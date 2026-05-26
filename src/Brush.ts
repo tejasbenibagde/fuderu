@@ -195,7 +195,6 @@ export class Brush {
     "source-over";
   /** Filter (default: 'none') */
   filter: CanvasRenderingContext2D["filter"] = "none";
-  
 
   private assertCanvasReady(): void {
     if (
@@ -391,7 +390,12 @@ export class Brush {
     const [strokeCanvas] = this.getMixedCanvas();
 
     // transfer canvas
-    this.transferContext!.clearRect(0, 0, this.transferCanvas!.width, this.transferCanvas!.height);
+    this.transferContext!.clearRect(
+      0,
+      0,
+      this.transferCanvas!.width,
+      this.transferCanvas!.height,
+    );
     this.transferContext!.drawImage(strokeCanvas, 0, 0);
     this.transferContext!.globalAlpha = 1;
 

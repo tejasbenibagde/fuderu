@@ -68,6 +68,7 @@ const Canvas = () => {
         flow: initialState.flow,
         roundness: initialState.roundness,
         angle: initialState.angle,
+        eraser: initialState.eraser,
         rotation: {
           mode: initialState.rotationMode,
           offset: initialState.rotationOffset * Math.PI,
@@ -114,6 +115,7 @@ const Canvas = () => {
       flow: store.flow,
       roundness: store.roundness,
       angle: store.angle,
+      eraser: store.eraser,
       rotation: {
         mode: store.rotationMode,
         offset: store.rotationOffset * Math.PI,
@@ -133,39 +135,7 @@ const Canvas = () => {
     store.flow,
     store.roundness,
     store.angle,
-    store.smooth,
-    store.spacingEnabled,
-    store.pressureSimulation,
-    store.rotationMode,
-    store.rotationOffset,
-    store.rotationJitter,
-    store.rotationSmoothing,
-  ]);
-
-  useEffect(() => {
-    const modules = modulesRef.current;
-
-    if (!modules) return;
-
-    modules.dynamicShape.bindConfig({
-      sizeJitter: store.dynamicShapeEnabled ? store.sizeJitter : 0,
-      sizeJitterTrigger: store.sizeJitterTrigger,
-      minDiameter: store.minDiameter,
-      angleJitter: store.dynamicShapeEnabled ? store.angleJitter : 0,
-      angleJitterTrigger: store.angleJitterTrigger,
-      roundJitter: store.dynamicShapeEnabled ? store.roundJitter : 0,
-      roundJitterTrigger: store.roundJitterTrigger,
-      minRoundness: store.minRoundness,
-    });
-  }, [
-    store.dynamicShapeEnabled,
-    store.sizeJitter,
-    store.sizeJitterTrigger,
-    store.minDiameter,
-    store.angleJitter,
-    store.angleJitterTrigger,
-    store.roundJitter,
-    store.roundJitterTrigger,
+    store.eraser,
     store.minRoundness,
   ]);
 

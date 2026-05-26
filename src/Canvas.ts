@@ -133,6 +133,9 @@ export class Canvas {
   setSpacing(enabled: boolean): void {
     this.brush.isSpacing = enabled;
   }
+  setEraser(enabled: boolean): void {
+    this.brush.isEraser = enabled;
+  }
 
   loadConfig(config: BrushConfig): void {
     this.brush.loadConfig(config);

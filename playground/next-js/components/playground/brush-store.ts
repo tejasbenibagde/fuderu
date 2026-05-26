@@ -11,6 +11,7 @@ type BrushStore = {
   flow: number;
   roundness: number;
   angle: number;
+  eraser: boolean;
   image: string | null;
   smooth: boolean;
   spacingEnabled: boolean;
@@ -64,6 +65,7 @@ type BrushStore = {
   setFlow: (flow: number) => void;
   setRoundness: (roundness: number) => void;
   setAngle: (angle: number) => void;
+  setEraser: (eraser: boolean) => void;
   setImage: (image: string | null) => void;
   setSmooth: (smooth: boolean) => void;
   setSpacingEnabled: (spacingEnabled: boolean) => void;
@@ -117,7 +119,7 @@ export const useBrushStore = create<BrushStore>((set) => ({
   size: 20,
   opacity: 1,
   color: "#000000",
-  spacing: 0.5,
+  spacing: 0.01,
   flow: 1,
   roundness: 1,
   angle: 0,
@@ -130,6 +132,7 @@ export const useBrushStore = create<BrushStore>((set) => ({
   rotationOffset: 0,
   rotationJitter: 0,
   rotationSmoothing: 0.15,
+  eraser: false,
 
   dynamicShapeEnabled: false,
   sizeJitter: 0.25,
@@ -173,8 +176,7 @@ export const useBrushStore = create<BrushStore>((set) => ({
   setSpacing: (spacing) => set({ spacing }),
   setFlow: (flow) => set({ flow }),
   setRoundness: (roundness) => set({ roundness }),
-  setAngle: (angle) => set({ angle }),
-  setSmooth: (smooth) => set({ smooth }),
+  setAngle: (angle) => set({ angle }),  setEraser: (eraser: boolean) => set({ eraser }),  setSmooth: (smooth) => set({ smooth }),
   setSpacingEnabled: (spacingEnabled) => set({ spacingEnabled }),
   setPressureSimulation: (pressureSimulation) => set({ pressureSimulation }),
   setImage: (image) => set({ image }),

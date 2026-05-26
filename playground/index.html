@@ -172,6 +172,7 @@
         <button id="clearBtn">🧹 Clear</button>
         <button id="undoBtn">↩️ Undo</button>
         <button id="redoBtn">↪️ Redo</button>
+        <button id="eraserBtn" class="eraser-btn">🧽 Eraser Off</button>
 
         <div class="group">
           <label>🎨 Color</label>
@@ -482,6 +483,7 @@
       const clearBtn = document.getElementById("clearBtn");
       const undoBtn = document.getElementById("undoBtn");
       const redoBtn = document.getElementById("redoBtn");
+      const eraserBtn = document.getElementById("eraserBtn");
       const colorPicker = document.getElementById("colorPicker");
       const sizeSlider = document.getElementById("sizeSlider");
       const sizeValue = document.getElementById("sizeValue");
@@ -574,6 +576,14 @@
       // Brush config
       // =====================================================
 
+      let eraserEnabled = false;
+
+      function updateEraserButton() {
+        if (!eraserBtn) return;
+        eraserBtn.textContent = eraserEnabled ? "🧽 Eraser On" : "🧽 Eraser Off";
+        eraserBtn.style.background = eraserEnabled ? "#dc2626" : "#2563eb";
+      }
+
       function updateBrush() {
         try {
           painter.loadConfig({
@@ -588,6 +598,7 @@
               jitter: (Number(rotationJitter.value) / 360) * Math.PI * 2,
               smoothing: Number(rotationSmoothing.value),
             },
+            eraser: eraserEnabled,
           });
 
           painter.brush.isSmooth = smoothToggle.checked;
@@ -605,7 +616,8 @@
             count: (parseFloat(spreadRadius.value) || 0) <= 0 ? 1 : 2,
           });
 
-          status.textContent = "Brush Updated";
+          updateEraserButton();
+          status.textContent = eraserEnabled ? "Eraser Enabled" : "Brush Updated";
         } catch (err) {
           console.error(err);
         }
@@ -698,6 +710,11 @@
       redoBtn.addEventListener("click", () => {
         painter.redo();
         status.textContent = "Redo";
+      });
+
+      eraserBtn?.addEventListener("click", () => {
+        eraserEnabled = !eraserEnabled;
+        updateBrush();
       });
 
       imageInput.addEventListener("change", async (e) => {

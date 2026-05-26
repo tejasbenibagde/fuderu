@@ -95,6 +95,19 @@ describe("Brush — loadConfig", () => {
     expect(brush.config.color).toBe("#00ff00");
   });
 
+  it("loads eraser config from constructor config", () => {
+    const brush = new Brush(createMockCanvas(), { eraser: true });
+    expect(brush.isEraser).toBe(true);
+    expect(brush.config.eraser).toBe(true);
+  });
+
+  it("toggles eraser using loadConfig", () => {
+    const brush = new Brush(createMockCanvas());
+    brush.loadConfig({ eraser: true });
+    expect(brush.isEraser).toBe(true);
+    expect(brush.config.eraser).toBe(true);
+  });
+
   it("loads rotation config — fixed mode", () => {
     const brush = new Brush(createMockCanvas());
     brush.loadConfig({

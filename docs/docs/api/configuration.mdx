@@ -16,6 +16,7 @@ interface BrushBasicConfig {
   angle: number;
   roundness: number;
   spacing: number;
+  eraser: boolean;
   rotation?: RotationConfig;
 }
 ```
@@ -33,6 +34,7 @@ interface BrushBasicConfig {
   angle: 0,
   roundness: 1,
   spacing: 0.5,
+  eraser: false,
 }
 ```
 
@@ -47,6 +49,7 @@ interface BrushBasicConfig {
 | `angle`     | Base stamp angle as a fraction of one turn, from `0` to `1`.   |
 | `roundness` | Ellipse/image width ratio from `0` to `1`.                     |
 | `spacing`   | Distance between stamps as a multiplier of brush size.         |
+| `eraser`    | When `true`, the brush erases content instead of painting it.  |
 | `rotation`  | Optional stamp rotation behavior.                              |
 
 ## Rotation

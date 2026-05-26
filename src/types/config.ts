@@ -12,6 +12,7 @@ export interface BrushBasicConfig {
   roundness: number;
   /** 0.00-1.00 or 1.00-infinite (If your computer is great enough XD) */
   spacing: number;
+  eraser: boolean;
 
   rotation?: {
     mode?: "fixed" | "flow" | "random";
@@ -29,6 +30,7 @@ export interface BrushConfig {
   angle?: number;
   roundness?: number;
   spacing?: number;
+  eraser?: boolean;
   rotation?: {
     mode?: "fixed" | "flow" | "random";
     offset?: number;

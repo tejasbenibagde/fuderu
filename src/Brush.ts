@@ -32,6 +32,7 @@ const defaultBasicConfig: BrushBasicConfig = {
   angle: 0.0,
   roundness: 1.0,
   spacing: 0.5,
+  eraser: false,
 };
 
 /**
@@ -122,6 +123,7 @@ export class Brush {
   private _pendingFirstPointIndex?: number;
   // Stroke history for retroactive redraw
   private strokeHistory: Point[] = [];
+  isEraser: boolean = false;
 
   private initSourceCanvas(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -193,6 +195,7 @@ export class Brush {
     "source-over";
   /** Filter (default: 'none') */
   filter: CanvasRenderingContext2D["filter"] = "none";
+  
 
   private assertCanvasReady(): void {
     if (
@@ -376,6 +379,10 @@ export class Brush {
     return [strokeCanvas, strokeContext];
   }
 
+  private getCompositeOperation(): CanvasRenderingContext2D["globalCompositeOperation"] {
+    return this.isEraser ? "destination-out" : this.blendMode;
+  }
+
   private mixin(): void {
     this.assertCanvasReady();
     this.context!.clearRect(0, 0, this.canvas!.width, this.canvas!.height);
@@ -384,17 +391,13 @@ export class Brush {
     const [strokeCanvas] = this.getMixedCanvas();
 
     // transfer canvas
-    this.transferContext!.clearRect(
-      0,
-      0,
-      this.transferCanvas!.width,
-      this.transferCanvas!.height,
-    );
+    this.transferContext!.clearRect(0, 0, this.transferCanvas!.width, this.transferCanvas!.height);
     this.transferContext!.drawImage(strokeCanvas, 0, 0);
+    this.transferContext!.globalAlpha = 1;
 
     // blend mode
     const globalCompositeOperation = this.context!.globalCompositeOperation;
-    this.context!.globalCompositeOperation = this.blendMode;
+    this.context!.globalCompositeOperation = this.getCompositeOperation();
     // filter
     const filter = this.context!.filter;
     this.context!.filter = this.filter;
@@ -419,7 +422,17 @@ export class Brush {
       this.transferCanvas!.height,
     );
     this.transferContext!.drawImage(strokeCanvas, 0, 0);
+
+    const oriGlobalCompositeOperation =
+      this.oriContext!.globalCompositeOperation;
+    if (this.isEraser) {
+      this.oriContext!.globalCompositeOperation = "destination-out";
+    }
     this.oriContext!.drawImage(this.transferCanvas!, 0, 0);
+    if (this.isEraser) {
+      this.oriContext!.globalCompositeOperation = oriGlobalCompositeOperation;
+    }
+
     this.strokeContext!.clearRect(
       0,
       0,
@@ -477,9 +490,6 @@ export class Brush {
 
     // flow
     this.strokeContext!.globalAlpha = p.config.flow;
-
-    // // opacity
-    // this.transferContext!.globalAlpha = p.config.opacity;
 
     // final alpha
     this.strokeContext!.globalAlpha = p.config.flow * p.config.opacity;
@@ -671,6 +681,10 @@ export class Brush {
     if (config.angle != null) this.config.angle = config.angle;
     if (config.roundness != null) this.config.roundness = config.roundness;
     if (config.spacing != null) this.config.spacing = config.spacing;
+    if (config.eraser != null) {
+      this.config.eraser = config.eraser;
+      this.isEraser = config.eraser;
+    }
     if (config.rotation != null) this.config.rotation = config.rotation;
   }
 

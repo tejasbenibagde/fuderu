@@ -41,6 +41,19 @@ painter.loadConfig({
 });
 ```
 
+### Eraser Mode
+
+You can toggle the brush into eraser mode using either `loadConfig` or the
+canvas wrapper API.
+
+```ts
+painter.loadConfig({
+  eraser: true,
+});
+
+painter.setEraser(true);
+```
+
 ## Undo, Redo, And Clear
 
 ```ts

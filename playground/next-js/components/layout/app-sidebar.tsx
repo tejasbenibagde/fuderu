@@ -19,7 +19,7 @@ export function AppSidebar() {
             <img
               src="/fuderu.png"
               alt="Fuderu"
-              className="h-full w-full object-contain scale-[3.5]"
+              className="h-full w-full object-contain"
             />
           </div>
         </div>

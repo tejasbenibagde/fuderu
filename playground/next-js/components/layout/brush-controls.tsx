@@ -257,7 +257,7 @@ function ImageControl({
             width={240}
             height={112}
             unoptimized
-            className="h-28 w-full object-contain p-3"
+            className="w-full object-contain p-3"
           />
         </div>
       )}
@@ -354,6 +354,12 @@ export function BrushControls() {
           label="Mouse pressure"
           checked={store.pressureSimulation}
           onChange={store.setPressureSimulation}
+        />
+
+        <ToggleField
+          label="Eraser"
+          checked={store.eraser}
+          onChange={store.setEraser}
         />
 
         <SliderField

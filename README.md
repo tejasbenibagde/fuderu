@@ -32,6 +32,7 @@
 - Rotation modes: `fixed`, `flow`, and `random`.
 - Opacity, flow, angle, roundness, blend mode, and filter support.
 - Undo, redo, clear, and destroy lifecycle helpers.
+- Built-in eraser mode with runtime toggle support.
 - Runtime module system with built-in dynamic shape, transparency, spread, and pattern modules.
 - TypeScript-first and framework-agnostic.
 
@@ -59,6 +60,7 @@ const painter = new Canvas({
 painter.loadConfig({
   color: "#ff6b6b",
   size: 32,
+  eraser: false,
 });
 
 painter.undo();
@@ -110,7 +112,7 @@ Built-in modules can adjust per-stamp shape, transparency, position spread, and 
 
 ## Status
 
-Fuderu is currently pre-`1.0`. The core brush, canvas, pressure, image, and module systems are implemented, but public APIs may still change while the library stabilizes.
+Fuderu is currently pre-`1.0`. The core brush, canvas, pressure, image, eraser, and module systems are implemented, but public APIs may still change while the library stabilizes.
 
 Validated in:
 

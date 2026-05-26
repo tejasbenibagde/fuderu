@@ -85,6 +85,7 @@ const Canvas = () => {
 
     engine.brush.isSmooth = initialState.smooth;
     engine.brush.isSpacing = initialState.spacingEnabled;
+    engine.brush.isEraser = initialState.eraser;
     engine.pressureSimulation = initialState.pressureSimulation;
 
     engineRef.current = engine;
@@ -126,6 +127,7 @@ const Canvas = () => {
 
     engine.brush.isSmooth = store.smooth;
     engine.brush.isSpacing = store.spacingEnabled;
+    engine.brush.isEraser = store.eraser;
     engine.pressureSimulation = store.pressureSimulation;
   }, [
     store.size,
@@ -136,6 +138,39 @@ const Canvas = () => {
     store.roundness,
     store.angle,
     store.eraser,
+    store.smooth,
+    store.spacingEnabled,
+    store.pressureSimulation,
+    store.rotationMode,
+    store.rotationOffset,
+    store.rotationJitter,
+    store.rotationSmoothing,
+  ]);
+
+  useEffect(() => {
+    const modules = modulesRef.current;
+
+    if (!modules) return;
+
+    modules.dynamicShape.bindConfig({
+      sizeJitter: store.dynamicShapeEnabled ? store.sizeJitter : 0,
+      sizeJitterTrigger: store.sizeJitterTrigger,
+      minDiameter: store.minDiameter,
+      angleJitter: store.dynamicShapeEnabled ? store.angleJitter : 0,
+      angleJitterTrigger: store.angleJitterTrigger,
+      roundJitter: store.dynamicShapeEnabled ? store.roundJitter : 0,
+      roundJitterTrigger: store.roundJitterTrigger,
+      minRoundness: store.minRoundness,
+    });
+  }, [
+    store.dynamicShapeEnabled,
+    store.sizeJitter,
+    store.sizeJitterTrigger,
+    store.minDiameter,
+    store.angleJitter,
+    store.angleJitterTrigger,
+    store.roundJitter,
+    store.roundJitterTrigger,
     store.minRoundness,
   ]);
 

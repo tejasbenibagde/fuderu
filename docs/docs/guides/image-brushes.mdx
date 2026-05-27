@@ -3,11 +3,19 @@ sidebar_position: 3
 title: Image Brushes
 ---
 
+import FuderuDemo from "@site/src/components/FuderuDemo";
+
 # Image Brushes
 
 Fuderu can use a transparent image or canvas as the brush stamp. Pixels with
 content become the brush shape, and Fuderu recolors the stamp using the active
 brush color.
+
+<FuderuDemo
+  title="Image brush demo"
+  description="Load a stamp image and paint with image-based brush shapes directly in the docs."
+  mode="image"
+/>
 
 ```ts
 await painter.loadImage("/brushes/star.png");

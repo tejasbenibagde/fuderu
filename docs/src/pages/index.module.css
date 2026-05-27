@@ -1,10 +1,8 @@
 .hero {
   background:
-    radial-gradient(
-      circle at 85% 15%,
+    radial-gradient(circle at 85% 15%,
       rgba(255, 183, 77, 0.28),
-      transparent 30%
-    ),
+      transparent 30%),
     linear-gradient(135deg, #fff7ed 0%, #f8fafc 48%, #e0f2fe 100%);
   color: #172033;
   overflow: hidden;
@@ -42,6 +40,34 @@
   font-size: 1.3rem;
   line-height: 1.6;
   margin-bottom: 2rem;
+}
+
+.preview {
+  position: relative;
+}
+
+.previewHint {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+
+  padding: 0.45rem 0.8rem;
+
+  border-radius: 999px;
+
+  background: rgba(15, 118, 110, 0.12);
+
+  border: 1px solid rgba(15, 118, 110, 0.2);
+
+  backdrop-filter: blur(6px);
+
+  font-size: 0.85rem;
+  font-weight: 600;
+
+  color: #0f766e;
+
+  pointer-events: none;
 }
 
 .actions {
@@ -164,6 +190,7 @@
 }
 
 @media screen and (max-width: 900px) {
+
   .heroInner,
   .featureGrid {
     grid-template-columns: 1fr;

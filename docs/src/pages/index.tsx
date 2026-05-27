@@ -4,6 +4,7 @@ import useBaseUrl from "@docusaurus/useBaseUrl";
 import Layout from "@theme/Layout";
 import Heading from "@theme/Heading";
 
+import FuderuDemo from "@site/src/components/FuderuDemo";
 import styles from "./index.module.css";
 
 const features = [
@@ -55,13 +56,10 @@ export default function Home(): ReactNode {
                 </Link>
               </div>
             </div>
-            <div className={styles.preview} aria-hidden="true">
-              <div className={styles.canvasFrame}>
-                <div className={styles.strokeOne} />
-                <div className={styles.strokeTwo} />
-                <div className={styles.strokeThree} />
-                <div className={styles.dotOne} />
-                <div className={styles.dotTwo} />
+            <div className={styles.preview}>
+              <FuderuDemo compact />
+              <div className={styles.previewHint}>
+                Paint something 🎨
               </div>
             </div>
           </div>

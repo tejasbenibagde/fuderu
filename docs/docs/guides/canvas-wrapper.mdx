@@ -5,9 +5,16 @@ title: Canvas Wrapper
 
 # Canvas Wrapper
 
+import FuderuDemo from "@site/src/components/FuderuDemo";
+
 `Canvas` is the ergonomic entry point. It accepts either a canvas element or a
 query selector, creates a `Brush`, configures the canvas for the current device
 pixel ratio, and binds pointer events.
+
+<FuderuDemo
+  title="Canvas wrapper live demo"
+  description="The Canvas wrapper wires pointer events, pressure simulation, and device scaling automatically."
+/>
 
 ```ts
 import { Canvas } from "fuderu";

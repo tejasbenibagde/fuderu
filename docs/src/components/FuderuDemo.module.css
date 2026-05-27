@@ -1,0 +1,144 @@
+.card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.cardCompact {
+  border-radius: 16px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.header {
+  padding: 1.25rem 1.5rem 0.5rem;
+}
+
+.title {
+  color: #0f766e;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.description {
+  color: #334155;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.canvasWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 280px;
+  min-height: 220px;
+  touch-action: none;
+}
+
+.loading {
+  align-items: center;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  color: #475569;
+  font-size: 0.95rem;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem 1.25rem;
+}
+
+.controlRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.controlLabel,
+.checkboxLabel {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: #334155;
+  font-size: 0.88rem;
+}
+
+.checkboxLabel {
+  align-items: center;
+  flex-direction: row;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.rangeInput,
+.selectInput,
+.colorInput {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 999px;
+  min-width: 120px;
+  padding: 0.5rem 0.75rem;
+}
+
+.rangeInput {
+  width: 180px;
+}
+
+.colorInput {
+  height: 38px;
+  padding: 0.2rem;
+  width: 56px;
+}
+
+.status {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.button {
+  background: #0f766e;
+  border: none;
+  border-radius: 999px;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0.75rem 1rem;
+  transition: background 0.2s ease;
+}
+
+.button:hover {
+  background: #115e56;
+}
+
+@media screen and (max-width: 640px) {
+  .controlRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .controlLabel,
+  .checkboxLabel {
+    width: 100%;
+  }
+
+  .rangeInput,
+  .selectInput {
+    width: 100%;
+  }
+}

@@ -3,10 +3,18 @@ sidebar_position: 2
 title: Standalone Brush
 ---
 
+import FuderuDemo from "@site/src/components/FuderuDemo";
+
 # Standalone Brush
 
 Use `Brush` directly when your app already owns event handling, input
 normalization, replay, collaboration, or a custom drawing loop.
+
+<FuderuDemo
+  title="Brush properties demo"
+  description="Toggle smoothing, spacing, blend mode, and filters while drawing with a standalone brush."
+  mode="brush"
+/>
 
 ```ts
 import { Brush } from "fuderu";

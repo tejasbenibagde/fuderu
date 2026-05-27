@@ -3,10 +3,18 @@ sidebar_position: 4
 title: Modules
 ---
 
+import FuderuDemo from "@site/src/components/FuderuDemo";
+
 # Modules
 
 Modules let you change points, per-stamp config, stroke compositing, or
 stroke-end behavior without replacing the brush engine.
+
+<FuderuDemo
+  title="Module toggles demo"
+  description="Enable dynamic shape, transparency, spread, or pattern modules for live brush effects."
+  mode="modules"
+/>
 
 ```ts
 import { Brush, DynamicShapeModule, SpreadModule } from "fuderu";

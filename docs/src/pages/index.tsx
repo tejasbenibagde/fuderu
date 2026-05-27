@@ -58,9 +58,7 @@ export default function Home(): ReactNode {
             </div>
             <div className={styles.preview}>
               <FuderuDemo compact />
-              <div className={styles.previewHint}>
-                Paint something 🎨
-              </div>
+              <div className={styles.previewHint}>Paint something 🎨</div>
             </div>
           </div>
         </section>

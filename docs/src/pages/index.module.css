@@ -1,8 +1,10 @@
 .hero {
   background:
-    radial-gradient(circle at 85% 15%,
+    radial-gradient(
+      circle at 85% 15%,
       rgba(255, 183, 77, 0.28),
-      transparent 30%),
+      transparent 30%
+    ),
     linear-gradient(135deg, #fff7ed 0%, #f8fafc 48%, #e0f2fe 100%);
   color: #172033;
   overflow: hidden;
@@ -190,7 +192,6 @@
 }
 
 @media screen and (max-width: 900px) {
-
   .heroInner,
   .featureGrid {
     grid-template-columns: 1fr;

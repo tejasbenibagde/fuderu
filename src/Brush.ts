@@ -8,6 +8,7 @@ import { getControlPoint, getEquidistantBezierPoints } from "./utils/bezier";
 import { toHashColor } from "./utils/color";
 import { getAngle, getDistance } from "./utils/math";
 import { calculateRotation } from "./utils/rotation";
+import { applyStrokeOpacity, resetOpacity } from "./utils/opacity";
 
 const createCanvas = (
   width: number = 0,
@@ -123,6 +124,7 @@ export class Brush {
   private _pendingFirstPointIndex?: number;
   // Stroke history for retroactive redraw
   private strokeHistory: Point[] = [];
+  private _strokeOpacity: number = 1;
   isEraser: boolean = false;
 
   private initSourceCanvas(canvas: HTMLCanvasElement) {
@@ -345,12 +347,15 @@ export class Brush {
     pressure: number,
     rotation?: number,
   ): Point {
-    const cnf = { ...this.config };
+    const cnf = structuredClone(this.config);
 
-    // Base Pressure Modulation
     cnf.opacity = this.clamp01(cnf.opacity);
-    cnf.flow = cnf.flow * this.clamp01(pressure);
     cnf.roundness = this.clamp01(cnf.roundness);
+
+    // flow × pressure = per-stamp alpha (accumulates on strokeCanvas)
+    cnf.flow = this.clamp01(cnf.flow) * this.clamp01(pressure);
+
+    // size × pressure = per-stamp size
     cnf.size = cnf.size * this.clamp01(pressure);
 
     // Dynamic Pressure Modulation
@@ -360,11 +365,31 @@ export class Brush {
       }
     }
 
-    return { x, y, pressure, config: cnf, rotation };
+    // IMPORTANT: Store the opacity at the point level
+    // This is the stroke-level opacity ceiling
+    const pointOpacity = cnf.opacity;
+
+    return {
+      x,
+      y,
+      pressure,
+      config: cnf,
+      rotation,
+      opacity: pointOpacity, // Store on the point
+    };
   }
   private getMixedCanvas(): [HTMLCanvasElement, CanvasRenderingContext2D] {
-    let strokeCanvas = this.strokeCanvas!;
-    let strokeContext = this.strokeContext!;
+    const tempCanvas = createCanvas(
+      this.strokeCanvas!.width,
+      this.strokeCanvas!.height,
+    );
+
+    const tempCtx = getContext(tempCanvas);
+
+    tempCtx.drawImage(this.strokeCanvas!, 0, 0);
+
+    let strokeCanvas = tempCanvas;
+    let strokeContext = tempCtx;
 
     for (const [, module] of this.modules) {
       if (module.onMixinCanvas) {
@@ -384,48 +409,56 @@ export class Brush {
 
   private mixin(): void {
     this.assertCanvasReady();
+
+    // Clear visible canvas
     this.context!.clearRect(0, 0, this.canvas!.width, this.canvas!.height);
+
+    // Draw committed strokes
     this.context!.drawImage(this.oriCanvas!, 0, 0);
 
     const [strokeCanvas] = this.getMixedCanvas();
 
-    // transfer canvas
+    // Clear transfer canvas every frame
     this.transferContext!.clearRect(
       0,
       0,
       this.transferCanvas!.width,
       this.transferCanvas!.height,
     );
-    this.transferContext!.drawImage(strokeCanvas, 0, 0);
-    this.transferContext!.globalAlpha = 1;
 
-    // blend mode
-    const globalCompositeOperation = this.context!.globalCompositeOperation;
+    applyStrokeOpacity(this.transferContext!, this._strokeOpacity ?? 1);
+    this.transferContext!.drawImage(strokeCanvas, 0, 0);
+    resetOpacity(this.transferContext!);
+
+    const savedGco = this.context!.globalCompositeOperation;
+    const savedFilter = this.context!.filter;
+
     this.context!.globalCompositeOperation = this.getCompositeOperation();
-    // filter
-    const filter = this.context!.filter;
     this.context!.filter = this.filter;
 
+    // Draw current live stroke
     this.context!.drawImage(this.transferCanvas!, 0, 0);
 
-    // blend mode restore
-    this.context!.globalCompositeOperation = globalCompositeOperation;
-    // filter restore
-    this.context!.filter = filter;
+    this.context!.globalCompositeOperation = savedGco;
+    this.context!.filter = savedFilter;
   }
 
   private endStroke() {
     this.assertCanvasReady();
 
     const [strokeCanvas] = this.getMixedCanvas();
-    // transfer canvas
+
+    // Clear transfer canvas
     this.transferContext!.clearRect(
       0,
       0,
       this.transferCanvas!.width,
       this.transferCanvas!.height,
     );
+
+    applyStrokeOpacity(this.transferContext!, this._strokeOpacity ?? 1);
     this.transferContext!.drawImage(strokeCanvas, 0, 0);
+    resetOpacity(this.transferContext!);
 
     const oriGlobalCompositeOperation =
       this.oriContext!.globalCompositeOperation;
@@ -444,7 +477,10 @@ export class Brush {
       strokeCanvas.height,
     );
 
-    // command stack
+    this._strokeOpacity = 1;
+    this.strokeHistory = [];
+
+    // Command stack (undo/redo)
     if (this.maxUndoRedoStackSize > 0) {
       if (this.canvasStackIndex != this.canvasStack.length - 1) {
         this.canvasStack.splice(
@@ -485,18 +521,32 @@ export class Brush {
 
     const p = this.points.shift() as Point;
 
-    // Record into stroke history for future post-processing
+    // Skip if fully transparent
+    if (p.opacity <= 0) {
+      if (p.strokeEnd === true) {
+        this.endStroke();
+      }
+      if (p.callback) {
+        try {
+          p.callback();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+      return;
+    }
+
+    // Record into stroke history
+    if (this.strokeHistory.length === 0) {
+      this._strokeOpacity = p.opacity;
+    } else {
+      this._strokeOpacity = Math.min(this._strokeOpacity, p.opacity);
+    }
     this.strokeHistory.push(p);
-
     const rotation = p.rotation ?? -p.config.angle * Math.PI * 2;
-
     this.strokeContext!.save();
 
-    // flow
     this.strokeContext!.globalAlpha = p.config.flow;
-
-    // final alpha
-    this.strokeContext!.globalAlpha = p.config.flow * p.config.opacity;
 
     // IMAGE BRUSH
     if (this.shapeCanvas && this.shapeContext) {
@@ -504,35 +554,28 @@ export class Brush {
       if (this.shapeContext.fillStyle !== p.config.color.toLowerCase()) {
         const globalCompositeOperation =
           this.shapeContext.globalCompositeOperation;
-
         this.shapeContext.globalCompositeOperation = "source-atop";
-
         this.shapeContext.fillStyle = toHashColor(p.config.color);
-
         this.shapeContext.beginPath();
-
         this.shapeContext.fillRect(
           0,
           0,
           this.shapeCanvas.width,
           this.shapeCanvas.height,
         );
-
         this.shapeContext.globalCompositeOperation = globalCompositeOperation;
       }
 
       const width = p.config.size * p.config.roundness;
-
       const height = p.config.size / this.shapeRatio;
 
       this.strokeContext!.translate(p.x, p.y);
       this.strokeContext!.rotate(rotation);
 
       // Apply per-stamp edge alpha if set
-      // (used for tip fade; edgeAlpha is 0.0–1.0)
       if (p.edgeAlpha !== undefined) {
-        const prev = this.strokeContext!.globalAlpha;
-        this.strokeContext!.globalAlpha = prev * p.edgeAlpha;
+        this.strokeContext!.globalAlpha =
+          this.strokeContext!.globalAlpha * p.edgeAlpha;
       }
 
       this.strokeContext!.drawImage(
@@ -544,34 +587,25 @@ export class Brush {
       );
     } else {
       // DEFAULT ELLIPSE BRUSH
-
       const size = p.config.size;
-
       const roundness = p.config.roundness;
-
       const smallerRadius = size * roundness;
 
       this.strokeContext!.beginPath();
-
       this.strokeContext!.fillStyle = p.config.color;
-
       this.strokeContext!.translate(p.x, p.y);
-
       this.strokeContext!.rotate(rotation);
-
       this.strokeContext!.ellipse(
         0,
         0,
         size,
         smallerRadius,
-        0,
+        rotation,
         0,
         Math.PI * 2,
         false,
       );
-
       this.strokeContext!.fill();
-
       this.strokeContext!.closePath();
     }
 
@@ -760,19 +794,36 @@ export class Brush {
    */
   // Inside the putPoint method, replace the interpolation section with this:
 
+  /**
+   * Add the current point to the point pool,
+   * which will be rendered when the render function is called
+   * (interpolation and Bessel calculations will be performed)
+   */
   putPoint(x: number, y: number, pressure: number) {
-    // FIRST POINT
-    if (!this.prePoint || !this.isSpacing) {
-      // store first point only
-      // do NOT render yet because
-      // direction is unknown
-
-      this.prePrePoint = this.prePoint;
+    // FIRST POINT - just store it, don't render yet
+    if (!this.prePoint) {
+      this.prePrePoint = undefined;
       this.prePoint = { x, y, pressure };
-
       return;
     }
 
+    // SECOND POINT - now we have direction, render the first point
+    if (!this.prePrePoint) {
+      this.prePrePoint = this.prePoint;
+
+      // CRITICAL FIX: Process the first point with its original pressure
+      // Don't apply spacing interpolation to the very first point
+      this.processPoint(
+        this.prePoint.x,
+        this.prePoint.y,
+        this.prePoint.pressure,
+      );
+
+      this.prePoint = { x, y, pressure };
+      return;
+    }
+
+    // Regular interpolation for subsequent points
     const p1: PurePoint = { x, y, pressure };
     const p2: PurePoint = this.prePoint;
     const p3: PurePoint = this.prePrePoint || p2;
@@ -785,6 +836,7 @@ export class Brush {
       space = this.minSpacePixel;
     }
 
+    // If distance is too small, skip this point
     if (Math.floor(distance / space) <= 0) {
       return;
     }
@@ -795,10 +847,9 @@ export class Brush {
 
     const angle = getAngle(p2.x, p2.y, p1.x, p1.y);
 
+    // Adjust p1 position based on lag distance
     p1.x = p2.x + Math.cos(angle) * (distance - this.lagDistance);
-
     p1.y = p2.y + Math.sin(angle) * (distance - this.lagDistance);
-
     distance -= this.lagDistance;
 
     const control = getControlPoint(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
@@ -809,7 +860,7 @@ export class Brush {
       pressure: p1.pressure,
     };
 
-    // SMOOTH CURVE
+    // SMOOTH CURVE (with Bezier interpolation)
     if (this.isSmooth) {
       const points = getEquidistantBezierPoints(
         p2.x,
@@ -821,8 +872,9 @@ export class Brush {
         space,
       );
 
-      for (const point of points) {
-        const t = points.indexOf(point) / points.length;
+      for (let idx = 0; idx < points.length; idx++) {
+        const point = points[idx];
+        const t = idx / points.length;
 
         const curPressure = p2.pressure + (p1.pressure - p2.pressure) * t;
 
@@ -830,18 +882,14 @@ export class Brush {
         lastP.y = point.y;
         lastP.pressure = curPressure;
 
-        // IMPORTANT:
-        // let processPoint calculate rotation naturally
         this.processPoint(point.x, point.y, curPressure);
       }
     } else {
+      // LINEAR INTERPOLATION (no smoothing)
       for (let i = space; i <= distance; i += space) {
         const t = i / distance;
-
         const curPressure = p2.pressure + (p1.pressure - p2.pressure) * t;
-
         const pointX = p2.x + Math.cos(angle) * i;
-
         const pointY = p2.y + Math.sin(angle) * i;
 
         lastP.x = pointX;
@@ -853,7 +901,6 @@ export class Brush {
     }
 
     this.prePrePoint = this.prePoint;
-
     this.prePoint = {
       x: lastP.x,
       y: lastP.y,
@@ -908,7 +955,6 @@ export class Brush {
     this.previousRotationAngle = 0;
     this.lastProcessedPointForRotation = undefined;
     this._pendingFirstPointIndex = undefined;
-    this.strokeHistory = [];
 
     if (this.points.length > 0) {
       this.points[this.points.length - 1].strokeEnd = true;

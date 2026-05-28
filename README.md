@@ -36,6 +36,14 @@
 - Runtime module system with built-in dynamic shape, transparency, spread, and pattern modules.
 - TypeScript-first and framework-agnostic.
 
+## Latest Release
+
+### 0.8.4
+
+- Fixed low-opacity dense stroke rendering when spacing is reduced.
+- Fixed stroke opacity state leaking into later strokes after stroke completion.
+- Fixed brush stability after finishing one stroke and starting the next.
+
 ## Installation
 
 ```bash

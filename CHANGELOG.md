@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.4
+
+### Fixed
+
+- Fixed low-opacity dense stroke rendering when spacing is reduced, so 30% brushes stay visually consistent.
+- Fixed stale stroke opacity state leaking into subsequent strokes after completion.
+- Fixed brush rendering instability after stroke finalization and reinitialization.
+
 ## 0.8.3
 
 ### Added

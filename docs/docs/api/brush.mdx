@@ -34,11 +34,13 @@ maxUndoRedoStackSize: number;
 
 - `config`: active brush settings.
 - `isSmooth`: enables curve smoothing. Defaults to `true`.
-- `isSpacing`: enables interpolation spacing. Defaults to `true`.
+- `isSpacing`: compatibility flag exposed by the brush. Current stamp spacing is
+  controlled by `config.spacing`.
 - `isEraser`: enables eraser mode. When `true`, the brush erases using `destination-out` compositing.
 - `blendMode`: composite mode used when mixing the stroke onto the visible canvas.
 - `filter`: canvas filter used during mix-in.
-- `maxUndoRedoStackSize`: undo history limit. `0` disables history.
+- `maxUndoRedoStackSize`: undo history limit. Defaults to `10`; `0` disables
+  history.
 
 ## Drawing
 
@@ -65,6 +67,8 @@ finalizeStroke(callback?: () => void): void;
 ```
 
 Ends the current stroke, resets stroke-local state, and commits the stroke.
+If queued points are still rendering, the optional callback runs after the final
+queued point is processed.
 
 ## Configuration
 
@@ -89,6 +93,7 @@ state.
 
 ```ts
 loadContext(canvas: HTMLCanvasElement): void;
+resize(width: number, height: number): void;
 loadImage(
   img: HTMLImageElement | HTMLCanvasElement | string,
   callback?: (isSuc: boolean) => void,
@@ -96,6 +101,9 @@ loadImage(
 loadImageAsync(img: HTMLImageElement | HTMLCanvasElement | string): Promise<void>;
 removeImage(): void;
 ```
+
+`resize()` changes the target canvas buffer size, recreates internal stroke
+buffers, and resets undo history.
 
 ## History And Cleanup
 
@@ -113,3 +121,5 @@ removeModule(uniqueId: string): boolean;
 ```
 
 `useModule` returns a unique id. Store it if you need to remove the module later.
+Passing the same module instance again returns its existing id instead of adding
+it twice.

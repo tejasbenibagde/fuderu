@@ -33,24 +33,27 @@ interface BrushBasicConfig {
   color: "#000000",
   angle: 0,
   roundness: 1,
-  spacing: 0.5,
+  spacing: 0.12,
   eraser: false,
 }
 ```
 
 ## Fields
 
-| Field       | Description                                                    |
-| ----------- | -------------------------------------------------------------- |
-| `size`      | Base stamp size in pixels. Pressure also scales size.          |
-| `opacity`   | Final stamp opacity from `0` to `1`.                           |
-| `flow`      | Per-stamp paint flow from `0` to `1`.                          |
-| `color`     | CSS color used to fill ellipse stamps or recolor image stamps. |
-| `angle`     | Base stamp angle as a fraction of one turn, from `0` to `1`.   |
-| `roundness` | Ellipse/image width ratio from `0` to `1`.                     |
-| `spacing`   | Distance between stamps as a multiplier of brush size.         |
-| `eraser`    | When `true`, the brush erases content instead of painting it.  |
-| `rotation`  | Optional stamp rotation behavior.                              |
+| Field       | Description                                                      |
+| ----------- | ---------------------------------------------------------------- |
+| `size`      | Base stamp size in pixels. Pressure also scales size.            |
+| `opacity`   | Stroke opacity from `0` to `1`.                                  |
+| `flow`      | Per-stamp paint flow from `0` to `1`. Pressure also scales flow. |
+| `color`     | CSS color used to fill ellipse stamps or recolor image stamps.   |
+| `angle`     | Base stamp angle as a fraction of one turn, from `0` to `1`.     |
+| `roundness` | Ellipse/image width ratio from `0` to `1`.                       |
+| `spacing`   | Distance between stamps as a multiplier of brush size.           |
+| `eraser`    | When `true`, the brush erases content instead of painting it.    |
+| `rotation`  | Optional stamp rotation behavior.                                |
+
+`opacity`, `flow`, and `roundness` are clamped to `0..1` while rendering.
+Pressure is also clamped to `0..1`; it scales both stamp size and flow.
 
 ## Rotation
 
@@ -63,9 +66,10 @@ rotation?: {
 };
 ```
 
-- `fixed`: uses the configured angle.
+- `fixed`: uses `rotation.offset` when a rotation config is present. Omit
+  `rotation` to use the brush's `angle` field.
 - `flow`: follows the direction of the stroke.
 - `random`: varies rotation between stamps.
-- `offset`: adds an offset to calculated rotation.
-- `jitter`: adds random rotation variation.
+- `offset`: adds an angle offset in radians.
+- `jitter`: adds random rotation variation in radians.
 - `smoothing`: smooths flow-based direction changes.

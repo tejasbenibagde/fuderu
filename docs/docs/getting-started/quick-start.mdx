@@ -16,6 +16,10 @@ import { Canvas } from "fuderu";
 
 const painter = new Canvas({
   canvas: "#paint",
+  document: {
+    width: 800,
+    height: 500,
+  },
   pressureSimulation: true,
   brush: {
     color: "#111111",
@@ -27,6 +31,10 @@ const painter = new Canvas({
 
 `Canvas` attaches pointer handlers automatically. When the user presses and
 drags, points are sent to the underlying `Brush`.
+
+The `document` option controls the internal drawing resolution. If you omit it,
+Fuderu derives the internal buffer from the element's CSS size and the current
+device pixel ratio.
 
 ## Update The Brush
 
@@ -61,6 +69,23 @@ painter.undo();
 painter.redo();
 painter.clear();
 ```
+
+## Resize The Drawing Buffer
+
+Use `resize()` when the canvas element's visible size changed and you want the
+internal drawing buffer to match it:
+
+```ts
+painter.resize();
+```
+
+Use `setDocumentSize()` when you want to change the logical artwork size:
+
+```ts
+painter.setDocumentSize(1536, 1536);
+```
+
+Changing the document size clears the artwork and resets the undo stack.
 
 ## Clean Up
 

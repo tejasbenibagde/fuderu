@@ -31,8 +31,8 @@ React, Next.js client components, Vue, Svelte, or any other browser UI layer.
 
 ## Canvas Sizing
 
-The `Canvas` wrapper reads the element's layout size and scales the backing
-canvas by `window.devicePixelRatio`.
+The `Canvas` wrapper separates the visible CSS size from the logical drawing
+buffer.
 
 Give the canvas a real CSS size before constructing `Canvas`:
 
@@ -47,3 +47,21 @@ const painter = new Canvas({
   canvas: "#paint",
 });
 ```
+
+When `document` is omitted, Fuderu reads the element's layout size and sets the
+internal canvas buffer to `width * window.devicePixelRatio` by
+`height * window.devicePixelRatio`.
+
+For a fixed drawing resolution, pass `document`:
+
+```ts
+const painter = new Canvas({
+  canvas: "#paint",
+  document: {
+    width: 1536,
+    height: 1536,
+  },
+});
+```
+
+Changing the canvas element's CSS size is still your app's responsibility.

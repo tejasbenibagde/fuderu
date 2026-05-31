@@ -21,12 +21,18 @@ new Canvas(options: CanvasOptions);
 ```ts
 interface CanvasOptions {
   canvas: HTMLCanvasElement | string;
+  document?: {
+    width: number;
+    height: number;
+  };
   brush?: BrushConfig;
   pressureSimulation?: boolean;
 }
 ```
 
 - `canvas`: a canvas element or a selector that resolves to one.
+- `document`: optional logical drawing resolution. If omitted, Fuderu uses the
+  element's CSS size multiplied by `window.devicePixelRatio`.
 - `brush`: optional initial brush config.
 - `pressureSimulation`: defaults to `true`.
 
@@ -55,6 +61,23 @@ pressureSimulation: boolean;
 ```
 
 Toggles simulated pressure for non-pen input.
+
+### `documentWidth`, `documentHeight`
+
+```ts
+documentWidth: number;
+documentHeight: number;
+```
+
+The current logical drawing resolution.
+
+### `lastPressure`
+
+```ts
+lastPressure: number;
+```
+
+The most recent pressure value sent to the brush.
 
 ## Methods
 
@@ -88,7 +111,8 @@ Enables or disables curve smoothing.
 setSpacing(enabled: boolean): void;
 ```
 
-Enables or disables spacing-based interpolation.
+Updates the brush's compatibility `isSpacing` flag. Current stamp spacing is
+controlled by `brush.config.spacing`.
 
 ### `setEraser`
 
@@ -107,6 +131,25 @@ clear(): void;
 ```
 
 History and canvas helpers.
+
+### `resize`
+
+```ts
+resize(): void;
+```
+
+Resizes the internal drawing buffer to the canvas element's current CSS size
+multiplied by `window.devicePixelRatio`, then reloads the brush context. This
+clears the current artwork and resets undo history.
+
+### `setDocumentSize`
+
+```ts
+setDocumentSize(width: number, height: number): void;
+```
+
+Changes the logical drawing resolution. This clears the current artwork and
+resets undo history. It does not change the canvas element's CSS size.
 
 ### `destroy`
 

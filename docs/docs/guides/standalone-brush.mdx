@@ -63,12 +63,16 @@ brush.loadContext(canvas);
 
 ```ts
 brush.isSmooth = true;
-brush.isSpacing = true;
+brush.config.spacing = 0.12;
 brush.blendMode = "source-over";
 brush.filter = "none";
 ```
 
 - `isSmooth` enables curve smoothing.
-- `isSpacing` enables spacing-based interpolation.
+- `config.spacing` controls spacing-based interpolation. Smaller values place
+  stamps closer together.
 - `blendMode` maps to `CanvasRenderingContext2D.globalCompositeOperation`.
 - `filter` maps to `CanvasRenderingContext2D.filter`.
+
+`isSpacing` is still exposed for compatibility, but current spacing behavior is
+driven by `config.spacing`.

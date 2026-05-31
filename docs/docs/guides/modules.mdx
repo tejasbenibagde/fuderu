@@ -45,6 +45,9 @@ Remove a module with the id returned by `useModule`:
 brush.removeModule(shapeId);
 ```
 
+Each built-in module exposes a mutable `config` object and `bindConfig(config)`
+for binding to an external config object.
+
 ## Dynamic Shape
 
 `DynamicShapeModule` changes size, angle, and roundness per stamp.
@@ -52,12 +55,15 @@ brush.removeModule(shapeId);
 ```ts
 new DynamicShapeModule({
   sizeJitter: 0.35,
+  sizeJitterTrigger: "pressure",
   minDiameter: 0.25,
   angleJitter: 0.15,
   roundJitter: 0.2,
   minRoundness: 0.4,
 });
 ```
+
+The trigger fields accept `"none"` or `"pressure"`.
 
 ## Dynamic Transparency
 
@@ -66,11 +72,15 @@ new DynamicShapeModule({
 ```ts
 new DynamicTransparencyModule({
   opacityJitter: 0.2,
+  opacityJitterTrigger: "pressure",
   minOpacityJitter: 0.5,
   flowJitter: 0.35,
+  flowJitterTrigger: "pressure",
   minFlowJitter: 0.2,
 });
 ```
+
+Opacity jitter is rolled once per stroke. Flow jitter is rolled for each stamp.
 
 ## Spread
 
@@ -80,8 +90,10 @@ effects.
 ```ts
 new SpreadModule({
   spreadRange: 0.6,
+  spreadTrigger: "pressure",
   count: 5,
   countJitter: 0.4,
+  countJitterTrigger: "pressure",
 });
 ```
 
@@ -99,6 +111,15 @@ const pattern = new PatternModule({
   blendMode: "multiply",
 });
 
-await pattern.loadPattern("/textures/paper.png", canvas.width, canvas.height);
+await pattern.loadPattern(
+  "/textures/paper.png",
+  canvas.width,
+  canvas.height,
+  "#f97316",
+);
 brush.useModule(pattern);
 ```
+
+The optional fourth argument tints the repeated pattern before it is blended into
+the stroke. Call `pattern.removePattern()` to stop applying the texture while
+keeping the module registered.

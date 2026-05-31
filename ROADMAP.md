@@ -1,44 +1,325 @@
 # Fuderu Roadmap
 
-Fuderu is a lightweight, framework-agnostic canvas drawing engine. The project is still pre-`1.0`, but most of the original brush and module foundations are now in place.
+Fuderu is a lightweight, framework-agnostic digital painting engine for the web.
+
+The goal is to provide modern brush dynamics, extensible modules, and high-performance canvas rendering while remaining easy to integrate into vanilla JavaScript, React, Next.js, and other frameworks.
+
+---
 
 ## Current Status
 
-Current package version: `0.8.2`
+Current package version: `0.8.6`
 
-The public API is still experimental until `1.0.0`. Minor releases may still change brush configuration, module hooks, rendering internals, or canvas lifecycle behavior when needed.
+The public API remains experimental until `1.0.0`.
 
-## Implemented
+Minor releases may still introduce breaking changes to:
 
-- Canvas wrapper with pointer input, high-DPI setup, cleanup, clear, undo, and redo.
-- Brush engine with interpolation, adaptive spacing, smoothing toggles, runtime config updates, blend modes, and canvas filters.
-- Pressure-aware drawing with real pen pressure and optional mouse/touch pressure simulation.
-- Image brushes with recoloring and rotation modes: `fixed`, `flow`, and `random`.
-- Runtime module registration and removal.
-- Built-in modules for dynamic shape, dynamic transparency, spread, and pattern textures.
-- Test coverage for brush setup, config updates, rotation, modules, undo/redo basics, canvas setup, utilities, and pointer handling.
-- Example/playground coverage for vanilla HTML and Next.js/React usage.
+- Brush configuration
+- Module hooks
+- Rendering internals
+- Canvas lifecycle APIs
 
-## Still Experimental
+---
 
-- Module API shape and execution order.
-- Large-canvas performance and stress behavior.
-- Mobile/touch behavior across more devices.
-- Complex brush accumulation and textured brush combinations.
-- Long-running memory behavior with large undo stacks.
+# Implemented
 
-## Next Priorities
+## Canvas
 
-- Stabilize the module API and document each built-in module.
-- Improve pressure controls, including configurable mouse pressure ranges.
-- Add brush presets and examples for common brush types.
-- Expand performance tests for large canvases and dense strokes.
-- Validate mobile and multi-DPR rendering more thoroughly.
-- Explore OffscreenCanvas, worker rendering, and WASM acceleration only after the core API is stable.
+- Pointer input support
+- High-DPI rendering
+- Explicit logical document sizing
+- Runtime canvas resizing
+- Runtime document size changes
+- Clear
+- Undo / Redo
+- Cleanup lifecycle
 
-## v1.0 Goals
+## Brush Engine
 
-- Stable public `Canvas`, `Brush`, config, and module APIs.
-- Documented preset and module workflows.
-- Reliable browser compatibility expectations.
-- Clear semantic versioning guarantees for future releases.
+- Interpolation
+- Adaptive spacing
+- Smoothing
+- Runtime configuration updates
+- Blend modes
+- Canvas filters
+- Eraser compositing
+
+## Pressure
+
+- Native pen pressure
+- Mouse/touch pressure simulation
+- Runtime simulation toggle
+- Runtime pressure controls
+
+## Brush Shapes
+
+- Standard ellipse brush
+- Image brushes
+- Runtime recoloring
+- Per-stamp opacity and flow
+- Rotation modes:
+  - Fixed
+  - Flow
+  - Random
+
+## Modules
+
+- Dynamic Shape
+- Dynamic Transparency
+- Spread
+- Pattern
+
+## Testing
+
+- Brush setup
+- Config updates
+- Rotation
+- Modules
+- Undo / Redo
+- Canvas lifecycle
+- Utilities
+- Pointer handling
+
+---
+
+# Experimental
+
+These APIs may still change before 1.0.
+
+## Module System
+
+- Module API shape
+- Module execution order
+- Cross-module interactions
+
+## Rendering
+
+- Large canvas behavior
+- Dense stroke performance
+- Long-running memory usage
+- Large undo stack behavior
+
+## Device Support
+
+- Mobile rendering consistency
+- Touch device validation
+- Multi-DPR validation
+
+---
+
+# Milestone: v1.0 Stability
+
+Goal: stabilize the current foundation.
+
+## Documentation
+
+- Complete API documentation
+- Module documentation
+- Brush documentation
+- Framework integration guides
+
+## Presets
+
+- Pencil
+- Marker
+- Ink
+- Soft Brush
+- Airbrush
+
+## Reliability
+
+- Browser compatibility matrix
+- Expanded automated testing
+- Mobile validation
+- Performance benchmarks
+
+## API Freeze
+
+- Stable Canvas API
+- Stable Brush API
+- Stable Module API
+
+---
+
+# Milestone: Digital Painting Features
+
+Goal: evolve Fuderu from a drawing library into a painting engine.
+
+## Brush Dynamics
+
+### Velocity Dynamics
+
+Allow brush properties to react to drawing speed.
+
+Examples:
+
+- Speed → Size
+- Speed → Opacity
+- Speed → Flow
+
+### Pressure Curves
+
+Custom pressure response curves.
+
+Examples:
+
+- Linear
+- Soft
+- Hard
+- Custom curve editor
+
+### Color Dynamics
+
+Randomized:
+
+- Hue
+- Saturation
+- Value
+
+for more natural strokes.
+
+---
+
+## Brush Effects
+
+### Improved Scatter
+
+Advanced scatter controls:
+
+- Position scatter
+- Angle scatter
+- Scale scatter
+
+### Texture Brushes
+
+Support texture-driven brushes.
+
+Examples:
+
+- Chalk
+- Pencil
+- Dry Brush
+- Oil Paint
+
+### Stamp Brushes
+
+Pattern and shape stamping workflows.
+
+---
+
+## Tablet Features
+
+### Tilt Support
+
+Support:
+
+- tiltX
+- tiltY
+
+for realistic brush orientation.
+
+### Advanced Rotation
+
+Additional rotation sensors and dynamics.
+
+---
+
+# Milestone: Advanced Painting Engine
+
+Goal: reach feature parity with professional brush systems.
+
+## Smudge Brush
+
+Canvas sampling and paint mixing.
+
+Features:
+
+- Smearing
+- Wet paint effects
+- Color pickup
+
+## Wet Brushes
+
+Experimental paint accumulation and blending.
+
+## Brush Sensors
+
+Drive brush properties using:
+
+- Pressure
+- Velocity
+- Tilt
+- Direction
+- Randomness
+
+---
+
+# Milestone: Performance
+
+Goal: support larger projects and professional workflows.
+
+## Rendering
+
+- OffscreenCanvas
+- Worker rendering
+- Incremental rendering
+
+## Native Acceleration
+
+Investigate:
+
+- WebAssembly
+- Rust modules
+
+for heavy brush calculations.
+
+## GPU Rendering
+
+Future exploration:
+
+- WebGL
+- WebGPU
+
+for advanced brush effects and large canvases.
+
+---
+
+# Future Ecosystem
+
+## Brush Presets
+
+Import/export brush definitions.
+
+```json
+{
+  "size": 20,
+  "scatter": 0.2,
+  "texture": "chalk",
+  "opacity": 0.8
+}
+```
+
+## Community Presets
+
+Shareable brush packs.
+
+## Plugin Ecosystem
+
+Custom modules:
+
+- Watercolor
+- Pencil
+- Grass
+- Particle brushes
+
+---
+
+# Long-Term Vision
+
+Fuderu aims to become a modern, TypeScript-first digital painting engine for the web, combining:
+
+- Professional brush dynamics
+- Extensible module architecture
+- Framework-agnostic integration
+- High-performance rendering
+- Future GPU acceleration

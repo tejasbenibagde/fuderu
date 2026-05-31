@@ -58,7 +58,8 @@ painter.loadConfig({
 
 Available rotation modes:
 
-- `fixed`: keep the configured angle.
+- `fixed`: use `rotation.offset` as the stamp angle. Omit `rotation` to use the
+  brush's `angle` field instead.
 - `flow`: rotate stamps along the stroke direction.
 - `random`: choose randomized stamp rotation.
 

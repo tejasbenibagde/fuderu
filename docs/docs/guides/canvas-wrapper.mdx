@@ -9,7 +9,7 @@ import FuderuDemo from "@site/src/components/FuderuDemo";
 
 `Canvas` is the ergonomic entry point. It accepts either a canvas element or a
 query selector, creates a `Brush`, configures the canvas for the current device
-pixel ratio, and binds pointer events.
+pixel ratio or an explicit document size, and binds pointer events.
 
 <FuderuDemo
   title="Canvas wrapper live demo"
@@ -21,6 +21,10 @@ import { Canvas } from "fuderu";
 
 const painter = new Canvas({
   canvas: document.querySelector("canvas")!,
+  document: {
+    width: 1024,
+    height: 768,
+  },
   pressureSimulation: true,
   brush: {
     color: "#222222",
@@ -28,6 +32,35 @@ const painter = new Canvas({
     roundness: 0.8,
   },
 });
+```
+
+## Document Size
+
+The visible canvas size comes from CSS. The drawing buffer comes from
+`document.width` and `document.height`, or from the element's CSS size multiplied
+by `window.devicePixelRatio` when `document` is omitted.
+
+```ts
+const painter = new Canvas({
+  canvas: "#paint",
+  document: {
+    width: 1536,
+    height: 1536,
+  },
+});
+```
+
+Call `resize()` after changing the element's visible size:
+
+```ts
+painter.resize();
+```
+
+Call `setDocumentSize()` to change the logical artwork size. This clears the
+canvas and resets undo history.
+
+```ts
+painter.setDocumentSize(2048, 2048);
 ```
 
 ## Pressure
@@ -44,6 +77,9 @@ const painter = new Canvas({
 
 Set `pressureSimulation` to `false` to use a flat pressure of `1` for mouse and
 touch input.
+
+`lastPressure` stores the most recent pressure sent to the brush, which is handy
+for UI meters without advancing the pressure simulator again.
 
 ## Access The Brush
 

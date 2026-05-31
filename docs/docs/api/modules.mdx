@@ -22,6 +22,9 @@ interface Module {
 }
 ```
 
+Built-in modules also expose `config` and `bindConfig(config)`, so you can either
+mutate settings directly or replace the config reference with app state.
+
 ## Hooks
 
 ### `onChangePoint`
@@ -56,3 +59,54 @@ class PressureColorModule implements Module {
 
 brush.useModule(new PressureColorModule());
 ```
+
+## Built-In Module Configs
+
+```ts
+type JitterTrigger = "none" | "pressure";
+
+interface DynamicShapeBasicConfig {
+  sizeJitter: number;
+  sizeJitterTrigger: JitterTrigger;
+  minDiameter: number;
+  angleJitter: number;
+  angleJitterTrigger: JitterTrigger;
+  roundJitter: number;
+  roundJitterTrigger: JitterTrigger;
+  minRoundness: number;
+}
+```
+
+```ts
+interface DynamicTransparencyBasicConfig {
+  opacityJitter: number;
+  opacityJitterTrigger: "none" | "pressure";
+  minOpacityJitter: number;
+  flowJitter: number;
+  flowJitterTrigger: "none" | "pressure";
+  minFlowJitter: number;
+}
+```
+
+```ts
+interface SpreadBasicConfig {
+  spreadRange: number;
+  spreadTrigger: "none" | "pressure";
+  count: number;
+  countJitter: number;
+  countJitterTrigger: "none" | "pressure";
+}
+```
+
+```ts
+interface PatternBasicConfig {
+  scale: number;
+  brightness: number;
+  contrast: number;
+  blendMode: CanvasRenderingContext2D["globalCompositeOperation"];
+}
+```
+
+`PatternModule.loadPattern(resource, canvasWidth, canvasHeight, tint?)` accepts an
+image element, canvas element, or URL string. `removePattern()` clears the active
+texture.

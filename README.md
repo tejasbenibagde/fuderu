@@ -27,6 +27,7 @@
 - Standalone `Brush` engine for custom integrations.
 - Smooth interpolation and adaptive brush spacing.
 - Real pen pressure plus optional mouse/touch pressure simulation.
+- Device-pixel-ratio aware canvas setup with explicit document sizing support.
 - Runtime brush configuration.
 - Image-based brush stamps with recoloring and rotation.
 - Rotation modes: `fixed`, `flow`, and `random`.
@@ -65,6 +66,10 @@ import { Canvas } from "fuderu";
 
 const painter = new Canvas({
   canvas: "#canvas",
+  document: {
+    width: 1536,
+    height: 1536,
+  },
   pressureSimulation: true,
   brush: {
     color: "#000000",
@@ -83,6 +88,9 @@ painter.undo();
 painter.redo();
 painter.clear();
 ```
+
+If `document` is omitted, Fuderu sizes the internal drawing buffer from the
+canvas element's CSS size multiplied by `window.devicePixelRatio`.
 
 ## Image Brushes
 

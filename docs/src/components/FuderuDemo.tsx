@@ -92,8 +92,15 @@ export default function FuderuDemo({
   useEffect(() => {
     if (!canvasRef.current) return;
 
+    const rect = canvasRef.current.getBoundingClientRect();
+    const documentSize = {
+      width: Math.max(1, Math.round(rect.width)),
+      height: Math.max(1, Math.round(rect.height)),
+    };
+
     const canvas = new FuderuCanvas({
       canvas: canvasRef.current,
+      document: documentSize,
       pressureSimulation: isPressureEnabled,
       brush: initialBrush,
     });

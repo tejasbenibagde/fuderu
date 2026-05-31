@@ -5,7 +5,15 @@ title: Module API
 
 # Module API
 
+import FuderuDemo from "@site/src/components/FuderuDemo";
+
 Modules are plain objects or classes that implement one or more hook methods.
+
+<FuderuDemo
+  title="Module hook behavior"
+  description="Toggle dynamic shape, transparency, spread, and pattern compositing to see how module hooks alter points, per-stamp config, and stroke mix-in."
+  mode="modules"
+/>
 
 ```ts
 interface Module {

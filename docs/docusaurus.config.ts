@@ -79,6 +79,11 @@ const config: Config = {
           label: "Docs",
         },
         {
+          to: "/editor",
+          label: "Editor",
+          position: "left",
+        },
+        {
           href: "https://www.npmjs.com/package/fuderu",
           label: "npm",
           position: "right",

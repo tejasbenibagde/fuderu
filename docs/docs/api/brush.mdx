@@ -5,8 +5,16 @@ title: Brush
 
 # Brush API
 
+import FuderuDemo from "@site/src/components/FuderuDemo";
+
 `Brush` is the lower-level stroke engine. It receives points, interpolates them,
 renders stamps, manages image brushes, and owns undo/redo state.
+
+<FuderuDemo
+  title="Brush engine controls"
+  description="Use this demo to compare smoothing, spacing, pressure simulation, blend modes, and canvas filters while drawing."
+  mode="brush"
+/>
 
 ```ts
 import { Brush } from "fuderu";

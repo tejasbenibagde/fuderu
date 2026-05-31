@@ -38,21 +38,22 @@ export default function Home(): ReactNode {
                 <img className={styles.heroLogo} src={logoUrl} alt="Fuderu" />
               </Heading>
               <p className={styles.subtitle}>
-                Lightweight, extensible canvas drawing for smooth brush strokes,
-                pressure-aware input, image stamps, and runtime effects.
+                Fuderu 0.8.6 brings explicit document sizing, smooth brush
+                strokes, pressure-aware input, image stamps, and runtime
+                effects.
               </p>
               <div className={styles.actions}>
                 <Link
                   className="button button--primary button--lg"
-                  to="/docs/intro"
+                  to="/editor"
                 >
-                  Read the docs
+                  Open editor
                 </Link>
                 <Link
                   className="button button--secondary button--lg"
-                  to="/docs/getting-started/quick-start"
+                  to="/docs/intro"
                 >
-                  Quick start
+                  Read the docs
                 </Link>
               </div>
             </div>

@@ -1,0 +1,388 @@
+.page {
+  min-height: calc(100vh - var(--ifm-navbar-height));
+  background: #f8fafc;
+}
+
+.landing {
+  display: grid;
+  grid-template-columns: minmax(320px, 460px) 1fr;
+  min-height: calc(100vh - var(--ifm-navbar-height));
+}
+
+.setup {
+  background: #ffffff;
+  border-right: 1px solid rgba(15, 23, 42, 0.1);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.logo {
+  height: 4rem;
+  object-fit: contain;
+  object-position: left center;
+  width: 14rem;
+}
+
+.badge {
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  color: #475569;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  padding: 0.3rem 0.65rem;
+  width: fit-content;
+}
+
+.setup h1 {
+  color: #0f172a;
+  font-size: 2.2rem;
+  letter-spacing: 0;
+  margin: 1rem 0 0.75rem;
+}
+
+.setup p {
+  color: #475569;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.field label {
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.input,
+.select {
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  color: #0f172a;
+  font: inherit;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.sizeGrid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.presets {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.preset,
+.button,
+.toolButton {
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.preset {
+  background: #ffffff;
+  color: #0f172a;
+  display: grid;
+  gap: 0.2rem;
+  min-height: 4rem;
+  padding: 0.65rem;
+  text-align: left;
+}
+
+.presetActive,
+.button {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.preset small {
+  color: #64748b;
+}
+
+.presetActive small {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.button {
+  align-items: center;
+  display: inline-flex;
+  font-weight: 700;
+  gap: 0.5rem;
+  justify-content: center;
+  min-height: 2.7rem;
+  padding: 0.7rem 1rem;
+}
+
+.preview {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.previewCanvas {
+  aspect-ratio: 1;
+  background:
+    linear-gradient(
+      45deg,
+      rgba(15, 23, 42, 0.05) 25%,
+      transparent 25%,
+      transparent 75%,
+      rgba(15, 23, 42, 0.05) 75%
+    ),
+    linear-gradient(
+      45deg,
+      rgba(15, 23, 42, 0.05) 25%,
+      transparent 25%,
+      transparent 75%,
+      rgba(15, 23, 42, 0.05) 75%
+    );
+  background-color: #ffffff;
+  background-position:
+    0 0,
+    18px 18px;
+  background-size: 36px 36px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+  max-width: 34rem;
+  position: relative;
+  width: 100%;
+}
+
+.previewCanvas::before,
+.previewCanvas::after {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  content: "";
+  position: absolute;
+}
+
+.previewCanvas::before {
+  background: rgba(20, 184, 166, 0.12);
+  height: 18%;
+  left: 14%;
+  top: 18%;
+  transform: rotate(-8deg);
+  width: 34%;
+}
+
+.previewCanvas::after {
+  background: rgba(244, 63, 94, 0.12);
+  bottom: 18%;
+  height: 24%;
+  right: 14%;
+  transform: rotate(12deg);
+  width: 28%;
+}
+
+.editor {
+  display: grid;
+  grid-template-columns: 19rem 1fr;
+  min-height: calc(100vh - var(--ifm-navbar-height));
+}
+
+.sidebar {
+  background: #ffffff;
+  border-right: 1px solid rgba(15, 23, 42, 0.1);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebarHeader {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+  padding: 1rem;
+}
+
+.sidebarHeader img {
+  display: block;
+  height: 2.8rem;
+  object-fit: contain;
+  object-position: left center;
+  width: 100%;
+}
+
+.controls {
+  display: grid;
+  gap: 1rem;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.section {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  display: grid;
+  gap: 0.8rem;
+  padding-bottom: 1rem;
+}
+
+.section h2 {
+  color: #0f172a;
+  font-size: 0.9rem;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.subControls {
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.range {
+  accent-color: #0f172a;
+  width: 100%;
+}
+
+.toggle {
+  align-items: center;
+  color: #334155;
+  display: flex;
+  font-size: 0.9rem;
+  gap: 0.5rem;
+}
+
+.toolRow {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.toolButton {
+  background: #ffffff;
+  color: #0f172a;
+  min-height: 2.35rem;
+}
+
+.toolButtonActive {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar {
+  align-items: center;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+  display: flex;
+  justify-content: space-between;
+  min-height: 3.5rem;
+  padding: 0 1rem;
+}
+
+.projectName {
+  color: #0f172a;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.projectMeta {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.surface {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+  padding: 1.5rem;
+}
+
+.stage {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  overflow: hidden;
+  padding: 1rem;
+  position: relative;
+  width: 100%;
+}
+
+.canvas {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 6px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.14);
+  cursor: none;
+  display: block;
+  max-height: 100%;
+  max-width: 100%;
+  touch-action: none;
+}
+
+.cursor {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(15, 23, 42, 0.9);
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.85),
+    0 12px 28px rgba(15, 23, 42, 0.16);
+  mix-blend-mode: difference;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+}
+
+@media (max-width: 900px) {
+  .landing,
+  .editor {
+    grid-template-columns: 1fr;
+  }
+
+  .preview {
+    display: none;
+  }
+
+  .editor {
+    min-height: auto;
+  }
+
+  .sidebar {
+    border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+    border-right: 0;
+  }
+
+  .controls {
+    max-height: 22rem;
+  }
+
+  .surface {
+    min-height: 32rem;
+  }
+}

@@ -28,21 +28,18 @@ const Canvas = () => {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-
     if (!canvas) return;
 
     const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-
-      canvas.width = rect.width;
-      canvas.height = rect.height;
+      engineRef.current?.resize();
     };
 
-    resize();
-
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
     window.addEventListener("resize", resize);
 
     return () => {
+      observer.disconnect();
       window.removeEventListener("resize", resize);
     };
   }, []);
@@ -95,6 +92,8 @@ const Canvas = () => {
       spread,
       pattern,
     };
+
+    requestAnimationFrame(() => engine.resize());
 
     return () => {
       engine.destroy();

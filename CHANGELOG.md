@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.6
+
+### Fixed
+
+- Fixed canvas clipping in the playground, improving resize handling so the rendered canvas always matches the visible element size.
+
 ## 0.8.5
 
 ### Fixed

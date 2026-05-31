@@ -1023,4 +1023,17 @@ export class Brush {
       }
     }
   }
+
+  public resize(width: number, height: number) {
+    if (!this.canvas) return;
+
+    this.canvas.width = width;
+    this.canvas.height = height;
+
+    this.initOriCanvas(this.canvas);
+    this.initStrokeCanvas(this.canvas);
+    this.initTransferCanvasCanvas(this.canvas);
+
+    this.initCanvasStack();
+  }
 }

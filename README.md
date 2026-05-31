@@ -38,6 +38,10 @@
 
 ## Latest Release
 
+### 0.8.6
+
+- Fixed canvas clipping in the playground by improving canvas resize handling and keeping the display size in sync with the internal drawing buffer.
+
 ### 0.8.5
 
 - Fixed an initial stroke gap when drawing fast, ensuring the first brush stamp connects correctly to the second point.

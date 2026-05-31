@@ -12,6 +12,7 @@ const mockBrushInstance = {
   redo: vi.fn(),
   loadConfig: vi.fn(),
   loadImageAsync: vi.fn(),
+  loadContext: vi.fn(),
 };
 
 vi.mock("../src/Brush", () => {
@@ -28,6 +29,7 @@ beforeAll(() => {
       if (contextId === "2d") {
         return {
           scale: vi.fn(),
+          setTransform: vi.fn(),
           clearRect: vi.fn(),
           drawImage: vi.fn(),
           getImageData: vi.fn(() => ({
@@ -131,6 +133,56 @@ describe("Canvas", () => {
     expect(canvas.height).toBe(500);
   });
 
+  it("should scale canvas by devicePixelRatio", () => {
+    const canvas = createCanvas();
+    const originalRatio = window.devicePixelRatio;
+    Object.defineProperty(window, "devicePixelRatio", {
+      value: 2,
+      configurable: true,
+    });
+
+    new Canvas({
+      canvas,
+    });
+
+    expect(canvas.width).toBe(1000);
+    expect(canvas.height).toBe(1000);
+
+    Object.defineProperty(window, "devicePixelRatio", {
+      value: originalRatio,
+      configurable: true,
+    });
+  });
+
+  it("should resize and reload brush context when resize is called", () => {
+    const canvas = createCanvas();
+    const instance = new Canvas({
+      canvas,
+    });
+
+    const rectSpy = vi
+      .spyOn(canvas, "getBoundingClientRect")
+      .mockReturnValueOnce({
+        width: 320,
+        height: 240,
+        top: 0,
+        left: 0,
+        right: 320,
+        bottom: 240,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      });
+
+    instance.resize();
+
+    expect(canvas.width).toBe(320);
+    expect(canvas.height).toBe(240);
+    expect(mockBrushInstance.loadContext).toHaveBeenCalledWith(canvas);
+
+    rectSpy.mockRestore();
+  });
+
   it("should enable pressure simulation by default", () => {
     const canvas = createCanvas();
 
@@ -151,7 +203,7 @@ describe("Canvas", () => {
 
     instance.clear();
 
-    expect(mockBrushInstance.clear).toHaveBeenCalled();
+    expect(mockBrushInstance.clear).toHaveBeenCalledTimes(1);
   });
 
   it("should expose undo/redo methods", () => {
@@ -187,7 +239,77 @@ describe("Canvas", () => {
 
     instance.loadConfig(config);
 
+    expect(mockBrushInstance.loadConfig).toHaveBeenCalledTimes(1);
     expect(mockBrushInstance.loadConfig).toHaveBeenCalledWith(config);
+  });
+
+  it("should bind and remove pointer event listeners", () => {
+    const canvas = createCanvas();
+    const addCanvasSpy = vi.spyOn(canvas, "addEventListener");
+    const removeCanvasSpy = vi.spyOn(canvas, "removeEventListener");
+    const removeWindowSpy = vi.spyOn(window, "removeEventListener");
+
+    const instance = new Canvas({
+      canvas,
+    });
+
+    expect(addCanvasSpy).toHaveBeenCalledWith(
+      "pointerdown",
+      expect.any(Function),
+    );
+    expect(addCanvasSpy).toHaveBeenCalledWith(
+      "pointermove",
+      expect.any(Function),
+    );
+
+    instance.destroy();
+
+    expect(removeCanvasSpy).toHaveBeenCalledWith(
+      "pointerdown",
+      expect.any(Function),
+    );
+    expect(removeCanvasSpy).toHaveBeenCalledWith(
+      "pointermove",
+      expect.any(Function),
+    );
+    expect(removeWindowSpy).toHaveBeenCalledWith(
+      "pointerup",
+      expect.any(Function),
+    );
+  });
+
+  it("should handle pointer drawing events and call brush lifecycle methods", () => {
+    const canvas = createCanvas();
+    new Canvas({
+      canvas,
+    });
+
+    const pointerDown = new PointerEvent("pointerdown", {
+      clientX: 10,
+      clientY: 20,
+      pointerType: "mouse",
+      pressure: 0,
+    });
+
+    canvas.dispatchEvent(pointerDown);
+
+    expect(mockBrushInstance.putPoint).toHaveBeenCalledTimes(1);
+    expect(mockBrushInstance.render).toHaveBeenCalledTimes(1);
+
+    const pointerMove = new PointerEvent("pointermove", {
+      clientX: 15,
+      clientY: 25,
+      pointerType: "mouse",
+      pressure: 0,
+    });
+
+    canvas.dispatchEvent(pointerMove);
+
+    expect(mockBrushInstance.putPoint).toHaveBeenCalledTimes(2);
+    expect(mockBrushInstance.render).toHaveBeenCalledTimes(2);
+
+    window.dispatchEvent(new PointerEvent("pointerup"));
+    expect(mockBrushInstance.finalizeStroke).toHaveBeenCalledTimes(1);
   });
 
   it("should expose smoothing and spacing toggles", () => {

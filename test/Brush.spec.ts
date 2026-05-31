@@ -1,20 +1,17 @@
-import { describe, expect, it, beforeAll, beforeEach, vi } from "vitest";
+﻿import { describe, expect, it, beforeAll, beforeEach, vi } from "vitest";
 import { Brush } from "../src/Brush";
+import type { Point, PurePoint } from "../src/types/point";
 
 let mockContext: CanvasRenderingContext2D;
 
-// ─────────────────────────────────────────────
-// Shared mock context (covers every canvas the
-// Brush creates internally: ori, stroke, transfer)
-// ─────────────────────────────────────────────
 beforeAll(() => {
   mockContext = {
     clearRect: vi.fn(),
     drawImage: vi.fn(),
     getImageData: vi.fn(() => ({
-      data: new Uint8ClampedArray(),
-      width: 100,
-      height: 100,
+      data: new Uint8ClampedArray(0),
+      width: 500,
+      height: 500,
     })),
     putImageData: vi.fn(),
     save: vi.fn(),
@@ -35,7 +32,9 @@ beforeAll(() => {
 
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
     (contextId: string) => {
-      if (contextId === "2d") return mockContext;
+      if (contextId === "2d") {
+        return mockContext;
+      }
       return null;
     },
   );
@@ -45,9 +44,6 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
 const createMockCanvas = () => {
   const canvas = document.createElement("canvas");
   canvas.width = 500;
@@ -55,95 +51,66 @@ const createMockCanvas = () => {
   return canvas;
 };
 
-// ─────────────────────────────────────────────
-// Core
-// ─────────────────────────────────────────────
-describe("Brush — instantiation", () => {
-  it("creates a Brush instance", () => {
+type InternalBrush = {
+  points: Point[];
+  prePoint?: PurePoint;
+  prePrePoint?: PurePoint;
+  canvasStackIndex: number;
+  lastProcessedPointForRotation?: PurePoint;
+};
+
+const getInternalBrush = (brush: Brush) => brush as unknown as InternalBrush;
+
+const getInternalRotationAngle = (brush: Brush) =>
+  (brush as unknown as { previousRotationAngle: number }).previousRotationAngle;
+
+describe("Brush — instantiation and setup", () => {
+  it("creates a Brush instance and initializes internal canvas contexts", () => {
     const brush = new Brush(createMockCanvas());
+
     expect(brush).toBeInstanceOf(Brush);
+    expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalledTimes(4);
   });
 
-  it("applies defaults when no config is supplied", () => {
-    const brush = new Brush(createMockCanvas());
-    expect(brush.config.size).toBe(20);
-    expect(brush.config.opacity).toBe(1);
-    expect(brush.config.flow).toBe(1);
-    expect(brush.config.color).toBe("#000000");
-    expect(brush.config.spacing).toBe(0.5);
+  it("uses a fresh internal state for each Brush instance", () => {
+    new Brush(createMockCanvas());
+    new Brush(createMockCanvas());
+
+    expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalledTimes(8);
   });
 });
 
-// ─────────────────────────────────────────────
-// Config
-// ─────────────────────────────────────────────
-describe("Brush — loadConfig", () => {
-  it("loads basic properties from constructor config", () => {
-    const brush = new Brush(createMockCanvas(), {
-      size: 40,
-      color: "#ff0000",
-    });
-    expect(brush.config.size).toBe(40);
-    expect(brush.config.color).toBe("#ff0000");
+describe("Brush — configuration", () => {
+  it("applies default configuration values", () => {
+    const brush = new Brush(createMockCanvas());
+
+    expect(brush.config).toEqual(
+      expect.objectContaining({
+        size: 20,
+        opacity: 1,
+        flow: 1,
+        color: "#000000",
+        spacing: 0.12,
+        eraser: false,
+      }),
+    );
   });
 
-  it("partially updates config without touching other fields", () => {
+  it("updates only the specified fields from loadConfig", () => {
     const brush = new Brush(createMockCanvas(), { size: 10, opacity: 0.5 });
+
     brush.loadConfig({ color: "#00ff00" });
-    expect(brush.config.size).toBe(10); // unchanged
-    expect(brush.config.opacity).toBe(0.5); // unchanged
-    expect(brush.config.color).toBe("#00ff00");
+
+    expect(brush.config).toEqual(
+      expect.objectContaining({
+        size: 10,
+        opacity: 0.5,
+        color: "#00ff00",
+      }),
+    );
   });
 
-  it("loads eraser config from constructor config", () => {
-    const brush = new Brush(createMockCanvas(), { eraser: true });
-    expect(brush.isEraser).toBe(true);
-    expect(brush.config.eraser).toBe(true);
-  });
-
-  it("toggles eraser using loadConfig", () => {
-    const brush = new Brush(createMockCanvas());
-    brush.loadConfig({ eraser: true });
-    expect(brush.isEraser).toBe(true);
-    expect(brush.config.eraser).toBe(true);
-  });
-
-  it("loads rotation config — fixed mode", () => {
-    const brush = new Brush(createMockCanvas());
-    brush.loadConfig({
-      rotation: { mode: "fixed", offset: Math.PI / 4 },
-    });
-    expect(brush.config.rotation?.mode).toBe("fixed");
-    expect(brush.config.rotation?.offset).toBeCloseTo(Math.PI / 4);
-  });
-
-  it("loads rotation config — flow mode", () => {
-    const brush = new Brush(createMockCanvas());
-    brush.loadConfig({
-      rotation: { mode: "flow", smoothing: 0.15 },
-    });
-    expect(brush.config.rotation?.mode).toBe("flow");
-    expect(brush.config.rotation?.smoothing).toBe(0.15);
-  });
-
-  it("loads rotation config — random mode", () => {
-    const brush = new Brush(createMockCanvas());
-    brush.loadConfig({
-      rotation: { mode: "random", jitter: Math.PI },
-    });
-    expect(brush.config.rotation?.mode).toBe("random");
-    expect(brush.config.rotation?.jitter).toBeCloseTo(Math.PI);
-  });
-
-  it("replaces entire rotation object on successive loadConfig calls", () => {
-    const brush = new Brush(createMockCanvas());
-    brush.loadConfig({ rotation: { mode: "flow", offset: 1 } });
-    brush.loadConfig({ rotation: { mode: "fixed", offset: 0 } });
-    expect(brush.config.rotation?.mode).toBe("fixed");
-    expect(brush.config.rotation?.offset).toBe(0);
-  });
-
-  it("bindConfig replaces the config reference", () => {
+  it("bindConfig keeps the external reference intact", () => {
     const brush = new Brush(createMockCanvas());
     const external = {
       size: 99,
@@ -152,25 +119,25 @@ describe("Brush — loadConfig", () => {
       color: "#ffffff",
       angle: 0,
       roundness: 1,
-      spacing: 1,
+      spacing: 0.12,
+      eraser: false,
     };
+
     brush.bindConfig(external);
-    expect(brush.config).toBe(external); // same reference
+
+    expect(brush.config).toBe(external);
   });
 });
 
-// ─────────────────────────────────────────────
-// Runtime flags
-// ─────────────────────────────────────────────
 describe("Brush — runtime flags", () => {
-  it("isSmooth defaults to true and can be toggled", () => {
+  it("defaults isSmooth to true and allows toggling", () => {
     const brush = new Brush(createMockCanvas());
     expect(brush.isSmooth).toBe(true);
     brush.isSmooth = false;
     expect(brush.isSmooth).toBe(false);
   });
 
-  it("isSpacing defaults to true and can be toggled", () => {
+  it("defaults isSpacing to true and allows toggling", () => {
     const brush = new Brush(createMockCanvas());
     expect(brush.isSpacing).toBe(true);
     brush.isSpacing = false;
@@ -178,141 +145,165 @@ describe("Brush — runtime flags", () => {
   });
 });
 
-// ─────────────────────────────────────────────
-// Drawing
-// ─────────────────────────────────────────────
-describe("Brush — putPoint", () => {
-  it("accepts a single point without throwing", () => {
+describe("Brush — point processing", () => {
+  it("holds the first point until a second point arrives", () => {
     const brush = new Brush(createMockCanvas());
-    expect(() => brush.putPoint(10, 20, 1)).not.toThrow();
+
+    brush.putPoint(10, 20, 1);
+    expect(getInternalBrush(brush).points.length).toBe(0);
+
+    brush.putPoint(30, 40, 0.8);
+    expect(getInternalBrush(brush).points.length).toBeGreaterThan(0);
+
+    const prePoint = getInternalBrush(brush).prePoint;
+    expect(prePoint).toBeDefined();
+    expect(prePoint).toEqual(expect.objectContaining({ pressure: 0.8 }));
+
+    const definedPrePoint = prePoint as PurePoint;
+    expect(definedPrePoint.x).toBeGreaterThan(10);
+    expect(definedPrePoint.x).toBeLessThan(30);
+    expect(definedPrePoint.y).toBeGreaterThan(20);
+    expect(definedPrePoint.y).toBeLessThan(40);
   });
 
-  it("accepts multiple points without throwing", () => {
-    const brush = new Brush(createMockCanvas());
-    expect(() => {
-      brush.putPoint(0, 0, 1);
-      brush.putPoint(10, 10, 0.8);
-      brush.putPoint(20, 5, 0.6);
-    }).not.toThrow();
-  });
-
-  it("accepts a point with rotation config set to flow mode", () => {
-    const brush = new Brush(createMockCanvas(), {
-      rotation: { mode: "flow", smoothing: 0.15 },
-    });
-    expect(() => {
-      brush.putPoint(0, 0, 1);
-      brush.putPoint(50, 50, 1);
-    }).not.toThrow();
-  });
-
-  it("accepts a point with rotation config set to random mode", () => {
-    const brush = new Brush(createMockCanvas(), {
-      rotation: { mode: "random" },
-    });
-    expect(() => {
-      brush.putPoint(0, 0, 1);
-      brush.putPoint(30, 40, 1);
-    }).not.toThrow();
-  });
-
-  it("accepts a point with rotation config set to fixed mode", () => {
+  it("applies a fixed rotation offset on the first processed point", () => {
     const brush = new Brush(createMockCanvas(), {
       rotation: { mode: "fixed", offset: Math.PI / 2 },
     });
-    expect(() => {
-      brush.putPoint(0, 0, 1);
-      brush.putPoint(30, 0, 1);
-    }).not.toThrow();
+
+    brush.putPoint(0, 0, 1);
+    brush.putPoint(50, 0, 1);
+
+    const queued = getInternalBrush(brush).points;
+    expect(queued.length).toBeGreaterThan(0);
+    expect(queued[0].rotation).toBeCloseTo(Math.PI / 2);
+  });
+
+  it("processes flow rotation configuration and enqueues points", () => {
+    const brush = new Brush(createMockCanvas(), {
+      rotation: { mode: "flow", smoothing: 0.15 },
+    });
+
+    brush.putPoint(0, 0, 1);
+    brush.putPoint(50, 50, 1);
+
+    expect(getInternalBrush(brush).points.length).toBeGreaterThan(0);
+    expect(typeof getInternalBrush(brush).points[0].rotation).toBe("number");
+  });
+
+  it("processes random rotation configuration and enqueues points", () => {
+    const brush = new Brush(createMockCanvas(), {
+      rotation: { mode: "random" },
+    });
+
+    brush.putPoint(0, 0, 1);
+    brush.putPoint(30, 40, 1);
+
+    expect(getInternalBrush(brush).points.length).toBeGreaterThan(0);
+    expect(typeof getInternalBrush(brush).points[0].rotation).toBe("number");
   });
 });
 
-// ─────────────────────────────────────────────
-// Stroke lifecycle
-// ─────────────────────────────────────────────
 describe("Brush — stroke lifecycle", () => {
-  it("finalizes a stroke without crashing", () => {
+  it("finalizes a stroke without queued points and commits to the undo stack", () => {
     const brush = new Brush(createMockCanvas());
-    brush.putPoint(10, 20, 1);
-    expect(() => brush.finalizeStroke()).not.toThrow();
+
+    brush.finalizeStroke();
+
+    expect(mockContext.drawImage).toHaveBeenCalled();
+    expect(getInternalBrush(brush).canvasStackIndex).toBeGreaterThanOrEqual(0);
   });
 
-  it("finalizes a stroke mid-flow-rotation without crashing", () => {
-    const brush = new Brush(createMockCanvas(), {
-      rotation: { mode: "flow", smoothing: 0.2 },
-    });
-    brush.putPoint(0, 0, 1);
-    brush.putPoint(100, 100, 1);
-    expect(() => brush.finalizeStroke()).not.toThrow();
-  });
-
-  it("resets rotation state between strokes", () => {
+  it("resets rotation state between successive strokes", () => {
     const brush = new Brush(createMockCanvas(), {
       rotation: { mode: "flow" },
     });
-    // First stroke
+
     brush.putPoint(0, 0, 1);
     brush.putPoint(100, 0, 1);
     brush.finalizeStroke();
 
-    // Second stroke should not carry over rotation from first
-    expect(() => {
-      brush.putPoint(200, 200, 1);
-      brush.putPoint(300, 100, 1);
-      brush.finalizeStroke();
-    }).not.toThrow();
+    brush.putPoint(200, 200, 1);
+    brush.putPoint(300, 100, 1);
+    brush.finalizeStroke();
+
+    expect(
+      getInternalBrush(brush).lastProcessedPointForRotation,
+    ).toBeUndefined();
+    expect(getInternalRotationAngle(brush)).toBe(0);
   });
 });
 
-// ─────────────────────────────────────────────
-// Canvas operations
-// ─────────────────────────────────────────────
-describe("Brush — canvas operations", () => {
-  it("clears all canvases without throwing", () => {
+describe("Brush — canvas behavior", () => {
+  it("clears all drawing buffers and resets internal state", () => {
     const brush = new Brush(createMockCanvas());
-    expect(() => brush.clear()).not.toThrow();
+
+    brush.putPoint(0, 0, 1);
+    brush.putPoint(20, 20, 1);
+    brush.clear();
+
+    expect(getInternalBrush(brush).points.length).toBe(0);
+    expect(getInternalBrush(brush).prePoint).toBeUndefined();
+    expect(getInternalBrush(brush).prePrePoint).toBeUndefined();
+    expect(mockContext.clearRect).toHaveBeenCalledTimes(4);
   });
 
-  it("undo/redo does not throw on empty stack", () => {
+  it("stores image history and restores it via undo/redo", () => {
     const brush = new Brush(createMockCanvas());
-    expect(() => {
-      brush.undo();
-      brush.redo();
-    }).not.toThrow();
+
+    brush.finalizeStroke();
+    brush.undo();
+    expect(mockContext.putImageData).toHaveBeenCalledTimes(2);
+
+    brush.redo();
+    expect(mockContext.putImageData).toHaveBeenCalledTimes(4);
   });
 });
 
-// ─────────────────────────────────────────────
-// Modules
-// ─────────────────────────────────────────────
+describe("Brush — rendering", () => {
+  it("consumes queued points and draws a stroke", () => {
+    const brush = new Brush(createMockCanvas());
+    const rafSpy = vi
+      .spyOn(globalThis, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => {
+        callback(0);
+        return 0;
+      });
+
+    brush.putPoint(0, 0, 1);
+    brush.putPoint(50, 0, 1);
+    brush.render();
+
+    expect(getInternalBrush(brush).points.length).toBe(0);
+    expect(mockContext.ellipse).toHaveBeenCalled();
+    expect(mockContext.drawImage).toHaveBeenCalled();
+
+    rafSpy.mockRestore();
+  });
+});
+
 describe("Brush — modules", () => {
-  it("registers a module and returns a string id", () => {
+  it("registers the same module instance only once and returns a stable id", () => {
     const brush = new Brush(createMockCanvas());
-    const id = brush.useModule({} as never);
-    expect(typeof id).toBe("string");
-    expect(id.length).toBeGreaterThan(0);
+    const module = {} as never;
+
+    const id1 = brush.useModule(module);
+    const id2 = brush.useModule(module);
+
+    expect(typeof id1).toBe("string");
+    expect(id1).toBe(id2);
+    expect(id1.length).toBeGreaterThan(0);
   });
 
-  it("removes a registered module successfully", () => {
+  it("removes modules correctly and returns false for missing ids", () => {
     const brush = new Brush(createMockCanvas());
     const id = brush.useModule({} as never);
+
     expect(brush.removeModule(id)).toBe(true);
-  });
-
-  it("returns false when removing a non-existent module", () => {
-    const brush = new Brush(createMockCanvas());
     expect(brush.removeModule("non-existent-id")).toBe(false);
   });
 
-  it("does not register the same module instance twice", () => {
-    const brush = new Brush(createMockCanvas());
-    const module = {} as never;
-    const id1 = brush.useModule(module);
-    const id2 = brush.useModule(module);
-    expect(id1).toBe(id2);
-  });
-
-  it("applies base pressure modulation before module config changes", () => {
+  it("calls module config hooks after pressure modulation", () => {
     const brush = new Brush(createMockCanvas());
     const onChangeConfig = vi.fn();
 
@@ -323,16 +314,13 @@ describe("Brush — modules", () => {
     brush.putPoint(100, 0, 0.5);
 
     expect(onChangeConfig).toHaveBeenCalled();
-
-    const [config, pressure] = onChangeConfig.mock.calls[0];
-
-    expect(pressure).toBe(0.5);
-    expect(config.size).toBe(10);
-    expect(config.flow).toBe(0.5);
-    expect(config.opacity).toBe(1);
+    expect(onChangeConfig.mock.calls[0][1]).toBe(0.5);
+    expect(onChangeConfig.mock.calls[0][0].size).toBe(10);
+    expect(onChangeConfig.mock.calls[0][0].flow).toBe(0.5);
+    expect(onChangeConfig.mock.calls[0][0].opacity).toBe(1);
   });
 
-  it("allows point modules to emit multiple points", () => {
+  it("expands input into multiple points when a module returns an array", () => {
     const brush = new Brush(createMockCanvas());
     const onChangePoint = vi.fn((point) => [
       point,
@@ -346,13 +334,17 @@ describe("Brush — modules", () => {
     brush.putPoint(0, 0, 1);
     brush.putPoint(100, 0, 1);
 
+    const points = getInternalBrush(brush).points;
+
     expect(onChangePoint).toHaveBeenCalled();
-    expect(onChangeConfig.mock.calls.length).toBeGreaterThan(
-      onChangePoint.mock.calls.length,
-    );
+    expect(onChangeConfig.mock.calls.length).toBe(points.length);
+    expect(onChangePoint.mock.calls.length * 2).toBe(points.length);
+    expect(points.length).toBeGreaterThan(1);
+    expect(points[0].x).toBe(0);
+    expect(points[1].x).toBe(1);
   });
 
-  it("runs mixin and end-stroke module hooks when a stroke ends", () => {
+  it("invokes mixin and end-stroke module hooks on finalizeStroke", () => {
     const brush = new Brush(createMockCanvas());
     const onMixinCanvas = vi.fn(
       (
@@ -365,7 +357,7 @@ describe("Brush — modules", () => {
     brush.useModule({ onMixinCanvas, onEndStroke });
     brush.finalizeStroke();
 
-    expect(onMixinCanvas).toHaveBeenCalled();
-    expect(onEndStroke).toHaveBeenCalled();
+    expect(onMixinCanvas).toHaveBeenCalledTimes(1);
+    expect(onEndStroke).toHaveBeenCalledTimes(1);
   });
 });

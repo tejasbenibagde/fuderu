@@ -38,6 +38,10 @@
 
 ## Latest Release
 
+### 0.8.5
+
+- Fixed an initial stroke gap when drawing fast, ensuring the first brush stamp connects correctly to the second point.
+
 ### 0.8.4
 
 - Fixed low-opacity dense stroke rendering when spacing is reduced.

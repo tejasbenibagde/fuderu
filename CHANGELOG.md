@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.5
+
+### Fixed
+
+- Fixed an initial stroke gap when drawing fast, so the first stamp now connects correctly to the following segment.
+
 ## 0.8.4
 
 ### Fixed

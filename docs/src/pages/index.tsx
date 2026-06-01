@@ -38,9 +38,9 @@ export default function Home(): ReactNode {
                 <img className={styles.heroLogo} src={logoUrl} alt="Fuderu" />
               </Heading>
               <p className={styles.subtitle}>
-                Fuderu 0.8.6 brings explicit document sizing, smooth brush
-                strokes, pressure-aware input, image stamps, and runtime
-                effects.
+                Fuderu 0.8.7 brings spacing-aware flow, explicit document
+                sizing, smooth brush strokes, pressure-aware input, image
+                stamps, and runtime effects.
               </p>
               <div className={styles.actions}>
                 <Link

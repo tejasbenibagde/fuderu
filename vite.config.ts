@@ -2,11 +2,14 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 
 // Detect if we're running playground or library build
-const isPlayground = process.env.PLAYGROUND === "true";
+const playground = process.env.PLAYGROUND;
+const isPlayground = playground === "true" || playground === "vanilla";
+const playgroundRoot =
+  playground === "vanilla" ? "playground/vanilla" : "playground";
 
 export default defineConfig({
   // Different root based on mode
-  root: isPlayground ? "playground" : undefined,
+  root: isPlayground ? playgroundRoot : undefined,
 
   // Only apply server config for playground
   server: isPlayground
@@ -26,7 +29,7 @@ export default defineConfig({
     : undefined,
 
   // Public dir disabled for library builds
-  publicDir: isPlayground ? "public" : false,
+  publicDir: isPlayground ? resolve(__dirname, "public") : false,
 
   // Build configuration
   build: isPlayground

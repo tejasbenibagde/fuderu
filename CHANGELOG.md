@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.7
+
+### Improved
+
+- Added spacing-aware flow normalization, so low flow values remain visually meaningful even when brush stamps are very densely spaced.
+- Updated flow rendering to preserve the user-facing flow value for modules while using a normalized per-stamp alpha internally.
+- Split the vanilla playground into dedicated HTML, CSS, and JavaScript files under `playground/vanilla`.
+- Added root scripts for `npm run vanilla` and `npm run next`.
+
+### Fixed
+
+- Fixed pointer coordinate scaling in the `Canvas` wrapper when the visible canvas size differs from the logical document buffer.
+- Fixed the vanilla playground layout so the header and sidebar stay pinned while sidebar and canvas content scroll independently.
+
 ## 0.8.6
 
 ### Fixed

@@ -48,20 +48,31 @@ interface BrushBasicConfig {
 
 ## Fields
 
-| Field       | Description                                                      |
-| ----------- | ---------------------------------------------------------------- |
-| `size`      | Base stamp size in pixels. Pressure also scales size.            |
-| `opacity`   | Stroke opacity from `0` to `1`.                                  |
-| `flow`      | Per-stamp paint flow from `0` to `1`. Pressure also scales flow. |
-| `color`     | CSS color used to fill ellipse stamps or recolor image stamps.   |
-| `angle`     | Base stamp angle as a fraction of one turn, from `0` to `1`.     |
-| `roundness` | Ellipse/image width ratio from `0` to `1`.                       |
-| `spacing`   | Distance between stamps as a multiplier of brush size.           |
-| `eraser`    | When `true`, the brush erases content instead of painting it.    |
-| `rotation`  | Optional stamp rotation behavior.                                |
+| Field       | Description                                                    |
+| ----------- | -------------------------------------------------------------- |
+| `size`      | Base stamp size in pixels. Pressure also scales size.          |
+| `opacity`   | Stroke opacity from `0` to `1`.                                |
+| `flow`      | Paint buildup from `0` to `1`. Pressure also scales flow.      |
+| `color`     | CSS color used to fill ellipse stamps or recolor image stamps. |
+| `angle`     | Base stamp angle as a fraction of one turn, from `0` to `1`.   |
+| `roundness` | Ellipse/image width ratio from `0` to `1`.                     |
+| `spacing`   | Distance between stamps as a multiplier of brush size.         |
+| `eraser`    | When `true`, the brush erases content instead of painting it.  |
+| `rotation`  | Optional stamp rotation behavior.                              |
 
 `opacity`, `flow`, and `roundness` are clamped to `0..1` while rendering.
 Pressure is also clamped to `0..1`; it scales both stamp size and flow.
+
+## Flow And Dense Spacing
+
+`opacity` is a stroke-level ceiling. `flow` is the rate at which paint builds up
+through the stamps that make up the stroke.
+
+Since `0.8.7`, Fuderu normalizes flow against the active brush size and spacing.
+This prevents very dense stamp overlap from making low-flow strokes immediately
+flatten into solid color. Modules still receive the pressure-adjusted flow value
+in `onChangeConfig`; the brush renderer applies the spacing-aware per-stamp
+alpha when the point is queued for drawing.
 
 ## Rotation
 

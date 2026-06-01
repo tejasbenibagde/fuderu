@@ -320,6 +320,23 @@ describe("Brush — modules", () => {
     expect(onChangeConfig.mock.calls[0][0].opacity).toBe(1);
   });
 
+  it("normalizes queued point flow for dense stamp spacing", () => {
+    const brush = new Brush(createMockCanvas(), {
+      size: 25,
+      flow: 0.18,
+      spacing: 0.01,
+    });
+
+    brush.isSmooth = false;
+    brush.putPoint(0, 0, 1);
+    brush.putPoint(100, 0, 1);
+
+    const points = getInternalBrush(brush).points;
+
+    expect(points.length).toBeGreaterThan(0);
+    expect(points[0].config.flow).toBeLessThan(0.18);
+  });
+
   it("expands input into multiple points when a module returns an array", () => {
     const brush = new Brush(createMockCanvas());
     const onChangePoint = vi.fn((point) => [

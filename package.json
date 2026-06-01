@@ -1,6 +1,6 @@
 {
   "name": "fuderu",
-  "version": "0.8.6",
+  "version": "0.8.7",
   "description": "High-performance canvas drawing library with a different approach to brush stroke rendering.",
   "type": "module",
   "files": [
@@ -42,7 +42,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && tsc --emitDeclarationOnly --outDir dist",
-    "playground": "cross-env PLAYGROUND=true vite",
+    "playground": "cross-env PLAYGROUND=vanilla vite",
+    "vanilla": "cross-env PLAYGROUND=vanilla vite",
+    "next": "npm --prefix playground/next-js run dev",
     "preview": "vite preview",
     "test": "vitest",
     "test:ci": "vitest run",

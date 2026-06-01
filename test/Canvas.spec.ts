@@ -312,6 +312,38 @@ describe("Canvas", () => {
     expect(mockBrushInstance.finalizeStroke).toHaveBeenCalledTimes(1);
   });
 
+  it("should scale pointer coordinates to the canvas document buffer", () => {
+    const canvas = createCanvas();
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      width: 500,
+      height: 250,
+      top: 20,
+      left: 10,
+      right: 510,
+      bottom: 270,
+      x: 10,
+      y: 20,
+      toJSON: () => {},
+    });
+
+    new Canvas({
+      canvas,
+      document: { width: 1000, height: 500 },
+      pressureSimulation: false,
+    });
+
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        clientX: 260,
+        clientY: 145,
+        pointerType: "mouse",
+        pressure: 0,
+      }),
+    );
+
+    expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(500, 250, 1);
+  });
+
   it("should expose smoothing and spacing toggles", () => {
     const canvas = createCanvas();
 

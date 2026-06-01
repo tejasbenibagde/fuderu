@@ -6,6 +6,7 @@ import { Module } from "./types/modules";
 import { PurePoint, Point, PointCallBack } from "./types/point";
 import { getControlPoint, getEquidistantBezierPoints } from "./utils/bezier";
 import { toHashColor } from "./utils/color";
+import { normalizeFlowForSpacing } from "./utils/flow";
 import { getAngle, getDistance } from "./utils/math";
 import { calculateRotation } from "./utils/rotation";
 import { applyStrokeOpacity, resetOpacity } from "./utils/opacity";
@@ -780,12 +781,20 @@ export class Brush {
     }
 
     const pointOpacity = cnf.opacity;
+    const pointConfig = structuredClone(cnf);
+
+    pointConfig.flow = normalizeFlowForSpacing(
+      pointConfig.flow,
+      pointConfig.size,
+      pointConfig.spacing,
+      this.minSpacePixel,
+    );
 
     return {
       x,
       y,
       pressure,
-      config: cnf,
+      config: pointConfig,
       rotation,
       opacity: pointOpacity,
     };

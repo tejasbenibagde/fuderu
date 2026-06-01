@@ -31,13 +31,19 @@
 - Runtime brush configuration.
 - Image-based brush stamps with recoloring and rotation.
 - Rotation modes: `fixed`, `flow`, and `random`.
-- Opacity, flow, angle, roundness, blend mode, and filter support.
+- Opacity, spacing-aware flow, angle, roundness, blend mode, and filter support.
 - Undo, redo, clear, and destroy lifecycle helpers.
 - Built-in eraser mode with runtime toggle support.
 - Runtime module system with built-in dynamic shape, transparency, spread, and pattern modules.
 - TypeScript-first and framework-agnostic.
 
 ## Latest Release
+
+### 0.8.7
+
+- Added spacing-aware flow normalization so low-flow strokes do not flatten into solid color just because stamp spacing is dense.
+- Fixed pointer coordinate scaling when a canvas is displayed at a different CSS size than its logical drawing buffer.
+- Added a split vanilla playground under `playground/vanilla` and root scripts for `npm run vanilla` and `npm run next`.
 
 ### 0.8.6
 
@@ -91,6 +97,13 @@ painter.clear();
 
 If `document` is omitted, Fuderu sizes the internal drawing buffer from the
 canvas element's CSS size multiplied by `window.devicePixelRatio`.
+
+## Flow And Opacity
+
+`opacity` is applied as a stroke-level ceiling. `flow` controls how quickly paint
+builds up from individual stamps. From `0.8.7`, Fuderu normalizes flow against
+brush size and spacing, so dense stamp overlap no longer makes low-flow strokes
+turn solid immediately.
 
 ## Image Brushes
 

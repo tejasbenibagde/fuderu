@@ -142,11 +142,10 @@ export class Canvas {
   private getPoint(e: PointerEvent) {
     const rect = this.canvas.getBoundingClientRect();
 
-    // Return coordinates in CSS/display pixels (unscaled). The brush
-    // engine expects user coordinates in CSS pixels; internal buffers are
-    // sized to device pixels (DPR) so the drawing pipeline scales where needed.
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = rect.width > 0 ? this.canvas.width / rect.width : 1;
+    const scaleY = rect.height > 0 ? this.canvas.height / rect.height : 1;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
     // Real stylus pressure — only trust it for pen type with non-zero value
     const hasRealPressure = e.pointerType === "pen" && e.pressure > 0;

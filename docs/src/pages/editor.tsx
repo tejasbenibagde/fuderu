@@ -41,7 +41,7 @@ export default function EditorPage() {
           <section className={styles.landing}>
             <div className={styles.setup}>
               <img className={styles.logo} src="/img/logo.png" alt="Fuderu" />
-              <span className={styles.badge}>Fuderu 0.8.6 Editor</span>
+              <span className={styles.badge}>Fuderu 0.8.7 Editor</span>
               <h1>Create a drawing project</h1>
               <p>
                 Pick a logical document size first. The editor scales the view,

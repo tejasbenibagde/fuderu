@@ -10,20 +10,18 @@ You can run these playgrounds after forking/cloning the repository and installin
 
 ## 📦 Commands
 
-### Vanilla JavaScript (HTML)
+### Vanilla JavaScript
 
-Run the plain HTML + Canvas playground:
+Run the vanilla JavaScript playground:
 
 ```bash
-npm run playground
+npm run vanilla
 ```
 
 ### Next.js Playground
 
-Move into the Next.js playground directory:
+Run the Next.js playground from the repository root:
 
-```node
-cd playground/nextjs
-npm install
-npm run dev
+```bash
+npm run next
 ```

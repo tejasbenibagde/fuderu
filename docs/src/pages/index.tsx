@@ -23,7 +23,7 @@ const features = [
 ];
 
 export default function Home(): ReactNode {
-  const logoUrl = useBaseUrl("/img/logo.png");
+  const logoUrl = useBaseUrl("/img/fuderu.webp");
 
   return (
     <Layout
@@ -35,7 +35,13 @@ export default function Home(): ReactNode {
           <div className={styles.heroInner}>
             <div className={styles.heroCopy}>
               <Heading as="h1" className={styles.title}>
-                <img className={styles.heroLogo} src={logoUrl} alt="Fuderu" />
+                <img
+                  className={styles.heroLogo}
+                  src={logoUrl}
+                  alt="Fuderu"
+                  width={420}
+                  height={142}
+                />
               </Heading>
               <p className={styles.subtitle}>
                 Fuderu 0.8.7 brings spacing-aware flow, explicit document

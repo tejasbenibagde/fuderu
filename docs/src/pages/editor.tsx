@@ -40,7 +40,13 @@ export default function EditorPage() {
         {!project ? (
           <section className={styles.landing}>
             <div className={styles.setup}>
-              <img className={styles.logo} src="/img/logo.png" alt="Fuderu" />
+              <img
+                className={styles.logo}
+                src="/img/fuderu.webp"
+                alt="Fuderu"
+                width={224}
+                height={76}
+              />
               <span className={styles.badge}>Fuderu 0.8.7 Editor</span>
               <h1>Create a drawing project</h1>
               <p>
@@ -408,10 +414,7 @@ function Editor({
     <section className={styles.editor}>
       <aside className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
-          <img src="/img/logo.png" alt="Fuderu" />
-        </div>
-
-        <div className={styles.controls}>
+          <img src="/img/fuderu.webp" alt="Fuderu" width={140} height={48} />
           <div className={styles.section}>
             <h2>Core Brush</h2>
             <Range

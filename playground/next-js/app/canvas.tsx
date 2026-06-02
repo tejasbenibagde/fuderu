@@ -17,6 +17,14 @@ import {
 } from "fuderu";
 
 import { useBrushStore } from "@/components/playground/brush-store";
+import { Button } from "@/components/ui/button";
+import {
+  IconArrowsMaximize,
+  IconRotateClockwise,
+  IconRotate,
+  IconZoomIn,
+  IconZoomOut,
+} from "@tabler/icons-react";
 import type { PlaygroundProject } from "./page";
 
 type ModuleRefs = {
@@ -39,6 +47,8 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
     y: 0,
     size: 24,
   });
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
 
   const store = useBrushStore();
 
@@ -276,15 +286,23 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
 
   const updateCursor = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
-    const surface = surfaceRef.current;
-    if (!canvas || !surface) return null;
+    if (!canvas) return null;
 
     const canvasRect = canvas.getBoundingClientRect();
-    const surfaceRect = surface.getBoundingClientRect();
-    const scaleX = canvas.width / canvasRect.width;
-    const scaleY = canvas.height / canvasRect.height;
-    const x = (event.clientX - canvasRect.left) * scaleX;
-    const y = (event.clientY - canvasRect.top) * scaleY;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    const centerX = canvasRect.left + canvasRect.width / 2;
+    const centerY = canvasRect.top + canvasRect.height / 2;
+    const dx = event.clientX - centerX;
+    const dy = event.clientY - centerY;
+    const angle = (rotation * Math.PI) / 180;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+
+    const localX = (dx * cos + dy * sin) / zoom + width / 2;
+    const localY = (-dx * sin + dy * cos) / zoom + height / 2;
+    const x = (localX * canvas.width) / width;
+    const y = (localY * canvas.height) / height;
     const hasRealPressure = event.pointerType === "pen" && event.pressure > 0;
     const pressure = hasRealPressure
       ? event.pressure
@@ -292,11 +310,14 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
         ? pressureRef.current.getPressure(x, y)
         : 1;
 
+    const surface = surfaceRef.current;
+    const surfaceRect = surface?.getBoundingClientRect();
+
     setCursor({
       visible: true,
-      x: event.clientX - surfaceRect.left,
-      y: event.clientY - surfaceRect.top,
-      size: Math.max(8, store.size * 2 * Math.min(1, 1 / scaleX)),
+      x: surfaceRect ? event.clientX - surfaceRect.left : localX,
+      y: surfaceRect ? event.clientY - surfaceRect.top : localY,
+      size: Math.max(8, store.size * 2 * Math.min(1, 1 / zoom)),
     });
 
     return { x, y, pressure };
@@ -329,6 +350,17 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
     brush.render();
   };
 
+  const clampZoom = (nextZoom: number) => Math.min(2, Math.max(0.25, nextZoom));
+
+  const zoomIn = () => setZoom((value) => clampZoom(value + 0.1));
+  const zoomOut = () => setZoom((value) => clampZoom(value - 0.1));
+  const resetView = () => {
+    setZoom(1);
+    setRotation(0);
+  };
+  const rotateLeft = () => setRotation((value) => (value - 90 + 360) % 360);
+  const rotateRight = () => setRotation((value) => (value + 90) % 360);
+
   const finishStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!isDrawingRef.current) return;
 
@@ -343,18 +375,43 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
   };
 
   return (
-    <div className="flex flex-1 items-center justify-center overflow-hidden bg-muted/30 p-6">
+    <div className="flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-muted/30">
       <div
         ref={surfaceRef}
-        className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border bg-muted/20 p-4"
+        className="relative flex min-h-0 h-full w-full items-center justify-center overflow-auto rounded-lg border bg-muted/20"
       >
+        <div className="absolute right-4 top-4 z-20 flex flex-wrap items-center gap-2 rounded-xl bg-muted/80 p-2 shadow-lg backdrop-blur-md">
+          <Button size="icon" variant="outline" onClick={zoomOut}>
+            <IconZoomOut />
+          </Button>
+          <Button size="icon" variant="outline" onClick={zoomIn}>
+            <IconZoomIn />
+          </Button>
+          <Button size="icon" variant="outline" onClick={resetView}>
+            <IconArrowsMaximize />
+          </Button>
+          <Button size="icon" variant="outline" onClick={rotateLeft}>
+            <IconRotate />
+          </Button>
+          <Button size="icon" variant="outline" onClick={rotateRight}>
+            <IconRotateClockwise />
+          </Button>
+          <div className="text-xs text-muted-foreground">
+            {Math.round(zoom * 100)}% · {rotation}°
+          </div>
+        </div>
+
         <canvas
           ref={canvasRef}
-          className="max-h-full max-w-full cursor-none rounded-md border bg-background shadow-sm"
+          className="cursor-none rounded-md border bg-background shadow-sm"
           style={{
             aspectRatio: `${project.width} / ${project.height}`,
-            width: project.width >= project.height ? "100%" : "auto",
-            height: project.height > project.width ? "100%" : "auto",
+            maxWidth: "100%",
+            maxHeight: "100%",
+            width: "auto",
+            height: "auto",
+            transform: `scale(${zoom}) rotate(${rotation}deg)`,
+            transformOrigin: "center center",
           }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}

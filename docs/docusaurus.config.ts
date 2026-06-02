@@ -69,7 +69,7 @@ const config: Config = {
       title: "",
       logo: {
         alt: "Fuderu logo",
-        src: "img/logo.png",
+        src: "img/fuderu.webp",
       },
       items: [
         {

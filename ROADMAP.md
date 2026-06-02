@@ -8,7 +8,7 @@ The goal is to provide modern brush dynamics, extensible modules, and high-perfo
 
 ## Current Status
 
-Current package version: `0.8.6`
+Current package version: `0.8.7`
 
 The public API remains experimental until `1.0.0`.
 

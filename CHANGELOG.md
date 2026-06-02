@@ -6,19 +6,16 @@
 
 - Added spacing-aware flow normalization, so low flow values remain visually meaningful even when brush stamps are very densely spaced.
 - Updated flow rendering to preserve the user-facing flow value for modules while using a normalized per-stamp alpha internally.
-- Split the vanilla playground into dedicated HTML, CSS, and JavaScript files under `playground/vanilla`.
-- Added root scripts for `npm run vanilla` and `npm run next`.
 
 ### Fixed
 
 - Fixed pointer coordinate scaling in the `Canvas` wrapper when the visible canvas size differs from the logical document buffer.
-- Fixed the vanilla playground layout so the header and sidebar stay pinned while sidebar and canvas content scroll independently.
 
 ## 0.8.6
 
 ### Fixed
 
-- Fixed canvas clipping in the playground, improving resize handling so the rendered canvas always matches the visible element size.
+- Improved canvas resize handling so the rendered canvas can stay aligned with the visible element size.
 
 ## 0.8.5
 
@@ -39,7 +36,6 @@
 ### Added
 
 - Added eraser mode support to the brush engine with proper `destination-out` compositing.
-- Added eraser toggle support in the vanilla playground and Next.js playground.
 
 ## 0.8.2
 
@@ -56,7 +52,6 @@
 - Improved image brush direction tracking across curved strokes.
 - Improved rotation continuity during faster or more complex strokes.
 - Improved brush image rendering and alpha compositing behavior.
-- Improved playground coverage for rotation and module testing.
 
 ### Fixed
 
@@ -96,7 +91,7 @@
 ### Improved
 
 - Improved pointer event handling.
-- Improved React, Next.js, and vanilla TypeScript usage paths.
+- Improved framework-agnostic browser usage paths.
 - Improved canvas setup for touch interaction.
 
 ### Fixed

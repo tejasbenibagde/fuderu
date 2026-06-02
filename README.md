@@ -43,11 +43,10 @@
 
 - Added spacing-aware flow normalization so low-flow strokes do not flatten into solid color just because stamp spacing is dense.
 - Fixed pointer coordinate scaling when a canvas is displayed at a different CSS size than its logical drawing buffer.
-- Added a split vanilla playground under `playground/vanilla` and root scripts for `npm run vanilla` and `npm run next`.
 
 ### 0.8.6
 
-- Fixed canvas clipping in the playground by improving canvas resize handling and keeping the display size in sync with the internal drawing buffer.
+- Improved canvas resize handling so the rendered canvas stays in sync with its visible element size.
 
 ### 0.8.5
 
@@ -151,11 +150,7 @@ Built-in modules can adjust per-stamp shape, transparency, position spread, and 
 
 Fuderu is currently pre-`1.0`. The core brush, canvas, pressure, image, eraser, and module systems are implemented, but public APIs may still change while the library stabilizes.
 
-Validated in:
-
-- Vanilla HTML/TypeScript playground
-- React/Next.js playground
-- Vitest + jsdom tests
+Validated with Vitest and jsdom tests.
 
 See [ROADMAP.md](./ROADMAP.md) for the current stabilization plan.
 

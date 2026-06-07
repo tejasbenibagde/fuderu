@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.8
+
+### Added
+
+- Added coalesced pointer event support in `Canvas.handlePointerMove` for smoother pen and stylus drawing.
+
+### Changed
+
+- `Canvas` now treats `pressureSimulation` as optional and disabled by default. Real pen pressure remains active.
+
 ## 0.8.7
 
 ### Improved

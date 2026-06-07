@@ -1,6 +1,6 @@
 <p align="center">
   <img
-    src="https://raw.githubusercontent.com/tejasbenibagde/fuderu/main/public/fuderu.png"
+    src="https://raw.githubusercontent.com/tejasbenibagde/fuderu/main/public/fuderu.webp"
     alt="Fuderu Logo"
     width="420"
   />
@@ -26,7 +26,7 @@
 - Built-in `Canvas` wrapper for pointer drawing.
 - Standalone `Brush` engine for custom integrations.
 - Smooth interpolation and adaptive brush spacing.
-- Real pen pressure plus optional mouse/touch pressure simulation.
+- Real pen pressure with optional mouse/touch pressure simulation disabled by default.
 - Device-pixel-ratio aware canvas setup with explicit document sizing support.
 - Runtime brush configuration.
 - Image-based brush stamps with recoloring and rotation.
@@ -38,6 +38,11 @@
 - TypeScript-first and framework-agnostic.
 
 ## Latest Release
+
+### 0.8.8 (in development)
+
+- Optional mouse/touch pressure simulation is now disabled by default in `Canvas`.
+- Added coalesced pointer event support in `Canvas.handlePointerMove` for smoother pen and stylus drawing on browsers that expose `getCoalescedEvents()`.
 
 ### 0.8.7
 
@@ -93,6 +98,8 @@ painter.undo();
 painter.redo();
 painter.clear();
 ```
+
+By default, `pressureSimulation` is disabled to keep mouse/touch input deterministic. Set `pressureSimulation: true` when you want mouse/touch to use simulated pressure.
 
 If `document` is omitted, Fuderu sizes the internal drawing buffer from the
 canvas element's CSS size multiplied by `window.devicePixelRatio`.

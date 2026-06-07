@@ -70,7 +70,7 @@ export class Canvas {
     this.documentWidth = options.document?.width ?? 0;
     this.documentHeight = options.document?.height ?? 0;
 
-    this.pressureSimulation = options.pressureSimulation ?? true;
+    this.pressureSimulation = options.pressureSimulation ?? false;
     this.mousePressure = new MousePressure();
 
     this.setupCanvas();
@@ -174,8 +174,15 @@ export class Canvas {
   private handlePointerMove = (e: PointerEvent) => {
     if (!this.isDrawing) return;
 
-    const p = this.getPoint(e);
-    this.brush.putPoint(p.x, p.y, p.pressure);
+    const coalesced = e.getCoalescedEvents?.();
+
+    const events = coalesced && coalesced.length > 0 ? coalesced : [e];
+
+    for (const ce of events) {
+      const p = this.getPoint(ce);
+      this.brush.putPoint(p.x, p.y, p.pressure);
+    }
+
     this.brush.render();
   };
 

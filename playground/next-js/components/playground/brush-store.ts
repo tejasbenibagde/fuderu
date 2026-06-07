@@ -125,7 +125,7 @@ export const useBrushStore = create<BrushStore>((set) => ({
   angle: 0,
   smooth: true,
   spacingEnabled: true,
-  pressureSimulation: true,
+  pressureSimulation: false,
   image: null,
 
   rotationMode: "flow",

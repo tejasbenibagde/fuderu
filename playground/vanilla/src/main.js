@@ -57,7 +57,7 @@ const spread = new SpreadModule();
 const painter = new Canvas({
   canvas: canvasEl,
   document: { width: state.width, height: state.height },
-  pressureSimulation: true,
+  pressureSimulation: false,
   brush: {
     size: Number(controls.size.value),
     opacity: Number(controls.opacity.value),

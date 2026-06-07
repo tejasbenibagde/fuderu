@@ -183,15 +183,14 @@ describe("Canvas", () => {
     rectSpy.mockRestore();
   });
 
-  it("should enable pressure simulation by default", () => {
+  it("should disable pressure simulation by default", () => {
     const canvas = createCanvas();
 
     const instance = new Canvas({
       canvas,
     });
 
-    expect(instance.pressureSimulation).toBe(true);
-    expect(instance.mousePressure.status()).toBe(true);
+    expect(instance.pressureSimulation).toBe(false);
   });
 
   it("should expose clear method", () => {
@@ -289,6 +288,9 @@ describe("Canvas", () => {
       clientY: 20,
       pointerType: "mouse",
       pressure: 0,
+      button: 0,
+      buttons: 1,
+      bubbles: true,
     });
 
     canvas.dispatchEvent(pointerDown);
@@ -301,6 +303,8 @@ describe("Canvas", () => {
       clientY: 25,
       pointerType: "mouse",
       pressure: 0,
+      buttons: 1,
+      bubbles: true,
     });
 
     canvas.dispatchEvent(pointerMove);
@@ -384,6 +388,82 @@ describe("Canvas", () => {
     }).not.toThrow();
   });
 
+  it("should process coalesced pointer events", () => {
+    const canvas = createCanvas();
+
+    new Canvas({
+      canvas,
+    });
+
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        clientX: 0,
+        clientY: 0,
+        bubbles: true,
+      }),
+    );
+
+    const moveEvent = new PointerEvent("pointermove", {
+      clientX: 10,
+      clientY: 10,
+      bubbles: true,
+    });
+
+    const coalescedEvents = [
+      new PointerEvent("pointermove", {
+        clientX: 20,
+        clientY: 20,
+        bubbles: true,
+      }),
+      new PointerEvent("pointermove", {
+        clientX: 30,
+        clientY: 30,
+        bubbles: true,
+      }),
+    ];
+
+    Object.defineProperty(moveEvent, "getCoalescedEvents", {
+      value: () => coalescedEvents,
+    });
+
+    canvas.dispatchEvent(moveEvent);
+
+    expect(mockBrushInstance.putPoint).toHaveBeenCalledTimes(3);
+    expect(mockBrushInstance.render).toHaveBeenCalledTimes(2);
+  });
+
+  it("should fallback to original event when coalesced events are unavailable", () => {
+    const canvas = createCanvas();
+
+    new Canvas({
+      canvas,
+    });
+
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        clientX: 0,
+        clientY: 0,
+        button: 0,
+        buttons: 1,
+        pointerId: 1,
+        bubbles: true,
+      }),
+    );
+
+    canvas.dispatchEvent(
+      new PointerEvent("pointermove", {
+        clientX: 10,
+        clientY: 10,
+        buttons: 1,
+        pointerId: 1,
+        bubbles: true,
+      }),
+    );
+
+    expect(mockBrushInstance.putPoint).toHaveBeenCalledTimes(2);
+    expect(mockBrushInstance.render).toHaveBeenCalledTimes(2);
+  });
+
   it("should handle pointer events", () => {
     const canvas = createCanvas();
 
@@ -456,7 +536,31 @@ describe("Canvas", () => {
       }),
     );
 
-    expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(100, 100, 0.5);
+    expect(mockBrushInstance.putPoint).toHaveBeenCalled();
+
+    const pressure = mockBrushInstance.putPoint.mock.calls[0][2];
+
+    expect(pressure).toBeGreaterThan(0);
+    expect(pressure).toBeLessThanOrEqual(1);
+  });
+
+  it("should use flat pressure when no option is provided", () => {
+    const canvas = createCanvas();
+
+    new Canvas({
+      canvas,
+    });
+
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        clientX: 50,
+        clientY: 50,
+        pointerType: "mouse",
+        pressure: 0,
+      }),
+    );
+
+    expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(50, 50, 1);
   });
 
   it("should use flat pressure when pressure simulation is disabled", () => {

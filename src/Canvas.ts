@@ -3,6 +3,7 @@
 import { Brush } from "./Brush";
 import type { BrushConfig } from "./types/config";
 import { MousePressure } from "./utils";
+import { LayerManager } from "./LayerManager";
 
 export interface CanvasOptions {
   canvas: HTMLCanvasElement | string;
@@ -23,6 +24,7 @@ export interface CanvasOptions {
 export class Canvas {
   private canvas: HTMLCanvasElement;
   public brush: Brush;
+  public layers: LayerManager;
 
   private isDrawing = false;
 
@@ -70,6 +72,8 @@ export class Canvas {
     this.documentWidth = options.document?.width ?? 0;
     this.documentHeight = options.document?.height ?? 0;
 
+    this.layers = new LayerManager(this.documentWidth, this.documentHeight);
+
     this.pressureSimulation = options.pressureSimulation ?? false;
     this.mousePressure = new MousePressure();
 
@@ -97,6 +101,8 @@ export class Canvas {
       this.documentWidth = Math.max(1, Math.round(rect.width * dpr));
       this.documentHeight = Math.max(1, Math.round(rect.height * dpr));
     }
+
+    this.layers = new LayerManager(this.documentWidth, this.documentHeight);
 
     // Set the pixel buffer to the logical document size
     this.canvas.width = this.documentWidth;
@@ -198,6 +204,7 @@ export class Canvas {
   // ─────────────────────────────────────────────────────────
 
   clear(): void {
+    this.layers.clear();
     this.brush.clear();
   }
   undo(): void {
@@ -243,6 +250,7 @@ export class Canvas {
       return;
     }
 
+    this.layers.resize(width, height);
     this.documentWidth = width;
     this.documentHeight = height;
 

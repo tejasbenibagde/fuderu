@@ -2,11 +2,11 @@
 
 Fuderu is a lightweight, framework-agnostic digital painting engine for the web.
 
-The goal is to provide modern brush dynamics, extensible modules, and high-performance canvas rendering while remaining easy to integrate into vanilla JavaScript, React, Next.js, and other frameworks.
+The goal is to provide modern brush dynamics, professional painting workflows, extensible modules, and high-performance rendering while remaining easy to integrate into vanilla JavaScript, React, Next.js, and other frameworks.
 
 ---
 
-## Current Status
+# Current Status
 
 Current package version: `0.8.7`
 
@@ -18,6 +18,7 @@ Minor releases may still introduce breaking changes to:
 - Module hooks
 - Rendering internals
 - Canvas lifecycle APIs
+- Layer APIs
 
 ---
 
@@ -57,7 +58,7 @@ Minor releases may still introduce breaking changes to:
 - Image brushes
 - Runtime recoloring
 - Per-stamp opacity and flow
-- Rotation modes:
+- Rotation modes
   - Fixed
   - Flow
   - Random
@@ -82,34 +83,9 @@ Minor releases may still introduce breaking changes to:
 
 ---
 
-# Experimental
-
-These APIs may still change before 1.0.
-
-## Module System
-
-- Module API shape
-- Module execution order
-- Cross-module interactions
-
-## Rendering
-
-- Large canvas behavior
-- Dense stroke performance
-- Long-running memory usage
-- Large undo stack behavior
-
-## Device Support
-
-- Mobile rendering consistency
-- Touch device validation
-- Multi-DPR validation
-
----
-
 # Milestone: v1.0 Stability
 
-Goal: stabilize the current foundation.
+Goal: Stabilize the current foundation.
 
 ## Documentation
 
@@ -123,8 +99,9 @@ Goal: stabilize the current foundation.
 - Pencil
 - Marker
 - Ink
-- Soft Brush
 - Airbrush
+- Soft Round
+- Hard Round
 
 ## Reliability
 
@@ -141,15 +118,124 @@ Goal: stabilize the current foundation.
 
 ---
 
-# Milestone: Digital Painting Features
+# Milestone: Professional Layer System
 
-Goal: evolve Fuderu from a drawing library into a painting engine.
+Goal: Transform Fuderu from a drawing library into a painting engine.
 
-## Brush Dynamics
+## Layer Manager
 
-### Velocity Dynamics
+Introduce a dedicated layer stack.
 
-Allow brush properties to react to drawing speed.
+### Features
+
+- Create layer
+- Delete layer
+- Duplicate layer
+- Rename layer
+- Reorder layers
+- Move layer up/down
+- Active layer selection
+
+---
+
+## Layer Visibility
+
+- Show / Hide layers
+- Solo layer mode
+- Quick visibility toggles
+
+---
+
+## Layer Opacity
+
+Per-layer opacity controls.
+
+Examples:
+
+- Sketch layer opacity
+- Ink layer opacity
+- Coloring workflows
+
+---
+
+## Layer Blend Modes
+
+Support layer compositing.
+
+### Initial Blend Modes
+
+- Normal
+- Multiply
+- Screen
+- Overlay
+- Add
+- Darken
+- Lighten
+
+---
+
+## Layer Locking
+
+### Lock Transparency
+
+Paint only existing pixels.
+
+### Lock Layer
+
+Prevent edits.
+
+### Lock Position
+
+Future transform support.
+
+---
+
+## Layer Groups
+
+Organize complex projects.
+
+### Features
+
+- Group layers
+- Nested groups
+- Group visibility
+- Group opacity
+- Group blend modes
+
+---
+
+## Layer Masks
+
+Non-destructive editing.
+
+### Features
+
+- Add mask
+- Remove mask
+- Paint mask
+- Invert mask
+
+---
+
+## Clipping Masks
+
+Paint constrained to underlying layer content.
+
+Useful for:
+
+- Coloring
+- Shading
+- Highlights
+
+---
+
+# Milestone: Advanced Brush Dynamics
+
+Goal: Reach professional-grade brush behavior.
+
+## Velocity Dynamics
+
+Drive brush properties using speed.
 
 Examples:
 
@@ -157,90 +243,23 @@ Examples:
 - Speed → Opacity
 - Speed → Flow
 
-### Pressure Curves
+---
+
+## Pressure Curves
 
 Custom pressure response curves.
 
-Examples:
+### Presets
 
 - Linear
 - Soft
 - Hard
-- Custom curve editor
 
-### Color Dynamics
+### Future
 
-Randomized:
-
-- Hue
-- Saturation
-- Value
-
-for more natural strokes.
+- Editable curve graph
 
 ---
-
-## Brush Effects
-
-### Improved Scatter
-
-Advanced scatter controls:
-
-- Position scatter
-- Angle scatter
-- Scale scatter
-
-### Texture Brushes
-
-Support texture-driven brushes.
-
-Examples:
-
-- Chalk
-- Pencil
-- Dry Brush
-- Oil Paint
-
-### Stamp Brushes
-
-Pattern and shape stamping workflows.
-
----
-
-## Tablet Features
-
-### Tilt Support
-
-Support:
-
-- tiltX
-- tiltY
-
-for realistic brush orientation.
-
-### Advanced Rotation
-
-Additional rotation sensors and dynamics.
-
----
-
-# Milestone: Advanced Painting Engine
-
-Goal: reach feature parity with professional brush systems.
-
-## Smudge Brush
-
-Canvas sampling and paint mixing.
-
-Features:
-
-- Smearing
-- Wet paint effects
-- Color pickup
-
-## Wet Brushes
-
-Experimental paint accumulation and blending.
 
 ## Brush Sensors
 
@@ -254,33 +273,251 @@ Drive brush properties using:
 
 ---
 
-# Milestone: Performance
+## Tilt Support
 
-Goal: support larger projects and professional workflows.
+Tablet stylus support.
 
-## Rendering
+### Inputs
+
+- tiltX
+- tiltY
+
+---
+
+## Rotation Dynamics
+
+Support:
+
+- Direction rotation
+- Tilt rotation
+- Random rotation
+- Velocity rotation
+
+---
+
+## Color Dynamics
+
+Natural variation.
+
+### Features
+
+- Hue jitter
+- Saturation jitter
+- Value jitter
+
+---
+
+# Milestone: Professional Brush Effects
+
+Goal: Expand brush expressiveness.
+
+## Scatter System
+
+Advanced scatter controls.
+
+### Features
+
+- Position scatter
+- Angle scatter
+- Scale scatter
+- Flow scatter
+
+---
+
+## Texture Brushes
+
+Texture-driven stamps.
+
+Examples:
+
+- Chalk
+- Pencil
+- Dry brush
+- Oil brush
+
+---
+
+## Stamp Brushes
+
+Custom image brush workflows.
+
+### Features
+
+- Multi-stamp brushes
+- Stamp randomization
+- Stamp rotation
+
+---
+
+## Smudge Brush
+
+Canvas sampling and color dragging.
+
+### Features
+
+- Paint pickup
+- Smearing
+- Mixing
+
+---
+
+## Wet Brushes
+
+Experimental paint accumulation.
+
+### Features
+
+- Color mixing
+- Wet edges
+- Paint buildup
+
+---
+
+# Milestone: Non-Destructive Editing
+
+Goal: Modern digital painting workflow.
+
+## Adjustment Layers
+
+Future support for:
+
+- Brightness
+- Contrast
+- Hue/Saturation
+- Curves
+
+---
+
+## Filter Layers
+
+Reusable effect layers.
+
+Examples:
+
+- Blur
+- Sharpen
+- Noise
+
+---
+
+## Live Effects
+
+Apply effects without altering source pixels.
+
+---
+
+# Milestone: Project System
+
+Goal: Enable professional workflows.
+
+## Document Model
+
+Store:
+
+- Layers
+- Masks
+- Brush settings
+- Canvas size
+
+---
+
+## Save / Load
+
+### Formats
+
+- JSON project format
+- Export PNG
+- Export JPEG
+- Export WebP
+
+---
+
+## Auto Save
+
+Recovery system.
+
+---
+
+## Project History
+
+Persistent undo stack.
+
+---
+
+# Milestone: Performance Architecture
+
+Goal: Support large documents and complex brushes.
+
+## Rendering Pipeline
+
+- Dirty rectangle rendering
+- Partial layer updates
+- Incremental compositing
+
+---
+
+## Offscreen Rendering
 
 - OffscreenCanvas
-- Worker rendering
-- Incremental rendering
+- Background compositing
 
-## Native Acceleration
+---
 
-Investigate:
+## Worker Support
 
-- WebAssembly
-- Rust modules
+Move heavy work off main thread.
 
-for heavy brush calculations.
+Examples:
 
-## GPU Rendering
+- Brush calculations
+- Layer compositing
+- Image processing
 
-Future exploration:
+---
 
-- WebGL
-- WebGPU
+## Memory Optimization
 
-for advanced brush effects and large canvases.
+- Tile-based rendering
+- Layer caching
+- Snapshot compression
+
+---
+
+# Milestone: GPU Acceleration
+
+Goal: Future-proof rendering architecture.
+
+## WebGL Backend
+
+Accelerated:
+
+- Brush rendering
+- Compositing
+- Filters
+
+---
+
+## WebGPU Backend
+
+Long-term rendering architecture.
+
+### Potential Features
+
+- Real-time blur
+- Real-time smudge
+- Massive canvas support
+- Advanced paint simulation
+
+---
+
+## Rust + WebAssembly
+
+Accelerate:
+
+- Brush engines
+- Smudge calculations
+- Layer compositing
+- Color processing
 
 ---
 
@@ -301,25 +538,38 @@ Import/export brush definitions.
 
 ## Community Presets
 
-Shareable brush packs.
+- Brush packs
+- Texture packs
+- Painting styles
+
+---
 
 ## Plugin Ecosystem
 
-Custom modules:
+Custom modules.
+
+Examples:
 
 - Watercolor
 - Pencil
+- Oil Paint
 - Grass
-- Particle brushes
+- Particle Brushes
+- Procedural Brushes
 
 ---
 
 # Long-Term Vision
 
-Fuderu aims to become a modern, TypeScript-first digital painting engine for the web, combining:
+Fuderu aims to become a modern, TypeScript-first digital painting engine for the web that combines:
 
 - Professional brush dynamics
+- Full layer architecture
+- Non-destructive editing
 - Extensible module architecture
 - Framework-agnostic integration
 - High-performance rendering
-- Future GPU acceleration
+- WebAssembly acceleration
+- Future GPU rendering
+
+Ultimately positioning Fuderu as an open-source painting engine comparable to the brush and layer capabilities found in applications such as MyPaint, Krita, and Clip Studio Paint.

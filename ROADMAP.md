@@ -8,7 +8,7 @@ The goal is to provide modern brush dynamics, professional painting workflows, e
 
 # Current Status
 
-Current package version: `0.8.7`
+Current package version: `0.9.0`
 
 The public API remains experimental until `1.0.0`.
 
@@ -70,6 +70,21 @@ Minor releases may still introduce breaking changes to:
 - Spread
 - Pattern
 
+## Layer System ✅
+
+- Create layer
+- Delete layer
+- Duplicate layer
+- Rename layer
+- Reorder layers (move up/down)
+- Active layer selection
+- Layer visibility (show/hide)
+- Layer opacity (0-100%)
+- Layer blend modes (16 modes)
+- Brush draws into active layer
+- Layer compositing pipeline
+- Layer thumbnails
+
 ## Testing
 
 - Brush setup
@@ -80,6 +95,7 @@ Minor releases may still introduce breaking changes to:
 - Canvas lifecycle
 - Utilities
 - Pointer handling
+- Layer management
 
 ---
 
@@ -115,117 +131,7 @@ Goal: Stabilize the current foundation.
 - Stable Canvas API
 - Stable Brush API
 - Stable Module API
-
----
-
-# Milestone: Professional Layer System
-
-Goal: Transform Fuderu from a drawing library into a painting engine.
-
-## Layer Manager
-
-Introduce a dedicated layer stack.
-
-### Features
-
-- Create layer
-- Delete layer
-- Duplicate layer
-- Rename layer
-- Reorder layers
-- Move layer up/down
-- Active layer selection
-
----
-
-## Layer Visibility
-
-- Show / Hide layers
-- Solo layer mode
-- Quick visibility toggles
-
----
-
-## Layer Opacity
-
-Per-layer opacity controls.
-
-Examples:
-
-- Sketch layer opacity
-- Ink layer opacity
-- Coloring workflows
-
----
-
-## Layer Blend Modes
-
-Support layer compositing.
-
-### Initial Blend Modes
-
-- Normal
-- Multiply
-- Screen
-- Overlay
-- Add
-- Darken
-- Lighten
-
----
-
-## Layer Locking
-
-### Lock Transparency
-
-Paint only existing pixels.
-
-### Lock Layer
-
-Prevent edits.
-
-### Lock Position
-
-Future transform support.
-
----
-
-## Layer Groups
-
-Organize complex projects.
-
-### Features
-
-- Group layers
-- Nested groups
-- Group visibility
-- Group opacity
-- Group blend modes
-
----
-
-## Layer Masks
-
-Non-destructive editing.
-
-### Features
-
-- Add mask
-- Remove mask
-- Paint mask
-- Invert mask
-
----
-
-## Clipping Masks
-
-Paint constrained to underlying layer content.
-
-Useful for:
-
-- Coloring
-- Shading
-- Highlights
+- Stable Layer API
 
 ---
 
@@ -243,8 +149,6 @@ Examples:
 - Speed → Opacity
 - Speed → Flow
 
----
-
 ## Pressure Curves
 
 Custom pressure response curves.
@@ -254,12 +158,6 @@ Custom pressure response curves.
 - Linear
 - Soft
 - Hard
-
-### Future
-
-- Editable curve graph
-
----
 
 ## Brush Sensors
 
@@ -271,8 +169,6 @@ Drive brush properties using:
 - Direction
 - Randomness
 
----
-
 ## Tilt Support
 
 Tablet stylus support.
@@ -281,19 +177,6 @@ Tablet stylus support.
 
 - tiltX
 - tiltY
-
----
-
-## Rotation Dynamics
-
-Support:
-
-- Direction rotation
-- Tilt rotation
-- Random rotation
-- Velocity rotation
-
----
 
 ## Color Dynamics
 
@@ -322,8 +205,6 @@ Advanced scatter controls.
 - Scale scatter
 - Flow scatter
 
----
-
 ## Texture Brushes
 
 Texture-driven stamps.
@@ -335,20 +216,6 @@ Examples:
 - Dry brush
 - Oil brush
 
----
-
-## Stamp Brushes
-
-Custom image brush workflows.
-
-### Features
-
-- Multi-stamp brushes
-- Stamp randomization
-- Stamp rotation
-
----
-
 ## Smudge Brush
 
 Canvas sampling and color dragging.
@@ -358,8 +225,6 @@ Canvas sampling and color dragging.
 - Paint pickup
 - Smearing
 - Mixing
-
----
 
 ## Wet Brushes
 
@@ -373,9 +238,48 @@ Experimental paint accumulation.
 
 ---
 
-# Milestone: Non-Destructive Editing
+# Milestone: Layer Enhancements
 
-Goal: Modern digital painting workflow.
+Goal: Expand layer capabilities.
+
+## Layer Locking
+
+- Lock Transparency – Paint only existing pixels
+- Lock Layer – Prevent edits
+- Lock Position – Future transform support
+
+## Layer Groups
+
+Organize complex projects.
+
+### Features
+
+- Group layers
+- Nested groups
+- Group visibility
+- Group opacity
+- Group blend modes
+
+## Layer Masks
+
+Non-destructive editing.
+
+### Features
+
+- Add mask
+- Remove mask
+- Paint mask
+- Invert mask
+
+## Clipping Masks
+
+Paint constrained to underlying layer content.
+
+Useful for:
+
+- Coloring
+- Shading
+- Highlights
 
 ## Adjustment Layers
 
@@ -385,24 +289,6 @@ Future support for:
 - Contrast
 - Hue/Saturation
 - Curves
-
----
-
-## Filter Layers
-
-Reusable effect layers.
-
-Examples:
-
-- Blur
-- Sharpen
-- Noise
-
----
-
-## Live Effects
-
-Apply effects without altering source pixels.
 
 ---
 
@@ -419,8 +305,6 @@ Store:
 - Brush settings
 - Canvas size
 
----
-
 ## Save / Load
 
 ### Formats
@@ -430,13 +314,9 @@ Store:
 - Export JPEG
 - Export WebP
 
----
-
 ## Auto Save
 
 Recovery system.
-
----
 
 ## Project History
 
@@ -454,14 +334,10 @@ Goal: Support large documents and complex brushes.
 - Partial layer updates
 - Incremental compositing
 
----
-
 ## Offscreen Rendering
 
 - OffscreenCanvas
 - Background compositing
-
----
 
 ## Worker Support
 
@@ -472,8 +348,6 @@ Examples:
 - Brush calculations
 - Layer compositing
 - Image processing
-
----
 
 ## Memory Optimization
 
@@ -495,8 +369,6 @@ Accelerated:
 - Compositing
 - Filters
 
----
-
 ## WebGPU Backend
 
 Long-term rendering architecture.
@@ -507,8 +379,6 @@ Long-term rendering architecture.
 - Real-time smudge
 - Massive canvas support
 - Advanced paint simulation
-
----
 
 ## Rust + WebAssembly
 
@@ -535,41 +405,3 @@ Import/export brush definitions.
   "opacity": 0.8
 }
 ```
-
-## Community Presets
-
-- Brush packs
-- Texture packs
-- Painting styles
-
----
-
-## Plugin Ecosystem
-
-Custom modules.
-
-Examples:
-
-- Watercolor
-- Pencil
-- Oil Paint
-- Grass
-- Particle Brushes
-- Procedural Brushes
-
----
-
-# Long-Term Vision
-
-Fuderu aims to become a modern, TypeScript-first digital painting engine for the web that combines:
-
-- Professional brush dynamics
-- Full layer architecture
-- Non-destructive editing
-- Extensible module architecture
-- Framework-agnostic integration
-- High-performance rendering
-- WebAssembly acceleration
-- Future GPU rendering
-
-Ultimately positioning Fuderu as an open-source painting engine comparable to the brush and layer capabilities found in applications such as MyPaint, Krita, and Clip Studio Paint.

@@ -7,6 +7,9 @@ export interface LayerOptions {
   name?: string;
   width: number;
   height: number;
+  visible?: boolean;
+  opacity?: number;
+  blendMode?: BlendMode;
 }
 
 export class Layer {
@@ -16,13 +19,16 @@ export class Layer {
   public readonly canvas: HTMLCanvasElement;
   public readonly ctx: CanvasRenderingContext2D;
 
-  public visible = true;
-  public opacity = 1;
-  public blendMode: BlendMode = "source-over";
+  public visible: boolean;
+  public opacity: number;
+  public blendMode: BlendMode;
 
   constructor(options: LayerOptions) {
     this.id = options.id ?? crypto.randomUUID();
     this.name = options.name ?? "Layer";
+    this.visible = options.visible ?? true;
+    this.opacity = clampOpacity(options.opacity ?? 1);
+    this.blendMode = options.blendMode ?? "source-over";
 
     this.canvas = document.createElement("canvas");
     this.canvas.width = options.width;
@@ -54,4 +60,13 @@ export class Layer {
 
     this.ctx.putImageData(imageData, 0, 0);
   }
+
+  setOpacity(opacity: number): void {
+    this.opacity = clampOpacity(opacity);
+  }
 }
+
+const clampOpacity = (opacity: number): number => {
+  if (Number.isNaN(opacity)) return 1;
+  return Math.min(1, Math.max(0, opacity));
+};

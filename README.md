@@ -23,45 +23,30 @@
 
 ## Features
 
-- Built-in `Canvas` wrapper for pointer drawing.
-- Standalone `Brush` engine for custom integrations.
-- Smooth interpolation and adaptive brush spacing.
-- Real pen pressure with optional mouse/touch pressure simulation disabled by default.
-- Device-pixel-ratio aware canvas setup with explicit document sizing support.
-- Runtime brush configuration.
-- Image-based brush stamps with recoloring and rotation.
-- Rotation modes: `fixed`, `flow`, and `random`.
-- Opacity, spacing-aware flow, angle, roundness, blend mode, and filter support.
-- Undo, redo, clear, and destroy lifecycle helpers.
-- Built-in eraser mode with runtime toggle support.
-- Runtime module system with built-in dynamic shape, transparency, spread, and pattern modules.
-- TypeScript-first and framework-agnostic.
+- **Layer System** – Full layer stack with visibility, opacity, and 16 blend modes.
+- **Canvas API** – Built-in `Canvas` wrapper for pointer drawing with layer support.
+- **Standalone Brush** – `Brush` engine for custom integrations.
+- **Smooth Interpolation** – Adaptive brush spacing and Bezier smoothing.
+- **Pressure Support** – Real pen pressure with optional mouse/touch simulation.
+- **Device-Pixel-Ratio Aware** – Automatic HiDPI scaling with explicit document sizing.
+- **Runtime Configuration** – Update brush properties on the fly.
+- **Image Brushes** – PNG/WebP stamps with recoloring and rotation.
+- **Rotation Modes** – `fixed`, `flow`, and `random` with smoothing, offset, and jitter.
+- **Brush Dynamics** – Opacity, flow, angle, roundness, blend mode, and filter support.
+- **Eraser Mode** – Built-in eraser with runtime toggle.
+- **Undo/Redo** – Full history stack with configurable depth.
+- **Module System** – Extensible with built-in dynamic shape, transparency, spread, and pattern modules.
+- **TypeScript-First** – Full type safety with framework-agnostic design.
 
 ## Latest Release
 
-### 0.8.8 (in development)
+### 0.8.8
 
-- Optional mouse/touch pressure simulation is now disabled by default in `Canvas`.
-- Added coalesced pointer event support in `Canvas.handlePointerMove` for smoother pen and stylus drawing on browsers that expose `getCoalescedEvents()`.
-
-### 0.8.7
-
-- Added spacing-aware flow normalization so low-flow strokes do not flatten into solid color just because stamp spacing is dense.
-- Fixed pointer coordinate scaling when a canvas is displayed at a different CSS size than its logical drawing buffer.
-
-### 0.8.6
-
-- Improved canvas resize handling so the rendered canvas stays in sync with its visible element size.
-
-### 0.8.5
-
-- Fixed an initial stroke gap when drawing fast, ensuring the first brush stamp connects correctly to the second point.
-
-### 0.8.4
-
-- Fixed low-opacity dense stroke rendering when spacing is reduced.
-- Fixed stroke opacity state leaking into later strokes after stroke completion.
-- Fixed brush stability after finishing one stroke and starting the next.
+- Added professional layer stack with create, delete, duplicate, reorder, and active layer selection.
+- Per-layer visibility, opacity, and 16 blend modes (Normal, Multiply, Screen, Overlay, etc.).
+- Brush now draws directly into the active layer's canvas.
+- Layer compositing with `renderLayers()` hook.
+- Fixed layer UI interactions (no more dropdown/input flicker).
 
 ## Installation
 
@@ -88,6 +73,10 @@ const painter = new Canvas({
   },
 });
 
+// Layer management
+const layer = painter.createLayer("Sketch");
+painter.setActiveLayer(layer.id);
+
 painter.loadConfig({
   color: "#ff6b6b",
   size: 32,
@@ -99,17 +88,71 @@ painter.redo();
 painter.clear();
 ```
 
-By default, `pressureSimulation` is disabled to keep mouse/touch input deterministic. Set `pressureSimulation: true` when you want mouse/touch to use simulated pressure.
+## Layer System
 
-If `document` is omitted, Fuderu sizes the internal drawing buffer from the
-canvas element's CSS size multiplied by `window.devicePixelRatio`.
+Fuderu includes a full layer stack with Photoshop-like capabilities.
+
+### Layer Management
+
+```tsx
+// Create a layer
+const sketch = painter.createLayer("Sketch");
+
+// Get all layers
+const layers = painter.getLayers();
+
+// Get active layer
+const active = painter.getActiveLayer();
+
+// Set active layer
+painter.setActiveLayer(sketch.id);
+
+// Update layer properties
+painter.updateLayer(sketch.id, {
+  name: "Final Sketch",
+  visible: true,
+  opacity: 0.8,
+  blendMode: "multiply",
+});
+
+// Duplicate a layer
+const copy = painter.duplicateLayer(sketch.id);
+
+// Move layer (stack order)
+painter.moveLayer(sketch.id, 0); // Move to bottom
+
+// Delete a layer
+painter.deleteLayer(sketch.id);
+```
+
+## Blend Modes
+
+Currently available blend modes:
+
+| Mode        | Description                          |
+| ----------- | ------------------------------------ |
+| source-over | Normal                               |
+| multiply    | Darkens with underlying colors       |
+| screen      | Lightens with underlying colors      |
+| overlay     | Combines multiply and screen         |
+| darken      | Keeps darker colors                  |
+| lighten     | Keeps lighter colors                 |
+| color-dodge | Brightens underlying colors          |
+| color-burn  | Darkens underlying colors            |
+| hard-light  | Strong overlay effect                |
+| soft-light  | Soft overlay effect                  |
+| difference  | Subtracts colors                     |
+| exclusion   | Similar to difference but softer     |
+| hue         | Uses hue of top layer                |
+| saturation  | Uses saturation of top layer         |
+| color       | Uses hue and saturation of top layer |
+| luminosity  | Uses luminosity of top layer         |
 
 ## Flow And Opacity
 
-`opacity` is applied as a stroke-level ceiling. `flow` controls how quickly paint
-builds up from individual stamps. From `0.8.7`, Fuderu normalizes flow against
-brush size and spacing, so dense stamp overlap no longer makes low-flow strokes
-turn solid immediately.
+- **Opacity** – Stroke-level ceiling (0-1). Applied once per stroke.
+- **Flow** – Per-stamp alpha buildup. Lower flow = slower paint buildup.
+- **Spacing-Aware Flow** – Automatically compensates for dense stamp spacing.
 
 ## Image Brushes
 
@@ -124,7 +167,7 @@ painter.loadConfig({
 });
 ```
 
-Transparent images can be used as brush stamps. Fuderu can recolor them and rotate each stamp along the stroke direction.
+Transparent images can be used as brush stamps with recoloring and rotation.
 
 ## Modules
 
@@ -151,7 +194,12 @@ brush.useModule(
 );
 ```
 
-Built-in modules can adjust per-stamp shape, transparency, position spread, and pattern texture compositing. Custom modules can hook into point changes, config changes, stroke compositing, and stroke end.
+### Built-in modules:
+
+- **DynamicShapeModule** – Size, angle, and roundness jitter
+- **DynamicTransparencyModule** – Opacity and flow jitter
+- **SpreadModule** – Position scatter
+- **PatternModule** – Pattern-based stamping
 
 ## Status
 

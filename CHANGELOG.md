@@ -5,10 +5,28 @@
 ### Added
 
 - Added coalesced pointer event support in `Canvas.handlePointerMove` for smoother pen and stylus drawing.
+- **Professional Layer System** – Full layer stack with creation, deletion, duplication, reordering, and active layer selection.
+- **Layer Properties** – Per-layer visibility, opacity (0-100%), and blend modes (16 modes including Multiply, Screen, Overlay, etc.).
+- **Layer Manager API** – `createLayer()`, `deleteLayer()`, `duplicateLayer()`, `moveLayer()`, `updateLayer()`, `getLayers()`, `getActiveLayer()`, `setActiveLayer()`.
+- **Layer Compositing** – `renderLayers()` composites all visible layers onto the canvas respecting opacity and blend modes.
+- **Brush-to-Layer Integration** – Brush now draws directly into the active layer's canvas.
+- **`onRender` callback** – Called after each render frame, enabling layer compositing hooks.
+- **Coalesced pointer events** – Smoother pen and stylus drawing via `getCoalescedEvents()`.
 
 ### Changed
 
-- `Canvas` now treats `pressureSimulation` as optional and disabled by default. Real pen pressure remains active.
+- `Canvas` now owns a `LayerManager` instance (`canvas.layers`).
+- `Brush.loadContext()` now accepts any canvas, enabling dynamic layer switching.
+- `Canvas` constructor now initializes layers before the brush.
+- `resize()` now resizes all layers and reinitializes the brush context.
+- `setDocumentSize()` now resizes layers and preserves the layer stack.
+
+### Fixed
+
+- Layer thumbnails no longer flicker on interaction.
+- Active layer switching now correctly updates the brush target.
+- Undo/redo now works correctly with layer-based rendering.
+- Blend mode dropdown and layer name input no longer close prematurely.
 
 ## 0.8.7
 

@@ -17,6 +17,8 @@ const canvasEl = $("canvas");
 const status = $("status");
 const documentLabel = $("documentLabel");
 const cursorLabel = $("cursorLabel");
+const layerList = $("layerList");
+const layerCount = $("layerCount");
 
 const controls = {
   color: $("colorPicker"),
@@ -73,9 +75,283 @@ painter.brush.useModule(dynamicShape);
 painter.brush.useModule(dynamicTransparency);
 painter.brush.useModule(spread);
 
+function getActiveLayer() {
+  return painter.getActiveLayer();
+}
+
+function drawLayerPreview(layer, preview) {
+  const ctx = preview.getContext("2d");
+  if (!ctx) return;
+
+  ctx.clearRect(0, 0, preview.width, preview.height);
+
+  const scale = Math.min(
+    preview.width / layer.canvas.width,
+    preview.height / layer.canvas.height,
+  );
+  const width = layer.canvas.width * scale;
+  const height = layer.canvas.height * scale;
+  const x = (preview.width - width) / 2;
+  const y = (preview.height - height) / 2;
+
+  ctx.drawImage(layer.canvas, x, y, width, height);
+}
+
+function blendLabel(mode) {
+  if (mode === "source-over") return "Normal";
+  return mode
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+const BLEND_MODES = [
+  "source-over",
+  "multiply",
+  "screen",
+  "overlay",
+  "darken",
+  "lighten",
+  "difference",
+  "exclusion",
+];
+
+// ───────────────────────────────────────────────────────────
+// Layer list rendering
+//
+// IMPORTANT: this list is rebuilt only when layers are added,
+// removed, reordered, or the active layer changes — never on
+// every keystroke/drag of an interactive control inside a row.
+// Each row's own controls update via small targeted handlers,
+// not via a full replaceChildren(). This is what prevents the
+// "select/name closes immediately" bug: the DOM node the user
+// is actively interacting with is never destroyed mid-interaction.
+// ───────────────────────────────────────────────────────────
+
+function buildLayerRow(layer, index, totalLayers, activeLayerId) {
+  const row = document.createElement("div");
+  row.className = `layer-card${layer.id === activeLayerId ? " active" : ""}`;
+  row.dataset.layerId = layer.id;
+
+  // Selecting a layer happens by clicking the row background,
+  // the preview thumbnail, or the drag handle — never by clicking
+  // through an interactive control. Each interactive control below
+  // stops propagation on both pointerdown and click so the click
+  // never reaches the row, regardless of browser quirks around
+  // native <select> / <input> click timing.
+  const selectLayer = () => {
+    if (layer.id === activeLayerId) return;
+    painter.setActiveLayer(layer.id);
+    renderLayerList();
+    status.textContent = `Active: ${layer.name}`;
+  };
+
+  row.addEventListener("click", selectLayer);
+
+  const preview = document.createElement("canvas");
+  preview.className = "layer-preview";
+  preview.width = 96;
+  preview.height = 64;
+  drawLayerPreview(layer, preview);
+
+  const body = document.createElement("div");
+  body.className = "layer-card-body";
+
+  // ── Header: name input + visibility toggle ──────────────
+  const header = document.createElement("div");
+  header.className = "layer-card-header";
+
+  const name = document.createElement("input");
+  name.className = "layer-name";
+  name.value = layer.name;
+  name.spellcheck = false;
+  name.addEventListener("pointerdown", (e) => e.stopPropagation());
+  name.addEventListener("click", (e) => e.stopPropagation());
+  name.addEventListener("change", () => {
+    painter.updateLayer(layer.id, { name: name.value || "Layer" });
+    // No full re-render needed — the input already shows the
+    // value the user typed. Only the status line updates.
+    status.textContent = "Renamed";
+  });
+  name.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") name.blur();
+  });
+
+  const visibility = document.createElement("button");
+  visibility.type = "button";
+  visibility.className = "layer-toggle";
+  visibility.setAttribute(
+    "aria-label",
+    layer.visible ? "Hide layer" : "Show layer",
+  );
+  visibility.innerHTML = layer.visible ? EYE_OPEN_ICON : EYE_CLOSED_ICON;
+  visibility.addEventListener("pointerdown", (e) => e.stopPropagation());
+  visibility.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const nextVisible = !layer.visible;
+    painter.updateLayer(layer.id, { visible: nextVisible });
+    visibility.innerHTML = nextVisible ? EYE_OPEN_ICON : EYE_CLOSED_ICON;
+    visibility.setAttribute(
+      "aria-label",
+      nextVisible ? "Hide layer" : "Show layer",
+    );
+    row.classList.toggle("dimmed", !nextVisible);
+    status.textContent = nextVisible ? "Layer shown" : "Layer hidden";
+  });
+
+  header.append(name, visibility);
+
+  // ── Meta row: opacity slider + blend mode select ────────
+  const meta = document.createElement("div");
+  meta.className = "layer-meta";
+
+  const opacityLabel = document.createElement("label");
+  opacityLabel.className = "layer-opacity";
+
+  const opacityTop = document.createElement("div");
+  opacityTop.className = "layer-opacity-top";
+  const opacityName = document.createElement("span");
+  opacityName.textContent = "Opacity";
+  const opacityValue = document.createElement("output");
+  opacityValue.textContent = `${Math.round(layer.opacity * 100)}%`;
+  opacityTop.append(opacityName, opacityValue);
+
+  const opacity = document.createElement("input");
+  opacity.type = "range";
+  opacity.min = "0";
+  opacity.max = "1";
+  opacity.step = "0.01";
+  opacity.value = String(layer.opacity);
+  opacity.addEventListener("pointerdown", (e) => e.stopPropagation());
+  opacity.addEventListener("click", (e) => e.stopPropagation());
+  opacity.addEventListener("input", () => {
+    const nextOpacity = Number(opacity.value);
+    painter.updateLayer(layer.id, { opacity: nextOpacity });
+    opacityValue.textContent = `${Math.round(nextOpacity * 100)}%`;
+    status.textContent = `${layer.name}: ${opacityValue.textContent}`;
+  });
+
+  opacityLabel.append(opacityTop, opacity);
+
+  const blendWrap = document.createElement("label");
+  blendWrap.className = "layer-blend-wrap";
+  const blendCaption = document.createElement("span");
+  blendCaption.textContent = "Blend";
+  const blendMode = document.createElement("select");
+  blendMode.className = "layer-blend";
+  BLEND_MODES.forEach((mode) => {
+    const option = document.createElement("option");
+    option.value = mode;
+    option.textContent = blendLabel(mode);
+    blendMode.append(option);
+  });
+  blendMode.value = layer.blendMode;
+  blendMode.addEventListener("pointerdown", (e) => e.stopPropagation());
+  blendMode.addEventListener("click", (e) => e.stopPropagation());
+  blendMode.addEventListener("change", (e) => {
+    e.stopPropagation();
+    painter.updateLayer(layer.id, { blendMode: blendMode.value });
+    status.textContent = `${layer.name}: ${blendLabel(blendMode.value)}`;
+  });
+  blendWrap.append(blendCaption, blendMode);
+
+  meta.append(opacityLabel, blendWrap);
+
+  // ── Footer: reorder / duplicate / delete ─────────────────
+  const moveControls = document.createElement("div");
+  moveControls.className = "layer-move";
+
+  const up = document.createElement("button");
+  up.type = "button";
+  up.className = "icon-btn";
+  up.innerHTML = CHEVRON_UP_ICON;
+  up.title = "Move up";
+  up.disabled = index === totalLayers - 1;
+  up.addEventListener("pointerdown", (e) => e.stopPropagation());
+  up.addEventListener("click", (e) => {
+    e.stopPropagation();
+    painter.moveLayer(layer.id, index + 1);
+    renderLayerList();
+    status.textContent = "Layer moved";
+  });
+
+  const down = document.createElement("button");
+  down.type = "button";
+  down.className = "icon-btn";
+  down.innerHTML = CHEVRON_DOWN_ICON;
+  down.title = "Move down";
+  down.disabled = index === 0;
+  down.addEventListener("pointerdown", (e) => e.stopPropagation());
+  down.addEventListener("click", (e) => {
+    e.stopPropagation();
+    painter.moveLayer(layer.id, index - 1);
+    renderLayerList();
+    status.textContent = "Layer moved";
+  });
+
+  const duplicate = document.createElement("button");
+  duplicate.type = "button";
+  duplicate.className = "icon-btn";
+  duplicate.innerHTML = DUPLICATE_ICON;
+  duplicate.title = "Duplicate layer";
+  duplicate.addEventListener("pointerdown", (e) => e.stopPropagation());
+  duplicate.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const copiedLayer = painter.duplicateLayer(layer.id);
+    renderLayerList();
+    status.textContent = `Duplicated: ${copiedLayer.name}`;
+  });
+
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "icon-btn danger";
+  remove.innerHTML = TRASH_ICON;
+  remove.title = "Delete layer";
+  remove.disabled = totalLayers === 1;
+  remove.addEventListener("pointerdown", (e) => e.stopPropagation());
+  remove.addEventListener("click", (e) => {
+    e.stopPropagation();
+    painter.deleteLayer(layer.id);
+    renderLayerList();
+    status.textContent = "Layer deleted";
+  });
+
+  moveControls.append(up, down, duplicate, remove);
+
+  preview.addEventListener("click", selectLayer);
+
+  body.append(header, meta, moveControls);
+  row.append(preview, body);
+
+  if (!layer.visible) row.classList.add("dimmed");
+
+  return row;
+}
+
+function renderLayerList() {
+  const layers = [...painter.getLayers()];
+  const activeLayer = getActiveLayer();
+
+  layerList.replaceChildren();
+  layerCount.textContent = `${layers.length} ${layers.length === 1 ? "layer" : "layers"}`;
+
+  layers
+    .map((layer, index) => ({ layer, index }))
+    .reverse()
+    .forEach(({ layer, index }) => {
+      layerList.append(
+        buildLayerRow(layer, index, layers.length, activeLayer.id),
+      );
+    });
+}
+
+function syncLayers() {
+  renderLayerList();
+}
+
 function setCanvasAspect(width, height) {
   canvasEl.style.aspectRatio = `${width} / ${height}`;
-  documentLabel.textContent = `${width} x ${height}`;
+  documentLabel.textContent = `${width} × ${height}`;
 }
 
 function degreesToTurns(value) {
@@ -92,8 +368,8 @@ function syncLabels() {
   outputs.flow.textContent = `${Math.round(Number(controls.flow.value) * 100)}%`;
   outputs.spacing.textContent = Number(controls.spacing.value).toFixed(2);
   outputs.roundness.textContent = Number(controls.roundness.value).toFixed(2);
-  outputs.angle.textContent = `${controls.angle.value}deg`;
-  outputs.rotationJitter.textContent = `${controls.rotationJitter.value}deg`;
+  outputs.angle.textContent = `${controls.angle.value}°`;
+  outputs.rotationJitter.textContent = `${controls.rotationJitter.value}°`;
   outputs.sizeJitter.textContent = Number(controls.sizeJitter.value).toFixed(2);
   outputs.flowJitter.textContent = Number(controls.flowJitter.value).toFixed(2);
   outputs.spread.textContent = Number(controls.spread.value).toFixed(2);
@@ -164,6 +440,7 @@ function applyDocumentSize(width, height) {
   state.height = height;
   painter.setDocumentSize(width, height);
   setCanvasAspect(width, height);
+  syncLayers();
   $("docWidth").value = String(width);
   $("docHeight").value = String(height);
   status.textContent = "Document resized";
@@ -175,7 +452,7 @@ function updateCursorLabel(event) {
   const scaleY = rect.height > 0 ? canvasEl.height / rect.height : 1;
   const x = Math.round((event.clientX - rect.left) * scaleX);
   const y = Math.round((event.clientY - rect.top) * scaleY);
-  cursorLabel.textContent = `x ${x}, y ${y}, pressure ${painter.lastPressure.toFixed(2)}`;
+  cursorLabel.textContent = `${x}, ${y} · p ${painter.lastPressure.toFixed(2)}`;
 }
 
 Object.values(controls).forEach((control) => {
@@ -187,7 +464,7 @@ Object.values(controls).forEach((control) => {
 
 $("clearBtn").addEventListener("click", () => {
   painter.clear();
-  status.textContent = "Cleared";
+  status.textContent = "Layer cleared";
 });
 
 $("undoBtn").addEventListener("click", () => {
@@ -202,6 +479,12 @@ $("redoBtn").addEventListener("click", () => {
 
 $("applySizeBtn").addEventListener("click", () => {
   applyDocumentSize(Number($("docWidth").value), Number($("docHeight").value));
+});
+
+$("addLayerBtn").addEventListener("click", () => {
+  const layer = painter.createLayer(`Layer ${painter.getLayers().length + 1}`);
+  syncLayers();
+  status.textContent = `Active: ${layer.name}`;
 });
 
 document.querySelectorAll("[data-size]").forEach((button) => {
@@ -225,14 +508,30 @@ $("imageInput").addEventListener("change", async (event) => {
   }
 });
 
+function refreshLayerPreviews() {
+  const cards = layerList.querySelectorAll(".layer-card");
+  cards.forEach((card) => {
+    const layerId = card.dataset.layerId;
+    const layer = painter.getLayers().find((l) => l.id === layerId);
+    if (!layer) return;
+    const preview = card.querySelector(".layer-preview");
+    if (preview) drawLayerPreview(layer, preview);
+  });
+}
+
 $("removeImageBtn").addEventListener("click", () => {
   painter.brush.removeImage();
   status.textContent = "Image removed";
 });
 
 canvasEl.addEventListener("pointermove", updateCursorLabel);
+// window.addEventListener("pointerup", () => {
+//   // Only refresh thumbnails after a stroke — full rebuild is fine here
+//   // since no input element is mid-interaction at this point.
+//   window.setTimeout(renderLayerList, 0);
+// });
 canvasEl.addEventListener("pointerleave", () => {
-  cursorLabel.textContent = "x 0, y 0";
+  cursorLabel.textContent = "—";
 });
 
 window.addEventListener("keydown", (event) => {
@@ -241,6 +540,15 @@ window.addEventListener("keydown", (event) => {
   if ((event.ctrlKey || event.metaKey) && key === "y") painter.redo();
 });
 
+// ── Inline icon set (stroke-based, currentColor) ────────────
+const EYE_OPEN_ICON = `<svg viewBox="0 0 20 20" fill="none"><path d="M1.5 10S4.5 4 10 4s8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.4" stroke="currentColor" stroke-width="1.4"/></svg>`;
+const EYE_CLOSED_ICON = `<svg viewBox="0 0 20 20" fill="none"><path d="M2.5 2.5l15 15M8.3 8.4a2.4 2.4 0 0 0 3.3 3.3M5.6 5.7C3.4 7 1.5 10 1.5 10s3 6 8.5 6c1.5 0 2.8-.4 3.9-1M16 14.3c1.6-1.4 2.5-3.5 2.5-4.3 0 0-1.3-2.6-3.9-4.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const CHEVRON_UP_ICON = `<svg viewBox="0 0 16 16" fill="none"><path d="M4 10l4-4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const CHEVRON_DOWN_ICON = `<svg viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const DUPLICATE_ICON = `<svg viewBox="0 0 16 16" fill="none"><rect x="5.5" y="5.5" width="8" height="8" rx="1.3" stroke="currentColor" stroke-width="1.4"/><path d="M3 10.5V3.8A1.3 1.3 0 0 1 4.3 2.5h6.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+const TRASH_ICON = `<svg viewBox="0 0 16 16" fill="none"><path d="M3 4.5h10M6.3 4.5V3.3A1 1 0 0 1 7.3 2.3h1.4a1 1 0 0 1 1 1V4.5M4.5 4.5l.6 8.2a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
 setCanvasAspect(state.width, state.height);
 syncBrush();
 syncLabels();
+syncLayers();

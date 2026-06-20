@@ -79,6 +79,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  document.body.replaceChildren();
   mockBrushInstance.isSmooth = true;
   mockBrushInstance.isSpacing = true;
 });
@@ -178,7 +179,9 @@ describe("Canvas", () => {
 
     expect(canvas.width).toBe(320);
     expect(canvas.height).toBe(240);
-    expect(mockBrushInstance.loadContext).toHaveBeenCalledWith(canvas);
+    expect(mockBrushInstance.loadContext).toHaveBeenCalledWith(
+      instance.getActiveLayer().canvas,
+    );
 
     rectSpy.mockRestore();
   });
@@ -203,6 +206,44 @@ describe("Canvas", () => {
     instance.clear();
 
     expect(mockBrushInstance.clear).toHaveBeenCalledTimes(1);
+  });
+
+  it("should expose layer management methods", () => {
+    const canvas = createCanvas();
+
+    const instance = new Canvas({
+      canvas,
+    });
+
+    const baseLayer = instance.getActiveLayer();
+    const inkLayer = instance.createLayer({
+      name: "Ink",
+      opacity: 0.5,
+      blendMode: "multiply",
+    });
+
+    expect(instance.getLayers()).toHaveLength(2);
+    expect(instance.getActiveLayer()).toBe(inkLayer);
+    expect(mockBrushInstance.loadContext).toHaveBeenCalledWith(inkLayer.canvas);
+
+    const updatedLayer = instance.updateLayer(inkLayer.id, {
+      opacity: 0.25,
+      visible: false,
+    });
+
+    expect(updatedLayer.opacity).toBe(0.25);
+    expect(updatedLayer.visible).toBe(false);
+
+    const duplicate = instance.duplicateLayer(inkLayer.id);
+    expect(instance.getActiveLayer()).toBe(duplicate);
+
+    instance.moveLayer(duplicate.id, 0);
+    expect(instance.getLayers()[0]).toBe(duplicate);
+
+    instance.deleteLayer(duplicate.id);
+    instance.setActiveLayer(baseLayer.id);
+
+    expect(instance.getActiveLayer()).toBe(baseLayer);
   });
 
   it("should expose undo/redo methods", () => {

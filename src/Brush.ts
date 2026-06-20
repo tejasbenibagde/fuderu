@@ -100,6 +100,8 @@ export class Brush {
     "source-over";
   /** Filter (default: 'none') */
   filter: CanvasRenderingContext2D["filter"] = "none";
+  /** Called after a render frame writes pixels to the target canvas. */
+  onRender?: () => void;
 
   /*********************************** Undo / Redo ***********************************/
   private canvasStack: ImageData[] = [];
@@ -381,6 +383,9 @@ export class Brush {
         if (this.points.length === 0) break;
         this.draw();
       }
+
+      this.onRender?.();
+
       if (this.points.length > 0) {
         run();
       } else {

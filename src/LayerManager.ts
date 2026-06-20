@@ -1,6 +1,22 @@
 // src/LayerManager.ts
 
 import { Layer } from "./Layer";
+import type { BlendMode } from "./types/layers";
+
+export interface CreateLayerOptions {
+  id?: string;
+  name?: string;
+  visible?: boolean;
+  opacity?: number;
+  blendMode?: BlendMode;
+}
+
+export interface UpdateLayerOptions {
+  name?: string;
+  visible?: boolean;
+  opacity?: number;
+  blendMode?: BlendMode;
+}
 
 export class LayerManager {
   private layers: Layer[] = [];
@@ -31,26 +47,32 @@ export class LayerManager {
     return layer;
   }
 
+  getActiveId(): string | null {
+    return this.activeLayerId;
+  }
+
   setActive(layerId: string): void {
-    const exists = this.layers.some((l) => l.id === layerId);
-
-    if (!exists) {
-      throw new Error(`Layer ${layerId} not found`);
-    }
-
+    this.getById(layerId);
     this.activeLayerId = layerId;
   }
 
-  createLayer(name = "Layer"): Layer {
+  createLayer(options: CreateLayerOptions | string = {}): Layer {
     const reference = this.layers[0];
+    const layerOptions =
+      typeof options === "string" ? { name: options } : options;
 
     const layer = new Layer({
-      name,
+      id: layerOptions.id,
+      name: layerOptions.name ?? "Layer",
       width: reference.canvas.width,
       height: reference.canvas.height,
+      visible: layerOptions.visible,
+      opacity: layerOptions.opacity,
+      blendMode: layerOptions.blendMode,
     });
 
     this.layers.push(layer);
+    this.activeLayerId = layer.id;
 
     return layer;
   }
@@ -60,10 +82,17 @@ export class LayerManager {
       throw new Error("Cannot delete the last layer");
     }
 
-    this.layers = this.layers.filter((layer) => layer.id !== layerId);
+    const layerIndex = this.layers.findIndex((layer) => layer.id === layerId);
+
+    if (layerIndex === -1) {
+      throw new Error("Layer not found");
+    }
+
+    this.layers.splice(layerIndex, 1);
 
     if (this.activeLayerId === layerId) {
-      this.activeLayerId = this.layers[0].id;
+      const fallbackIndex = Math.min(layerIndex, this.layers.length - 1);
+      this.activeLayerId = this.layers[fallbackIndex].id;
     }
   }
 
@@ -84,8 +113,11 @@ export class LayerManager {
 
     duplicate.opacity = source.opacity;
     duplicate.visible = source.visible;
+    duplicate.blendMode = source.blendMode;
 
-    this.layers.push(duplicate);
+    const sourceIndex = this.layers.indexOf(source);
+    this.layers.splice(sourceIndex + 1, 0, duplicate);
+    this.activeLayerId = duplicate.id;
 
     return duplicate;
   }
@@ -97,9 +129,35 @@ export class LayerManager {
       throw new Error("Layer not found");
     }
 
+    const boundedTargetIndex = Math.min(
+      Math.max(targetIndex, 0),
+      this.layers.length - 1,
+    );
+
     const [layer] = this.layers.splice(currentIndex, 1);
 
-    this.layers.splice(targetIndex, 0, layer);
+    this.layers.splice(boundedTargetIndex, 0, layer);
+  }
+
+  updateLayer(layerId: string, options: UpdateLayerOptions): Layer {
+    const layer = this.getById(layerId);
+
+    if (options.name !== undefined) layer.name = options.name;
+    if (options.visible !== undefined) layer.visible = options.visible;
+    if (options.opacity !== undefined) layer.setOpacity(options.opacity);
+    if (options.blendMode !== undefined) layer.blendMode = options.blendMode;
+
+    return layer;
+  }
+
+  getById(layerId: string): Layer {
+    const layer = this.layers.find((l) => l.id === layerId);
+
+    if (!layer) {
+      throw new Error(`Layer ${layerId} not found`);
+    }
+
+    return layer;
   }
 
   resize(width: number, height: number): void {
@@ -112,5 +170,9 @@ export class LayerManager {
     for (const layer of this.layers) {
       layer.clear();
     }
+  }
+
+  clearActiveLayer(): void {
+    this.getActive().clear();
   }
 }

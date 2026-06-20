@@ -3,15 +3,20 @@
 import { Brush } from "./Brush";
 import type { BrushConfig } from "./types/config";
 import { MousePressure } from "./utils";
-import { LayerManager } from "./LayerManager";
+import {
+  LayerManager,
+  type CreateLayerOptions,
+  type UpdateLayerOptions,
+} from "./LayerManager";
+import type { Layer } from "./Layer";
 
 export interface CanvasOptions {
   canvas: HTMLCanvasElement | string;
   /**
    * The logical drawing resolution.
-   * This is the size of the internal pixel buffer — independent of how
+   * This is the size of the internal pixel buffer, independent of how
    * the canvas element is sized on screen via CSS.
-   * Defaults to 1536 × 1536 if omitted.
+   * Defaults to the displayed canvas size multiplied by devicePixelRatio.
    */
   document?: {
     width: number;
@@ -24,7 +29,7 @@ export interface CanvasOptions {
 export class Canvas {
   private canvas: HTMLCanvasElement;
   public brush: Brush;
-  public layers: LayerManager;
+  public layers!: LayerManager;
 
   private isDrawing = false;
 
@@ -50,7 +55,7 @@ export class Canvas {
   /**
    * The last pressure value sent to the brush.
    * Read this in the playground's pressure meter instead of calling
-   * getPressure() again — avoids double-advancing the simulator state.
+   * getPressure() again, avoiding double-advancing the simulator state.
    */
   public lastPressure: number = 0.5;
 
@@ -67,24 +72,43 @@ export class Canvas {
 
     // If the caller provided an explicit document size, honour it.
     // Otherwise the logical buffer will be initialised to the element's
-    // display size × devicePixelRatio in setupCanvas()
+    // display size multiplied by devicePixelRatio in setupCanvas().
     this.documentProvided = !!options.document;
     this.documentWidth = options.document?.width ?? 0;
     this.documentHeight = options.document?.height ?? 0;
-
-    this.layers = new LayerManager(this.documentWidth, this.documentHeight);
 
     this.pressureSimulation = options.pressureSimulation ?? false;
     this.mousePressure = new MousePressure();
 
     this.setupCanvas();
-    this.brush = new Brush(this.canvas, options.brush);
+    this.brush = new Brush(this.layers.getActive().canvas, options.brush);
+    this.brush.onRender = () => this.renderLayers();
     this.bindEvents();
+    this.renderLayers();
   }
 
-  // ─────────────────────────────────────────────────────────
   // Private setup
-  // ─────────────────────────────────────────────────────────
+
+  private renderLayers(): void {
+    const ctx = this.canvas.getContext("2d");
+
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    for (const layer of this.layers.getAll()) {
+      if (!layer.visible) continue;
+
+      ctx.globalAlpha = layer.opacity;
+
+      ctx.globalCompositeOperation = layer.blendMode;
+
+      ctx.drawImage(layer.canvas, 0, 0);
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+  }
 
   private setupCanvas(): void {
     // Determine display size
@@ -92,7 +116,7 @@ export class Canvas {
     const dpr =
       typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
 
-    // If no explicit document size was provided use the element size × DPR
+    // If no explicit document size was provided, use the element size times DPR.
     if (
       !this.documentProvided ||
       this.documentWidth <= 0 ||
@@ -104,7 +128,6 @@ export class Canvas {
 
     this.layers = new LayerManager(this.documentWidth, this.documentHeight);
 
-    // Set the pixel buffer to the logical document size
     this.canvas.width = this.documentWidth;
     this.canvas.height = this.documentHeight;
 
@@ -129,6 +152,8 @@ export class Canvas {
     this.documentWidth = Math.max(1, Math.round(rect.width * dpr));
     this.documentHeight = Math.max(1, Math.round(rect.height * dpr));
 
+    this.layers.resize(this.documentWidth, this.documentHeight);
+
     this.canvas.width = this.documentWidth;
     this.canvas.height = this.documentHeight;
 
@@ -136,7 +161,8 @@ export class Canvas {
     if (ctx) ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     // Reload brush context to reinitialise internal canvases
-    this.brush.loadContext(this.canvas);
+    this.brush.loadContext(this.layers.getActive().canvas);
+    this.renderLayers();
   }
 
   private bindEvents(): void {
@@ -153,7 +179,7 @@ export class Canvas {
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
 
-    // Real stylus pressure — only trust it for pen type with non-zero value
+    // Real stylus pressure is only trusted for pen type with non-zero value.
     const hasRealPressure = e.pointerType === "pen" && e.pressure > 0;
 
     const pressure = hasRealPressure
@@ -175,6 +201,7 @@ export class Canvas {
     const p = this.getPoint(e);
     this.brush.putPoint(p.x, p.y, p.pressure);
     this.brush.render();
+    this.renderLayers();
   };
 
   private handlePointerMove = (e: PointerEvent) => {
@@ -190,6 +217,7 @@ export class Canvas {
     }
 
     this.brush.render();
+    this.renderLayers();
   };
 
   private handlePointerUp = () => {
@@ -197,21 +225,79 @@ export class Canvas {
     this.isDrawing = false;
     this.mousePressure.reset();
     this.brush.finalizeStroke();
+    this.renderLayers();
   };
 
-  // ─────────────────────────────────────────────────────────
   // Public API
-  // ─────────────────────────────────────────────────────────
+
+  public setActiveLayer(layerId: string): void {
+    this.layers.setActive(layerId);
+
+    this.brush.loadContext(this.layers.getActive().canvas);
+    this.renderLayers();
+  }
+
+  public getLayers(): readonly Layer[] {
+    return this.layers.getAll();
+  }
+
+  public getActiveLayer(): Layer {
+    return this.layers.getActive();
+  }
+
+  public createLayer(options?: CreateLayerOptions | string): Layer {
+    const layer = this.layers.createLayer(options);
+
+    this.brush.loadContext(layer.canvas);
+    this.renderLayers();
+
+    return layer;
+  }
+
+  public deleteLayer(layerId: string): void {
+    const activeLayerId = this.layers.getActiveId();
+
+    this.layers.deleteLayer(layerId);
+
+    if (activeLayerId === layerId) {
+      this.brush.loadContext(this.layers.getActive().canvas);
+    }
+
+    this.renderLayers();
+  }
+
+  public duplicateLayer(layerId: string): Layer {
+    const layer = this.layers.duplicateLayer(layerId);
+
+    this.brush.loadContext(layer.canvas);
+    this.renderLayers();
+
+    return layer;
+  }
+
+  public moveLayer(layerId: string, targetIndex: number): void {
+    this.layers.moveLayer(layerId, targetIndex);
+    this.renderLayers();
+  }
+
+  public updateLayer(layerId: string, options: UpdateLayerOptions): Layer {
+    const layer = this.layers.updateLayer(layerId, options);
+    this.renderLayers();
+
+    return layer;
+  }
 
   clear(): void {
-    this.layers.clear();
     this.brush.clear();
+    this.renderLayers();
   }
   undo(): void {
     this.brush.undo();
+    this.renderLayers();
   }
   redo(): void {
     this.brush.redo();
+    this.renderLayers();
   }
 
   setSmooth(enabled: boolean): void {
@@ -236,7 +322,7 @@ export class Canvas {
    * Change the logical document size.
    *
    * This clears all artwork and resets the undo stack.
-   * It does NOT change any CSS on the canvas element —
+   * It does NOT change any CSS on the canvas element.
    * sizing the element on screen is the caller's responsibility.
    *
    * @example
@@ -261,9 +347,8 @@ export class Canvas {
     const ctx = this.canvas.getContext("2d");
     if (ctx) ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    // Re-initialise all internal off-screen canvases to the new size.
-    // This also resets the undo stack — expected, since artwork is cleared.
-    this.brush.loadContext(this.canvas);
+    this.brush.loadContext(this.layers.getActive().canvas);
+    this.renderLayers();
   }
 
   destroy(): void {

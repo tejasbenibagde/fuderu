@@ -166,3 +166,120 @@ destroy(): void;
 ```
 
 Removes pointer event listeners.
+
+## Layer System
+
+Fuderu includes a professional layer system that allows you to create, manage, and composite multiple layers similar to professional digital art software.
+
+### Layer Management
+
+The Canvas instance includes a `layers` property that provides access to the layer management API:
+
+```ts
+import { Canvas } from "fuderu";
+
+const painter = new Canvas({
+  canvas: "#canvas",
+  document: {
+    width: 1536,
+    height: 1536,
+  },
+});
+
+// Create a new layer
+const sketchLayer = painter.createLayer({
+  name: "Sketch",
+  opacity: 0.8,
+  blendMode: "multiply",
+});
+
+// Get all layers
+const layers = painter.getLayers();
+
+// Get the currently active layer
+const activeLayer = painter.getActiveLayer();
+
+// Set a different layer as active
+painter.setActiveLayer(sketchLayer.id);
+
+// Update layer properties
+painter.updateLayer(sketchLayer.id, {
+  name: "Final Sketch",
+  visible: true,
+  opacity: 0.9,
+  blendMode: "overlay",
+});
+
+// Duplicate a layer
+const copyLayer = painter.duplicateLayer(sketchLayer.id);
+
+// Move a layer in the stack (0-based index)
+painter.moveLayer(copyLayer.id, 0); // Move to bottom
+
+// Delete a layer
+painter.deleteLayer(copyLayer.id);
+```
+
+### Layer Creation Options
+
+When creating a layer, you can specify the following options:
+
+```ts
+interface CreateLayerOptions {
+  id?: string; // Unique ID (auto-generated if not provided)
+  name?: string; // Layer name (defaults to "Layer")
+  visible?: boolean; // Whether the layer is visible (defaults to true)
+  opacity?: number; // Layer opacity (0-1, defaults to 1)
+  blendMode?: BlendMode; // Layer blend mode (defaults to "source-over")
+}
+```
+
+You can also pass a string directly to create a layer with just a name:
+
+```ts
+const layer = painter.createLayer("Line Art");
+```
+
+### Layer Update Options
+
+When updating a layer, you can specify any combination of these properties:
+
+```ts
+interface UpdateLayerOptions {
+  name?: string; // New layer name
+  visible?: boolean; // Visibility toggle
+  opacity?: number; // Opacity value (0-1)
+  blendMode?: BlendMode; // Blend mode
+}
+```
+
+### Blend Modes
+
+Available blend modes for layer composition:
+
+| Mode        | Description                          |
+| ----------- | ------------------------------------ |
+| source-over | Normal (default)                     |
+| multiply    | Darkens with underlying colors       |
+| screen      | Lightens with underlying colors      |
+| overlay     | Combines multiply and screen         |
+| darken      | Keeps darker colors                  |
+| lighten     | Keeps lighter colors                 |
+| color-dodge | Brightens underlying colors          |
+| color-burn  | Darkens underlying colors            |
+| hard-light  | Strong overlay effect                |
+| soft-light  | Soft overlay effect                  |
+| difference  | Subtracts colors                     |
+| exclusion   | Similar to difference but softer     |
+| hue         | Uses hue of top layer                |
+| saturation  | Uses saturation of top layer         |
+| color       | Uses hue and saturation of top layer |
+| luminosity  | Uses luminosity of top layer         |
+
+### Important Notes
+
+- The Canvas constructor automatically creates a base "Background" layer
+- When a layer becomes active, the brush automatically switches to draw on that layer's canvas
+- Layer visibility and opacity are respected during compositing
+- The `resize()` and `setDocumentSize()` methods automatically resize all layers in the stack
+- Layer dimensions are always synchronized with the canvas document size

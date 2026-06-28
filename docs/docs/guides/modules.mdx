@@ -40,15 +40,15 @@ const brush = new Brush(canvas, {
 // Add modules - each returns a unique ID you'll need to remove them later
 const shapeId = brush.useModule(
   new DynamicShapeModule({
-    sizeJitter: 0.4,          // 40% size variation
-    sizeJitterTrigger: "pressure",  // Size changes with pressure
+    sizeJitter: 0.4, // 40% size variation
+    sizeJitterTrigger: "pressure", // Size changes with pressure
   }),
 );
 
 const spreadId = brush.useModule(
   new SpreadModule({
-    spreadRange: 0.3,         // Spread distance
-    count: 3,                 // Number of additional points
+    spreadRange: 0.3, // Spread distance
+    count: 3, // Number of additional points
   }),
 );
 
@@ -59,59 +59,65 @@ const spreadId = brush.useModule(
 ## Available Modules
 
 ### Dynamic Shape
+
 Perfect for creating natural, expressive brushes that respond to pressure.
 
 ```ts
 new DynamicShapeModule({
-  sizeJitter: 0.35,           // How much size can vary (0-1)
+  sizeJitter: 0.35, // How much size can vary (0-1)
   sizeJitterTrigger: "pressure", // Use pressure to control size jitter
-  minDiameter: 0.25,          // Minimum size as fraction of base size
-  angleJitter: 0.15,          // Angle variation (0-1, where 1 = 360°)
+  minDiameter: 0.25, // Minimum size as fraction of base size
+  angleJitter: 0.15, // Angle variation (0-1, where 1 = 360°)
   angleJitterTrigger: "pressure", // Use pressure for angle variation
-  roundJitter: 0.2,           // Roundness variation (0-1)
+  roundJitter: 0.2, // Roundness variation (0-1)
   roundJitterTrigger: "pressure", // Use pressure for roundness
-  minRoundness: 0.4,          // Prevents brushes from becoming too slender
+  minRoundness: 0.4, // Prevents brushes from becoming too slender
 });
 ```
 
 **Common Use Cases:**
+
 - **Calligraphy brushes** - Size and angle respond to pressure
 - **Texture brushes** - Random size and rotation for natural variation
 - **Airbrush effects** - Subtle size and opacity variations
 
 ### Dynamic Transparency
+
 Ideal for creating organic, media-like effects such as watercolor or dry brush.
 
 ```ts
 new DynamicTransparencyModule({
-  opacityJitter: 0.2,         // Opacity variation per stroke (0-1)
+  opacityJitter: 0.2, // Opacity variation per stroke (0-1)
   opacityJitterTrigger: "pressure", // Pressure affects opacity variation
-  minOpacityJitter: 0.5,      // Minimum opacity as fraction of base
-  flowJitter: 0.35,           // Flow variation per stamp (0-1)
+  minOpacityJitter: 0.5, // Minimum opacity as fraction of base
+  flowJitter: 0.35, // Flow variation per stamp (0-1)
   flowJitterTrigger: "pressure", // Pressure affects flow per stamp
-  minFlowJitter: 0.2,         // Minimum flow as fraction of base
+  minFlowJitter: 0.2, // Minimum flow as fraction of base
 });
 ```
 
 **How It Works:**
+
 - **Opacity jitter** changes once per stroke (when you lift and restart drawing)
 - **Flow jitter** changes for each individual stamp in the stroke
 - Both can be pressure-sensitive for expressive control
 
 **Common Use Cases:**
+
 - **Watercolor brushes** - Variable opacity creates bleeding effects
 - **Dry brush/texture** - Flow variations simulate paper texture
 - **Spray paint** - Random opacity creates realistic particle distribution
 
 ### Spread
+
 Creates additional points around each stamp for spray, splatter, and texture effects.
 
 ```ts
 new SpreadModule({
-  spreadRange: 0.6,           // How far points can spread (0-1, multiplied by brush size)
-  spreadTrigger: "pressure",   // Use pressure to control spread amount
-  count: 5,                   // Base number of additional points
-  countJitter: 0.4,           // Variation in number of points (0-1)
+  spreadRange: 0.6, // How far points can spread (0-1, multiplied by brush size)
+  spreadTrigger: "pressure", // Use pressure to control spread amount
+  count: 5, // Base number of additional points
+  countJitter: 0.4, // Variation in number of points (0-1)
   countJitterTrigger: "pressure", // Pressure affects point count
 });
 ```
@@ -120,21 +126,23 @@ new SpreadModule({
 For each main point, the module generates additional points randomly distributed within a circle radius.
 
 **Common Use Cases:**
+
 - **Spray paint effects** - High count with large spread
 - **Texture brushes** - Moderate count for grainy effects
 - **Foliage/grass brushes** - Clustered points for natural elements
 - **Stamp brushes** - Low count for controlled duplication
 
 ### Pattern
+
 Applies repeating textures to your brush strokes for realistic media simulation.
 
 ```ts
 import { PatternModule } from "fuderu";
 
 const pattern = new PatternModule({
-  scale: 0.75,           // Texture size multiplier
-  brightness: 10,        // Brightness adjustment (%)
-  contrast: 20,          // Contrast adjustment (%)
+  scale: 0.75, // Texture size multiplier
+  brightness: 10, // Brightness adjustment (%)
+  contrast: 20, // Contrast adjustment (%)
   blendMode: "multiply", // How texture blends with color
 });
 
@@ -142,7 +150,7 @@ await pattern.loadPattern(
   "/textures/paper.png", // Your texture image
   canvas.width,
   canvas.height,
-  "#f97316",             // Optional tint color
+  "#f97316", // Optional tint color
 );
 
 brush.useModule(pattern);
@@ -153,6 +161,7 @@ brush.useModule(pattern);
 The module creates a repeating pattern from your image and blends it with each stroke using the specified blend mode.
 
 **Common Use Cases:**
+
 - **Paper textures** - Simulate watercolor, pastel, or charcoal paper
 - **Canvas weave** - Add texture to oil or acrylic paintings
 - **Stamp textures** - Create rubber stamp or linocut effects
@@ -161,6 +170,7 @@ The module creates a repeating pattern from your image and blends it with each s
 ## Advanced Techniques
 
 ### Combining Modules
+
 The real power comes from combining multiple modules:
 
 ```ts
@@ -171,48 +181,64 @@ const charcoalBrush = new Brush(canvas, {
   spacing: 0.3,
 });
 
-charcoalBrush.useModule(new DynamicShapeModule({
-  sizeJitter: 0.5,
-  angleJitter: 0.3,
-  roundJitter: 0.4,
-  minRoundness: 0.2,
-}));
+charcoalBrush.useModule(
+  new DynamicShapeModule({
+    sizeJitter: 0.5,
+    angleJitter: 0.3,
+    roundJitter: 0.4,
+    minRoundness: 0.2,
+  }),
+);
 
-charcoalBrush.useModule(new DynamicTransparencyModule({
-  opacityJitter: 0.4,
-  flowJitter: 0.3,
-}));
+charcoalBrush.useModule(
+  new DynamicTransparencyModule({
+    opacityJitter: 0.4,
+    flowJitter: 0.3,
+  }),
+);
 
-charcoalBrush.useModule(new SpreadModule({
-  spreadRange: 0.2,
-  count: 2,
-}));
+charcoalBrush.useModule(
+  new SpreadModule({
+    spreadRange: 0.2,
+    count: 2,
+  }),
+);
 
-charcoalBrush.useModule(new PatternModule({
-  scale: 0.5,
-  contrast: 15,
-  blendMode: "color-burn",
-}));
+charcoalBrush.useModule(
+  new PatternModule({
+    scale: 0.5,
+    contrast: 15,
+    blendMode: "color-burn",
+  }),
+);
 ```
 
 ### Runtime Control
+
 Bind module properties to UI controls for real-time adjustment:
 
 ```html
-<input type="range" id="size-jitter" min="0" max="1" step="0.01" value="0.3">
-<input type="range" id="spread-amount" min="0" max="1" step="0.01" value="0.4">
+<input type="range" id="size-jitter" min="0" max="1" step="0.01" value="0.3" />
+<input
+  type="range"
+  id="spread-amount"
+  min="0"
+  max="1"
+  step="0.01"
+  value="0.4"
+/>
 ```
 
 ```ts
-const sizeJitterSlider = document.getElementById('size-jitter');
-const spreadSlider = document.getElementById('spread-amount');
+const sizeJitterSlider = document.getElementById("size-jitter");
+const spreadSlider = document.getElementById("spread-amount");
 
 // Assuming you stored your module references
-sizeJitterSlider.addEventListener('input', (e) => {
+sizeJitterSlider.addEventListener("input", (e) => {
   shapeModule.config.sizeJitter = parseFloat(e.target.value);
 });
 
-spreadSlider.addEventListener('input', (e) => {
+spreadSlider.addEventListener("input", (e) => {
   spreadModule.config.spreadRange = parseFloat(e.target.value);
 });
 ```
@@ -227,7 +253,8 @@ spreadSlider.addEventListener('input', (e) => {
 ## Ready to Experiment?
 
 Try combining different modules to create unique brushes:
+
 - **Watercolor**: DynamicTransparency + Pattern (paper texture) + slight Spread
-- **Spray Paint**: High Spread + DynamicTransparency (opacity variation) 
+- **Spray Paint**: High Spread + DynamicTransparency (opacity variation)
 - **Charcoal**: DynamicShape + DynamicTransparency + Pattern (paper grain)
 - **Stamp Brush**: Low Spread + Pattern (custom shape) + DynamicShape (rotation)

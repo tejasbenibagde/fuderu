@@ -18,12 +18,14 @@ Image brushes let you use any PNG or WebP image as your brush tip, opening up en
 ## How Image Brushes Work
 
 When you use an image brush:
+
 1. **Shape Definition** - Non-transparent pixels in your image define the brush shape
 2. **Color Replacement** - The image is recolored using your brush's color setting
 3. **Scaling** - The image scales according to your brush size setting
 4. **Rotation** - Optional rotation based on your brush's rotation settings
 
 This means you can create brushes that look like:
+
 - **Natural media** - Charcoal, pastel, or watercolor textures
 - **Artistic stamps** - Leaves, stars, or custom shapes
 - **Texture patterns** - Fabric, paper, or stone surfaces
@@ -39,8 +41,8 @@ await painter.loadImage("/brushes/charcoal-texture.png");
 
 // Configure your brush
 painter.loadConfig({
-  color: "#222222",  // This will tint your image
-  size: 36,          // Controls how large the image appears
+  color: "#222222", // This will tint your image
+  size: 36, // Controls how large the image appears
 });
 
 // Now draw! Your brush strokes will use the image texture
@@ -70,20 +72,22 @@ brush.finalizeStroke();
 
 For best results, use images that meet these criteria:
 
-| Property | Recommendation | Why |
-|----------|----------------|-----|
-| **Format** | PNG or WebP | Supports transparency |
-| **Background** | Transparent | Only visible parts become brush shape |
-| **Color** | Grayscale or white | Colors will be replaced by your brush color |
-| **Size** | 256x256px or smaller | Larger images impact performance |
-| **Contrast** | High contrast | Clearer brush shape definition |
+| Property       | Recommendation       | Why                                         |
+| -------------- | -------------------- | ------------------------------------------- |
+| **Format**     | PNG or WebP          | Supports transparency                       |
+| **Background** | Transparent          | Only visible parts become brush shape       |
+| **Color**      | Grayscale or white   | Colors will be replaced by your brush color |
+| **Size**       | 256x256px or smaller | Larger images impact performance            |
+| **Contrast**   | High contrast        | Clearer brush shape definition              |
 
 ### Good Examples
+
 - Black texture on transparent background
 - White silhouette on transparent background
 - Grayscale scan of actual media (charcoal, pastel, etc.)
 
 ### Avoid
+
 - Images with colored backgrounds (will tint unexpectedly)
 - Low contrast images (hard to discern brush shape)
 - Overly large images (performance impact)
@@ -97,14 +101,15 @@ Make your image brushes more dynamic with rotation:
 ```ts
 painter.loadConfig({
   rotation: {
-    mode: "flow",        // Follow stroke direction
-    smoothing: 0.15,     // Smooth direction changes
-    offset: 0,           // Additional angle offset (radians)
+    mode: "flow", // Follow stroke direction
+    smoothing: 0.15, // Smooth direction changes
+    offset: 0, // Additional angle offset (radians)
   },
 });
 ```
 
 #### Rotation Options:
+
 - **`fixed`** - Uses the brush's `angle` property (or `rotation.offset` if set)
 - **`flow`** - Rotates to follow the direction of your stroke
 - **`random`** - Random rotation for each stamp (great for natural scatter)
@@ -130,6 +135,7 @@ painter.loadConfig({
 ## Practical Examples
 
 ### Charcoal Drawing Brush
+
 ```ts
 // Load charcoal texture
 await painter.loadImage("/brushes/charcoal.png");
@@ -138,17 +144,20 @@ await painter.loadImage("/brushes/charcoal.png");
 painter.loadConfig({
   color: "#1a1a1a",
   size: 28,
-  spacing: 0.2,        // Closer spacing for solid lines
+  spacing: 0.2, // Closer spacing for solid lines
 });
 
 // Add variation for natural feel
-painter.useModule(new DynamicShapeModule({
-  sizeJitter: 0.3,
-  angleJitter: 0.2,
-}));
+painter.useModule(
+  new DynamicShapeModule({
+    sizeJitter: 0.3,
+    angleJitter: 0.2,
+  }),
+);
 ```
 
 ### Leaf Stamp Brush
+
 ```ts
 // Load leaf shape
 await painter.loadImageAsync("/brushes/leaf-silhouette.png");
@@ -156,15 +165,17 @@ await painter.loadImageAsync("/brushes/leaf-silhouette.png");
 painter.loadConfig({
   color: "#4CAF50",
   size: 40,
-  spacing: 0.8,        // Wider spacing for individual stamps
+  spacing: 0.8, // Wider spacing for individual stamps
 });
 
 // Add scattering for natural distribution
-painter.useModule(new SpreadModule({
-  spreadRange: 0.4,
-  count: 3,
-  countJitter: 0.2,
-}));
+painter.useModule(
+  new SpreadModule({
+    spreadRange: 0.4,
+    count: 3,
+    countJitter: 0.2,
+  }),
+);
 
 // Add rotation variance for natural orientation
 painter.loadConfig({
@@ -175,16 +186,17 @@ painter.loadConfig({
 ```
 
 ### Textured Paper Effect
+
 ```ts
 // Load paper texture
 await painter.loadImage("/textures/watercolor-paper.png");
 
 // Use as subtle texture overlay
 painter.loadConfig({
-  color: "#ffffff",    // White shows texture without tint
-  size: 64,            // Large size for subtle texture
-  opacity: 0.3,        // Low opacity for subtlety
-  spacing: 0.1,        // Close spacing for coverage
+  color: "#ffffff", // White shows texture without tint
+  size: 64, // Large size for subtle texture
+  opacity: 0.3, // Low opacity for subtlety
+  spacing: 0.1, // Close spacing for coverage
 });
 
 // Blend with your actual drawing using multiply mode
@@ -199,6 +211,7 @@ painter.loadConfig({
 4. **Mobile Devices** - Be especially mindful of image size on lower-end devices
 
 ### Optimization Tips
+
 - Crop images to just the needed content (remove transparent padding)
 - Consider creating multiple sizes for different zoom levels
 - Use image compression tools to reduce file size without losing quality
@@ -206,24 +219,29 @@ painter.loadConfig({
 ## Troubleshooting
 
 ### "My image shows as a rectangle"
+
 - **Problem**: Image has opaque background
 - **Solution**: Ensure background is transparent in your image editor
 
 ### "My brush looks stretched or squished"
+
 - **Problem**: Image aspect ratio is being ignored
 - **Solution**: This is normal behavior - the image stretches to fit the brush size ellipse. Use square images for proportional scaling.
 
 ### "Performance drops when I use image brushes"
+
 - **Problem**: Large images or many simultaneous brushes
 - **Solution**: Reduce image dimensions, limit concurrent image brushes, or consider procedural alternatives
 
 ### "Colors look wrong"
+
 - **Problem**: Expecting multicolored images
 - **Solution**: Image brushes are single-color by design. For multicolored effects, consider layering or post-processing.
 
 ## Ready to Create?
 
 Try these ideas to get started:
+
 1. **Texture Collection** - Create a brush library with paper, canvas, and fabric textures
 2. **Shape Library** - Make brushes from geometric shapes, nature elements, or symbols
 3. **Effect Presets** - Combine image brushes with modules for complex effects like:

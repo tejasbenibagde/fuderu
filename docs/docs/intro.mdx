@@ -39,13 +39,26 @@ Fuderu is designed for developers who want to build beautiful drawing experience
 
 Unlike general-purpose canvas libraries, Fuderu specializes in **brush stroke rendering** with sophisticated features like:
 
-- **✨ Smooth Interpolation** - Natural-looking strokes that connect points intelligently, eliminating jagged lines
-- **⚡ Adaptive Spacing** - Automatically adjusts brush stamp density for consistent texture at any drawing speed
-- **🖱️ Pressure Sensitivity** - Real pen pressure support with intelligent mouse/touch simulation
-- **🖼️ Image Brushes** - Use PNG/WebP stamps as brush tips with recoloring and rotation capabilities
-- **📚 Professional Layers** - Non-destructive editing with blend modes, opacity control, and layer management
-- **🔧 Runtime Configuration** - Change brush properties on the fly without recreating objects
-- **🔩 Module System** - Extend brush behavior with size jitter, scatter, transparency effects, and patterns
+#### ✨ Smooth Interpolation
+Natural-looking strokes that connect points intelligently, eliminating jagged lines. Fuderu uses advanced Bezier curve algorithms to ensure your drawings look professional and fluid, regardless of drawing speed.
+
+#### ⚡ Adaptive Spacing
+Automatically adjusts brush stamp density for consistent texture at any drawing speed. Whether you're making slow, precise lines or quick, gestural strokes, the texture remains uniform.
+
+#### 🖱️ Pressure Sensitivity
+Real pen pressure support with intelligent mouse/touch simulation. Fidelity to your input device creates natural variations in line weight and opacity that feel authentic to traditional media.
+
+#### 🖼️ Image Brushes
+Use PNG/WebP stamps as brush tips with recoloring and rotation capabilities. Turn any image into a custom brush for stamps, textures, or special effects.
+
+#### 📚 Professional Layers
+Non-destructive editing with blend modes, opacity control, and layer management. Work like a pro with the ability to experiment without permanently altering your artwork.
+
+#### 🔧 Runtime Configuration
+Change brush properties on the fly without recreating objects. Adjust size, color, opacity, and more mid-stroke for dynamic creative control.
+
+#### 🔩 Module System
+Extend brush behavior with size jitter, scatter, transparency effects, and patterns. Create unique brushes that respond to pressure, velocity, or randomization for natural media simulation.
 
 ### 🧩 Built for Integration
 
@@ -111,18 +124,18 @@ painter.loadConfig({
 
 ## Ready to Dive In?
 
-Start with our [**Quick Start**](./quick-start.mdx) tutorial to build your first drawing application, or jump straight to the feature that interests you most:
+Start with our [**Quick Start**](./getting-started/quick-start.mdx) tutorial to build your first drawing application, or jump straight to the feature that interests you most:
 
-- **[Canvas API](../api/canvas.mdx)** - High-level wrapper with built-in event handling
-- **[Brush API](../api/brush.mdx)** - Low-level brush engine for custom integrations
-- **[Layer System](../guides/layers.mdx)** - Professional non-destructive editing
-- **[Image Brushes](../guides/image-brushes.mdx)** - Stamp with custom textures
-- **[Modules](../guides/modules.mdx)** - Add special effects to your brushes
+- **[Canvas API](./api/canvas.mdx)** - High-level wrapper with built-in event handling
+- **[Brush API](./api/brush.mdx)** - Low-level brush engine for custom integrations
+- **[Layer System](./api/canvas.mdx#layer-system)** - Professional non-destructive editing
+- **[Image Brushes](./guides/image-brushes.mdx)** - Stamp with custom textures
+- **[Modules](./guides/modules.mdx)** - Add special effects to your brushes
 
 <div className="getting-started-callout">
   <h2>🚀 Let's Get Started!</h2>
   <p>
-    Head over to the <a href="./quick-start.mdx">Quick Start guide</a> to build
+    Head over to the <a href="./getting-started/quick-start.mdx">Quick Start guide</a> to build
     your first drawing application in just minutes!
   </p>
 </div>

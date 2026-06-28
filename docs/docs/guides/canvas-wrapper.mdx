@@ -3,9 +3,9 @@ sidebar_position: 1
 title: Canvas Wrapper
 ---
 
-# Canvas Wrapper
-
 import FuderuDemo from "@site/src/components/FuderuDemo";
+
+# Canvas Wrapper
 
 `Canvas` is the ergonomic entry point. It accepts either a canvas element or a
 query selector, creates a `Brush`, configures the canvas for the current device
@@ -25,7 +25,7 @@ const painter = new Canvas({
     width: 1024,
     height: 768,
   },
-  pressureSimulation: true,
+  pressureSimulation: false,
   brush: {
     color: "#222222",
     size: 18,
@@ -71,15 +71,109 @@ available. Mouse and touch input can use simulated pressure:
 ```ts
 const painter = new Canvas({
   canvas: "#paint",
-  pressureSimulation: true,
+  pressureSimulation: false,
 });
 ```
 
-Set `pressureSimulation` to `false` to use a flat pressure of `1` for mouse and
-touch input.
+Set `pressureSimulation` to `true` to enable simulated pressure based on movement
+speed for mouse and touch input.
 
 `lastPressure` stores the most recent pressure sent to the brush, which is handy
 for UI meters without advancing the pressure simulator again.
+
+## Layer System
+
+Fuderu includes a professional layer system that allows you to create, manage,
+and composite multiple layers similar to professional digital art software.
+
+### Layer Management
+
+The Canvas instance includes a `layers` property that provides access to the
+layer management API:
+
+```ts
+// Create a new layer
+const layerId = painter.createLayer({
+  name: "Line Art",
+  opacity: 0.8,
+  blendMode: "multiply",
+});
+
+// Get the active layer
+const activeLayer = painter.getActiveLayer();
+
+// Set a layer as active
+painter.setActiveLayer(layerId);
+
+// Delete a layer
+painter.deleteLayer("some-layer-id");
+
+// Duplicate a layer
+const duplicatedLayer = painter.duplicateLayer(layerId);
+
+// Get all layers
+const allLayers = painter.getLayers();
+
+// Update layer properties
+painter.updateLayer(layerId, {
+  opacity: 0.5,
+  blendMode: "screen",
+  visible: true,
+});
+```
+
+### Blend Modes
+
+Layers support standard Canvas 2D blend modes for advanced compositing effects:
+
+- **`source-over`** (default) - Normal layer stacking
+- **`multiply`** - Darkens the base layer
+- **`screen`** - Lightens the base layer
+- **`overlay`** - Combines multiply and screen
+- **`darken`** - Keeps the darker of the two layers
+- **`lighten`** - Keeps the lighter of the two layers
+- **`color-dodge`** - Brightens the base layer
+- **`color-burn`** - Darkens the base layer
+- **`hard-light`** - Intense overlay effect
+- **`soft-light`** - Soft overlay effect
+- **`difference`** - Subtracts the darker color from the lighter
+- **`exclusion`** - Similar to difference but lower contrast
+- **`hue`** - Applies the hue of the blend layer
+- **`saturation`** - Applies the saturation of the blend layer
+- **`color`** - Applies both hue and saturation
+- **`luminosity`** - Applies the luminosity of the blend layer
+
+Example using blend modes for a multiply blending effect:
+
+```ts
+// Create a base color layer
+const baseLayer = painter.createLayer({
+  name: "Base Color",
+  blendMode: "normal",
+});
+
+// Draw your base colors on this layer
+// ...
+
+// Create a shading layer with multiply blend mode
+const shadeLayer = painter.createLayer({
+  name: "Shading",
+  blendMode: "multiply",
+});
+
+// Draw shadows and shading on this layer
+// The multiply blend mode will darken the colors below
+```
+
+### Layer Properties
+
+Each layer has the following properties:
+
+- **`id`** - Unique identifier for the layer
+- **`name`** - Human-readable name for the layer
+- **`visible`** - Whether the layer is visible (default: true)
+- **`opacity`** - Opacity of the layer (0-1, default: 1)
+- **`blendMode`** - How the layer composites with layers below it
 
 ## Access The Brush
 

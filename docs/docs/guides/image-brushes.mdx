@@ -7,9 +7,7 @@ import FuderuDemo from "@site/src/components/FuderuDemo";
 
 # Image Brushes
 
-Fuderu can use a transparent image or canvas as the brush stamp. Pixels with
-content become the brush shape, and Fuderu recolors the stamp using the active
-brush color.
+Image brushes let you use any PNG or WebP image as your brush tip, opening up endless possibilities for custom textures, stamps, and artistic effects. Unlike traditional brushes that use geometric shapes, image brushes use the actual pixels of your image as the brush shape.
 
 <FuderuDemo
   title="Image brush demo"
@@ -17,56 +15,220 @@ brush color.
   mode="image"
 />
 
-```ts
-await painter.loadImage("/brushes/star.png");
+## How Image Brushes Work
 
+When you use an image brush:
+1. **Shape Definition** - Non-transparent pixels in your image define the brush shape
+2. **Color Replacement** - The image is recolored using your brush's color setting
+3. **Scaling** - The image scales according to your brush size setting
+4. **Rotation** - Optional rotation based on your brush's rotation settings
+
+This means you can create brushes that look like:
+- **Natural media** - Charcoal, pastel, or watercolor textures
+- **Artistic stamps** - Leaves, stars, or custom shapes
+- **Texture patterns** - Fabric, paper, or stone surfaces
+- **Special effects** - Glitch, grunge, or light leak effects
+
+## Getting Started with Image Brushes
+
+### Basic Usage
+
+```ts
+// Load an image and use it as your brush
+await painter.loadImage("/brushes/charcoal-texture.png");
+
+// Configure your brush
 painter.loadConfig({
-  color: "#f97316",
-  size: 36,
+  color: "#222222",  // This will tint your image
+  size: 36,          // Controls how large the image appears
 });
+
+// Now draw! Your brush strokes will use the image texture
 ```
 
-With a standalone brush:
+### With Standalone Brush
 
 ```ts
+import { Brush } from "fuderu";
+
+const brush = new Brush(canvas);
 await brush.loadImageAsync("/brushes/leaf.png");
+
+// Configure and draw
+brush.loadConfig({
+  color: "#2e8b57",
+  size: 48,
+});
+
+brush.putPoint(100, 100, 0.5);
+// ... more points ...
+brush.render();
+brush.finalizeStroke();
 ```
 
-## Supported Sources
+## Image Requirements
 
-`Brush.loadImage` accepts:
+For best results, use images that meet these criteria:
 
-- `HTMLImageElement`
-- `HTMLCanvasElement`
-- image URL string
+| Property | Recommendation | Why |
+|----------|----------------|-----|
+| **Format** | PNG or WebP | Supports transparency |
+| **Background** | Transparent | Only visible parts become brush shape |
+| **Color** | Grayscale or white | Colors will be replaced by your brush color |
+| **Size** | 256x256px or smaller | Larger images impact performance |
+| **Contrast** | High contrast | Clearer brush shape definition |
 
-`Canvas.loadImage` returns a promise and delegates to the underlying brush.
+### Good Examples
+- Black texture on transparent background
+- White silhouette on transparent background
+- Grayscale scan of actual media (charcoal, pastel, etc.)
 
-## Rotation
+### Avoid
+- Images with colored backgrounds (will tint unexpectedly)
+- Low contrast images (hard to discern brush shape)
+- Overly large images (performance impact)
 
-Image brushes are most expressive when paired with rotation:
+## Advanced Features
+
+### Rotation Modes
+
+Make your image brushes more dynamic with rotation:
 
 ```ts
 painter.loadConfig({
   rotation: {
-    mode: "flow",
-    smoothing: 0.15,
-    offset: 0,
+    mode: "flow",        // Follow stroke direction
+    smoothing: 0.15,     // Smooth direction changes
+    offset: 0,           // Additional angle offset (radians)
   },
 });
 ```
 
-Available rotation modes:
+#### Rotation Options:
+- **`fixed`** - Uses the brush's `angle` property (or `rotation.offset` if set)
+- **`flow`** - Rotates to follow the direction of your stroke
+- **`random`** - Random rotation for each stamp (great for natural scatter)
 
-- `fixed`: use `rotation.offset` as the stamp angle. Omit `rotation` to use the
-  brush's `angle` field instead.
-- `flow`: rotate stamps along the stroke direction.
-- `random`: choose randomized stamp rotation.
+### Creating Custom Brush Tips
 
-## Removing The Image
+1. **Create in Photoshop/GIMP/Krita**:
+   - New document with transparent background
+   - Design your brush shape using black/gray on transparent layer
+   - Export as PNG-24 with transparency
 
+2. **Find Free Resources**:
+   - Search for "PNG brushes transparent background"
+   - Check sites like Brusheezy, DeviantArt, or OpenGameArt
+   - Look for "stamp" or "texture" brushes
+
+3. **Convert Photos/Textures**:
+   - Desaturate image (Black & White)
+   - Increase contrast
+   - Remove background (make it transparent)
+   - Crop to interesting section
+
+## Practical Examples
+
+### Charcoal Drawing Brush
 ```ts
-painter.brush.removeImage();
+// Load charcoal texture
+await painter.loadImage("/brushes/charcoal.png");
+
+// Configure for expressive drawing
+painter.loadConfig({
+  color: "#1a1a1a",
+  size: 28,
+  spacing: 0.2,        // Closer spacing for solid lines
+});
+
+// Add variation for natural feel
+painter.useModule(new DynamicShapeModule({
+  sizeJitter: 0.3,
+  angleJitter: 0.2,
+}));
 ```
 
-After removing the image, the brush returns to the default ellipse stamp.
+### Leaf Stamp Brush
+```ts
+// Load leaf shape
+await painter.loadImageAsync("/brushes/leaf-silhouette.png");
+
+painter.loadConfig({
+  color: "#4CAF50",
+  size: 40,
+  spacing: 0.8,        // Wider spacing for individual stamps
+});
+
+// Add scattering for natural distribution
+painter.useModule(new SpreadModule({
+  spreadRange: 0.4,
+  count: 3,
+  countJitter: 0.2,
+}));
+
+// Add rotation variance for natural orientation
+painter.loadConfig({
+  rotation: {
+    mode: "random",
+  },
+});
+```
+
+### Textured Paper Effect
+```ts
+// Load paper texture
+await painter.loadImage("/textures/watercolor-paper.png");
+
+// Use as subtle texture overlay
+painter.loadConfig({
+  color: "#ffffff",    // White shows texture without tint
+  size: 64,            // Large size for subtle texture
+  opacity: 0.3,        // Low opacity for subtlety
+  spacing: 0.1,        // Close spacing for coverage
+});
+
+// Blend with your actual drawing using multiply mode
+// (Draw your artwork on a layer below this texture layer)
+```
+
+## Performance Considerations
+
+1. **Image Size Matters** - Larger images = more memory usage = slower performance
+2. **Power of Two Dimensions** - Images with dimensions like 64x64, 128x128, 256x256 perform better
+3. **Consider Caching** - If using the same image in multiple places, load it once and reuse
+4. **Mobile Devices** - Be especially mindful of image size on lower-end devices
+
+### Optimization Tips
+- Crop images to just the needed content (remove transparent padding)
+- Consider creating multiple sizes for different zoom levels
+- Use image compression tools to reduce file size without losing quality
+
+## Troubleshooting
+
+### "My image shows as a rectangle"
+- **Problem**: Image has opaque background
+- **Solution**: Ensure background is transparent in your image editor
+
+### "My brush looks stretched or squished"
+- **Problem**: Image aspect ratio is being ignored
+- **Solution**: This is normal behavior - the image stretches to fit the brush size ellipse. Use square images for proportional scaling.
+
+### "Performance drops when I use image brushes"
+- **Problem**: Large images or many simultaneous brushes
+- **Solution**: Reduce image dimensions, limit concurrent image brushes, or consider procedural alternatives
+
+### "Colors look wrong"
+- **Problem**: Expecting multicolored images
+- **Solution**: Image brushes are single-color by design. For multicolored effects, consider layering or post-processing.
+
+## Ready to Create?
+
+Try these ideas to get started:
+1. **Texture Collection** - Create a brush library with paper, canvas, and fabric textures
+2. **Shape Library** - Make brushes from geometric shapes, nature elements, or symbols
+3. **Effect Presets** - Combine image brushes with modules for complex effects like:
+   - Spray paint (image + spread + transparency)
+   - Pastel sticks (texture + size jitter + flow variation)
+   - Stamp collections (image + rotation + scattering)
+
+Remember: The best image brushes start with simple, high-contrast designs on transparent backgrounds. Experiment with different images and settings to find your perfect brush!

@@ -75,7 +75,7 @@ export default function FuderuDemo({
   const [transparencyEnabled, setTransparencyEnabled] = useState(false);
   const [spreadEnabled, setSpreadEnabled] = useState(false);
   const [patternEnabled, setPatternEnabled] = useState(false);
-  const [isPressureEnabled, setIsPressureEnabled] = useState(true);
+  const [isPressureEnabled, setIsPressureEnabled] = useState(false);
 
   const initialBrush = useMemo(
     () => ({

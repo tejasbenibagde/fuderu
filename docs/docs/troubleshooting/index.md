@@ -148,6 +148,7 @@ This guide helps you diagnose and resolve common issues when working with Fuderu
    ```
 
 4. **Optimize event handling:**
+
    ```javascript
    // Use coalesced events for pointer input
    function handlePointerMove(event) {

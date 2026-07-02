@@ -123,6 +123,7 @@ new SpreadModule({
 ```
 
 **How It Works:**
+
 For each main point, the module generates additional points randomly distributed within a circle radius.
 
 **Common Use Cases:**
@@ -158,6 +159,7 @@ brush.useModule(pattern);
 ```
 
 **How It Works:**
+
 The module creates a repeating pattern from your image and blends it with each stroke using the specified blend mode.
 
 **Common Use Cases:**
@@ -243,7 +245,7 @@ spreadSlider.addEventListener("input", (e) => {
 });
 ```
 
-## Performance Tips
+### Performance Tips
 
 1. **Use only what you need** - Each module adds computational overhead
 2. **Consider trigger types** - Pressure-triggered calculations happen more frequently
@@ -258,3 +260,48 @@ Try combining different modules to create unique brushes:
 - **Spray Paint**: High Spread + DynamicTransparency (opacity variation)
 - **Charcoal**: DynamicShape + DynamicTransparency + Pattern (paper grain)
 - **Stamp Brush**: Low Spread + Pattern (custom shape) + DynamicShape (rotation)
+
+## Developing Custom Modules
+
+For advanced users who want to create their own modules, Fuderu provides a flexible module interface:
+
+```ts
+import { Module } from "fuderu/types";
+
+class CustomModule implements Module {
+  // Optional: Modify brush config per stamp
+  onChangeConfig?(config: BrushBasicConfig, pressure: number): void {
+    // Example: Modify size based on pressure
+    config.size = config.size * (0.5 + pressure * 0.5);
+  }
+
+  // Optional: Modify or generate points
+  onChangePoint?(
+    point: PurePoint,
+    config: BrushBasicConfig,
+  ): PurePoint | PurePoint[] {
+    // Example: Add jitter to position
+    return {
+      x: point.x + (Math.random() - 0.5) * 2,
+      y: point.y + (Math.random() - 0.5) * 2,
+      pressure: point.pressure,
+    };
+  }
+
+  // Optional: Modify the stroke canvas before blending
+  onMixinCanvas?(
+    strokeCanvas: HTMLCanvasElement,
+    strokeContext: CanvasRenderingContext2D,
+  ): [HTMLCanvasElement, CanvasRenderingContext2D] {
+    // Example: Apply a custom filter
+    return [strokeCanvas, strokeContext];
+  }
+
+  // Optional: Clean up when stroke ends
+  onEndStroke?(): void {
+    // Example: Reset any internal state
+  }
+}
+```
+
+See the [modules API reference](../api/modules.mdx) for the complete interface reference.

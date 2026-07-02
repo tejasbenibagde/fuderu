@@ -3,32 +3,48 @@ sidebar_position: 1
 title: Canvas
 ---
 
-# Canvas API
-
 import FuderuDemo from "@site/src/components/FuderuDemo";
 
-`Canvas` wraps an `HTMLCanvasElement`, an underlying `Brush`, and pointer event
-handling.
+# Canvas
+
+`Canvas` is the ergonomic entry point. It accepts either a canvas element or a
+query selector, creates a `Brush`, configures the canvas for the current device
+pixel ratio or an explicit document size, and binds pointer events.
 
 <FuderuDemo
   title="Canvas API behavior"
   description="Draw here to see pointer input, pressure simulation, undo, redo, clear, and eraser mode working through the Canvas wrapper."
-  mode="intro"
 />
 
 ```ts
 import { Canvas } from "fuderu";
+
+const painter = new Canvas({
+  canvas: document.querySelector("canvas")!,
+  document: {
+    width: 1024,
+    height: 768,
+  },
+  pressureSimulation: true,
+  brush: {
+    color: "#222222",
+    size: 18,
+    roundness: 0.8,
+  },
+});
 ```
 
-## Constructor
-
-```ts
-new Canvas(options: CanvasOptions);
-```
+## Constructor Options
 
 ```ts
 interface CanvasOptions {
   canvas: HTMLCanvasElement | string;
+  /**
+   * The logical drawing resolution.
+   * This is the size of the internal pixel buffer, independent of how
+   * the canvas element is sized on screen via CSS.
+   * Defaults to the displayed canvas size multiplied by devicePixelRatio.
+   */
   document?: {
     width: number;
     height: number;
@@ -38,248 +54,199 @@ interface CanvasOptions {
 }
 ```
 
-- `canvas`: a canvas element or a selector that resolves to one.
-- `document`: optional logical drawing resolution. If omitted, Fuderu uses the
-  element's CSS size multiplied by `window.devicePixelRatio`.
-- `brush`: optional initial brush config.
-- `pressureSimulation`: defaults to `true`.
+### Options
 
-## Properties
+| Option               | Description                                                                                                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `canvas`             | The canvas element or a CSS selector string                                                                                                                          |
+| `document`           | Optional logical drawing dimensions (width/height in pixels). If not provided, defaults to the canvas element's display size multiplied by `window.devicePixelRatio` |
+| `brush`              | Optional brush configuration                                                                                                                                         |
+| `pressureSimulation` | When `true`, mouse/touch input uses simulated pressure based on movement speed. Defaults to `false`.                                                                 |
 
-### `brush`
+## Defaults
 
-```ts
-brush: Brush;
-```
-
-The underlying brush instance.
-
-### `mousePressure`
+All options are optional except `canvas`. Here are the default values:
 
 ```ts
-mousePressure: MousePressure;
+{
+  // canvas: required (no default)
+  document: undefined, // defaults to canvas size * devicePixelRatio
+  brush: {
+    size: 20,
+    opacity: 1,
+    flow: 1,
+    color: "#000000",
+    angle: 0,
+    roundness: 1,
+    spacing: 0.12,
+    eraser: false,
+  },
+  pressureSimulation: false,
+}
 ```
 
-The pressure simulator used for mouse and touch input.
+## Pressure
 
-### `pressureSimulation`
+Real pen pressure is used when the pointer is a pen and `event.pressure` is
+available. Mouse and touch input can use simulated pressure:
 
 ```ts
-pressureSimulation: boolean;
+const painter = new Canvas({
+  canvas: "#paint",
+  pressureSimulation: false,
+});
 ```
 
-Toggles simulated pressure for non-pen input.
+Set `pressureSimulation` to `true` to enable simulated pressure based on movement
+speed for mouse and touch input.
 
-### `documentWidth`, `documentHeight`
-
-```ts
-documentWidth: number;
-documentHeight: number;
-```
-
-The current logical drawing resolution.
-
-### `lastPressure`
-
-```ts
-lastPressure: number;
-```
-
-The most recent pressure value sent to the brush.
-
-## Methods
-
-### `loadConfig`
-
-```ts
-loadConfig(config: BrushConfig): void;
-```
-
-Updates the underlying brush config.
-
-### `loadImage`
-
-```ts
-loadImage(img: HTMLImageElement | HTMLCanvasElement | string): Promise<void>;
-```
-
-Loads an image brush.
-
-### `setSmooth`
-
-```ts
-setSmooth(enabled: boolean): void;
-```
-
-Enables or disables curve smoothing.
-
-### `setSpacing`
-
-```ts
-setSpacing(enabled: boolean): void;
-```
-
-Updates the brush's compatibility `isSpacing` flag. Current stamp spacing is
-controlled by `brush.config.spacing`.
-
-### `setEraser`
-
-```ts
-setEraser(enabled: boolean): void;
-```
-
-Toggles eraser mode for the current brush.
-
-### `undo`, `redo`, `clear`
-
-```ts
-undo(): void;
-redo(): void;
-clear(): void;
-```
-
-History and canvas helpers.
-
-### `resize`
-
-```ts
-resize(): void;
-```
-
-Resizes the internal drawing buffer to the canvas element's current CSS size
-multiplied by `window.devicePixelRatio`, then reloads the brush context. This
-clears the current artwork and resets undo history.
-
-### `setDocumentSize`
-
-```ts
-setDocumentSize(width: number, height: number): void;
-```
-
-Changes the logical drawing resolution. This clears the current artwork and
-resets undo history. It does not change the canvas element's CSS size.
-
-### `destroy`
-
-```ts
-destroy(): void;
-```
-
-Removes pointer event listeners.
+`lastPressure` stores the most recent pressure sent to the brush, which is handy
+for UI meters without advancing the pressure simulator again.
 
 ## Layer System
 
-Fuderu includes a professional layer system that allows you to create, manage, and composite multiple layers similar to professional digital art software.
+Fuderu includes a professional layer system that allows you to create, manage,
+and composite multiple layers similar to professional digital art software.
 
 ### Layer Management
 
-The Canvas instance includes a `layers` property that provides access to the layer management API:
+The Canvas instance includes a `layers` property that provides access to the
+layer management API:
 
 ```ts
-import { Canvas } from "fuderu";
-
-const painter = new Canvas({
-  canvas: "#canvas",
-  document: {
-    width: 1536,
-    height: 1536,
-  },
-});
-
 // Create a new layer
-const sketchLayer = painter.createLayer({
-  name: "Sketch",
+const layerId = painter.createLayer({
+  name: "Line Art",
   opacity: 0.8,
   blendMode: "multiply",
 });
 
-// Get all layers
-const layers = painter.getLayers();
-
-// Get the currently active layer
+// Get the active layer
 const activeLayer = painter.getActiveLayer();
 
-// Set a different layer as active
-painter.setActiveLayer(sketchLayer.id);
-
-// Update layer properties
-painter.updateLayer(sketchLayer.id, {
-  name: "Final Sketch",
-  visible: true,
-  opacity: 0.9,
-  blendMode: "overlay",
-});
-
-// Duplicate a layer
-const copyLayer = painter.duplicateLayer(sketchLayer.id);
-
-// Move a layer in the stack (0-based index)
-painter.moveLayer(copyLayer.id, 0); // Move to bottom
+// Set a layer as active
+painter.setActiveLayer(layerId);
 
 // Delete a layer
-painter.deleteLayer(copyLayer.id);
-```
+painter.deleteLayer("some-layer-id");
 
-### Layer Creation Options
+// Duplicate a layer
+const duplicatedLayer = painter.duplicateLayer(layerId);
 
-When creating a layer, you can specify the following options:
+// Get all layers
+const allLayers = painter.getLayers();
 
-```ts
-interface CreateLayerOptions {
-  id?: string; // Unique ID (auto-generated if not provided)
-  name?: string; // Layer name (defaults to "Layer")
-  visible?: boolean; // Whether the layer is visible (defaults to true)
-  opacity?: number; // Layer opacity (0-1, defaults to 1)
-  blendMode?: BlendMode; // Layer blend mode (defaults to "source-over")
-}
-```
-
-You can also pass a string directly to create a layer with just a name:
-
-```ts
-const layer = painter.createLayer("Line Art");
-```
-
-### Layer Update Options
-
-When updating a layer, you can specify any combination of these properties:
-
-```ts
-interface UpdateLayerOptions {
-  name?: string; // New layer name
-  visible?: boolean; // Visibility toggle
-  opacity?: number; // Opacity value (0-1)
-  blendMode?: BlendMode; // Blend mode
-}
+// Update layer properties
+painter.updateLayer(layerId, {
+  opacity: 0.5,
+  blendMode: "screen",
+  visible: true,
+});
 ```
 
 ### Blend Modes
 
-Available blend modes for layer composition:
+Layers support standard Canvas 2D blend modes for advanced compositing effects:
 
-| Mode        | Description                          |
-| ----------- | ------------------------------------ |
-| source-over | Normal (default)                     |
-| multiply    | Darkens with underlying colors       |
-| screen      | Lightens with underlying colors      |
-| overlay     | Combines multiply and screen         |
-| darken      | Keeps darker colors                  |
-| lighten     | Keeps lighter colors                 |
-| color-dodge | Brightens underlying colors          |
-| color-burn  | Darkens underlying colors            |
-| hard-light  | Strong overlay effect                |
-| soft-light  | Soft overlay effect                  |
-| difference  | Subtracts colors                     |
-| exclusion   | Similar to difference but softer     |
-| hue         | Uses hue of top layer                |
-| saturation  | Uses saturation of top layer         |
-| color       | Uses hue and saturation of top layer |
-| luminosity  | Uses luminosity of top layer         |
+- **`source-over`** (default) - Normal layer stacking
+- **`multiply`** - Darkens the base layer
+- **`screen`** - Lightens the base layer
+- **`overlay`** - Combines multiply and screen
+- **`darken`** - Keeps the darker of the two layers
+- **`lighten`** - Keeps the lighter of the two layers
+- **`color-dodge`** - Brightens the base layer
+- **`color-burn`** - Darkens the base layer
+- **`hard-light`** - Intense overlay effect
+- **`soft-light`** - Soft overlay effect
+- **`difference`** - Subtracts the darker color from the lighter
+- **`exclusion`** - Similar to difference but lower contrast
+- **`hue`** - Applies the hue of the blend layer
+- **`saturation`** - Applies the saturation of the blend layer
+- **`color`** - Applies both hue and saturation
+- **`luminosity`** - Applies the luminosity of the blend layer
 
-### Important Notes
+Example using blend modes for a multiply blending effect:
 
-- The Canvas constructor automatically creates a base "Background" layer
-- When a layer becomes active, the brush automatically switches to draw on that layer's canvas
-- Layer visibility and opacity are respected during compositing
-- The `resize()` and `setDocumentSize()` methods automatically resize all layers in the stack
-- Layer dimensions are always synchronized with the canvas document size
+```ts
+// Create a base color layer
+const baseLayer = painter.createLayer({
+  name: "Base Color",
+  blendMode: "normal",
+});
+
+// Draw your base colors on this layer
+// ...
+
+// Create a shading layer with multiply blend mode
+const shadeLayer = painter.createLayer({
+  name: "Shading",
+  blendMode: "multiply",
+});
+
+// Draw shadows and shading on this layer
+// The multiply blend mode will darken the colors below
+```
+
+### Layer Properties
+
+Each layer has the following properties:
+
+- **`id`** - Unique identifier for the layer
+- **`name`** - Human-readable name for the layer
+- **`visible`** - Whether the layer is visible (default: true)
+- **`opacity`** - Opacity of the layer (0-1, default: 1)
+- **`blendMode`** - How the layer composites with layers below it
+
+### Direct Layer Manager Access
+
+For advanced layer operations, you can access the underlying \`LayerManager\` instance via the \`layers\` property on the Canvas:
+
+```ts
+// Move a layer to a specific index (0-based)
+painter.layers.moveLayer(layerId, targetIndex);
+
+// Resize all layers (called automatically when canvas size changes)
+painter.layers.resize(width, height);
+
+// Clear all layers
+painter.layers.clear();
+
+// Get readonly array of all layers
+const allLayers = painter.layers.getAll();
+```
+
+## API Reference
+
+### `resize()`
+
+Resize the internal drawing buffer to match the element's display size.
+Also reinitialises the brush context so the brush's offscreen canvases
+match the new pixel buffer.
+
+### `setDocumentSize(width, height)`
+
+Change the logical document size.
+
+This clears all artwork and resets the undo stack.
+It does NOT change any CSS on the canvas element.
+Sizing the element on screen is the caller's responsibility.
+
+### `undo()`, `redo()`, `clear()`
+
+Undo/redo the last stroke or clear the canvas.
+
+### `setSmooth(enabled)`, `setSpacing(enabled)`, `setEraser(enabled)`
+
+Toggle brush smoothing, spacing, and eraser mode.
+
+### `loadConfig(config)`
+
+Update brush configuration.
+
+### `loadImage(img)`
+
+Load an image for use as an image brush.
+
+### `destroy()`
+
+Clean up event listeners and references.

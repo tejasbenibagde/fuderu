@@ -1,0 +1,805 @@
+---
+sidebar_position: 8
+title: Vue Integration
+hide_table_of_contents: true
+sidebar_label: Vue 3
+---
+
+# Vue 3 Integration Guide
+
+This guide covers best practices for integrating Fuderu with Vue 3 applications, including composables, component patterns, and performance optimization.
+
+## Basic Setup
+
+### Installation
+
+```bash
+npm install fuderu
+# or
+yarn add fuderu
+```
+
+### Basic Usage
+
+```vue
+<template>
+  <canvas ref="canvasRef" width="800" height="600" />
+</template>
+
+<script setup>
+import { ref, onMounted, onBeforeUnmount } from "vue";
+import { Canvas } from "fuderu";
+
+const canvasRef = ref(null);
+let painter = null;
+
+onMounted(() => {
+  if (!canvasRef.value) return;
+
+  painter = new Canvas({
+    canvas: canvasRef.value,
+    document: {
+      width: 800,
+      height: 600,
+    },
+  });
+});
+
+onBeforeUnmount(() => {
+  if (painter) {
+    painter.destroy();
+    painter = null;
+  }
+});
+</script>
+```
+
+## Composables
+
+### useCanvas Composable
+
+Create a reusable composable for canvas management:
+
+```js
+// composables/useCanvas.js
+import { ref, onMounted, onBeforeUnmount } from "vue";
+import { Canvas } from "fuderu";
+
+export function useCanvas(options = {}) {
+  const canvasRef = ref(null);
+  const painter = ref(null);
+
+  const width = ref(options.width ?? 800);
+  const height = ref(options.height ?? 600);
+  const brushConfig = ref(options.brushConfig ?? {});
+
+  const initialize = () => {
+    if (!canvasRef.value) return;
+
+    painter.value = new Canvas({
+      canvas: canvasRef.value,
+      document: { width: width.value, height: height.value },
+      brush: brushConfig.value,
+    });
+  };
+
+  const reset = () => {
+    if (painter.value) {
+      painter.value.destroy();
+      painter.value = null;
+      initialize();
+    }
+  };
+
+  onMounted(initialize);
+  onBeforeUnmount(() => {
+    if (painter.value) {
+      painter.value.destroy();
+      painter.value = null;
+    }
+  });
+
+  // Expose brush control methods
+  const setBrushColor = (color) => {
+    brushConfig.value.color = color;
+    if (painter.value) {
+      painter.value.brush.config.color = color;
+    }
+  };
+
+  const setBrushSize = (size) => {
+    brushConfig.value.size = size;
+    if (painter.value) {
+      painter.value.brush.config.size = size;
+    }
+  };
+
+  return {
+    canvasRef,
+    painter,
+    width,
+    height,
+    brushConfig,
+    reset,
+    setBrushColor,
+    setBrushSize,
+  };
+}
+```
+
+### Usage in Components
+
+```vue
+<template>
+  <div>
+    <canvas ref="canvasRef" :width="width" :height="height" />
+
+    <div class="controls">
+      <label>
+        Color:
+        <input
+          type="color"
+          v-model="brushConfig.color"
+          @input="setBrushColor"
+        />
+      </label>
+
+      <label>
+        Size:
+        <input
+          type="range"
+          min="1"
+          max="100"
+          v-model.number="brushConfig.size"
+          @input="setBrushSize"
+        />
+        <span>{{ brushConfig.size }}px</span>
+      </label>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { useCanvas } from "@/composables/useCanvas";
+
+const { canvasRef, width, height, brushConfig, setBrushColor, setBrushSize } =
+  useCanvas({
+    width: 800,
+    height: 600,
+    brushConfig: {
+      color: "#000000",
+      size: 20,
+    },
+  });
+</script>
+```
+
+## Component Patterns
+
+### DrawingToolbar Component
+
+```vue
+<!-- DrawingToolbar.vue -->
+<template>
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <label>Color:</label>
+      <input type="color" v-model="color" @input="updateBrush" />
+    </div>
+
+    <div class="toolbar-group">
+      <label>Size:</label>
+      <input
+        type="range"
+        min="1"
+        max="100"
+        v-model.number="size"
+        @input="updateBrush"
+      />
+      <span>{{ size }}px</span>
+    </div>
+
+    <div class="toolbar-group">
+      <label>Opacity:</label>
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.01"
+        v-model.number="opacity"
+        @input="updateBrush"
+      />
+      <span>{{ (opacity * 100).toFixed(0) }}%</span>
+    </div>
+
+    <div class="toolbar-group">
+      <label>
+        <input type="checkbox" v-model="isEraser" @change="updateBrush" />
+        Eraser
+      </label>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { defineProps, defineEmits } from "vue";
+
+const props = defineProps({
+  color: { default: "#000000" },
+  size: { default: 20 },
+  opacity: { default: 1 },
+  isEraser: { default: false },
+});
+
+const emit = defineEmits(["update"]);
+
+const updateBrush = () => {
+  emit("update", {
+    color: color,
+    size: size,
+    opacity: opacity,
+    eraser: isEraser,
+  });
+};
+</script>
+```
+
+### LayerPanel Component
+
+```vue
+<!-- LayerPanel.vue -->
+<template>
+  <div class="layer-panel">
+    <h3>Layers</h3>
+    <button @click="addLayer">+ Add Layer</button>
+
+    <div class="layer-list">
+      <div
+        v-for="layer in layers"
+        :key="layer.id"
+        class="layer-item"
+        :class="{ active: layer.id === activeLayerId }"
+        @click="selectLayer(layer.id)"
+      >
+        <div class="layer-controls">
+          <input
+            type="checkbox"
+            v-model="layer.visible"
+            @change="updateLayer(layer.id, { visible: layer.visible })"
+          />
+          <input
+            type="text"
+            v-model="layer.name"
+            @input="updateLayer(layer.id, { name: layer.name })"
+            placeholder="Layer name"
+          />
+        </div>
+
+        <div class="layer-properties">
+          <div>
+            <label>Opacity:</label>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              v-model.number="layer.opacity"
+              @input="updateLayer(layer.id, { opacity: layer.opacity })"
+            />
+          </div>
+
+          <div>
+            <label>Blend Mode:</label>
+            <select
+              v-model="layer.blendMode"
+              @change="updateLayer(layer.id, { blendMode: layer.blendMode })"
+            >
+              <option value="source-over">Normal</option>
+              <option value="multiply">Multiply</option>
+              <option value="screen">Screen</option>
+              <option value="overlay">Overlay</option>
+              <!-- Add more blend modes as needed -->
+            </select>
+          </div>
+        </div>
+
+        <button
+          @click.stop="removeLayer(layer.id)"
+          class="remove-layer"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+</template>
+
+<script setup>
+import { defineProps, defineEmits } from 'vue';
+
+const props = defineProps({
+  layers: {
+    type: Array,
+    required: true
+  },
+  activeLayerId: {
+    type: String,
+    required: true
+  }
+});
+
+const emit = defineEmits([
+  'select-layer',
+  'update-layer',
+  'add-layer',
+  'remove-layer'
+]);
+
+const selectLayer = (id) => {
+  emit('select-layer', id);
+};
+
+const updateLayer = (id, updates) => {
+  emit('update-layer', id, updates);
+};
+
+const addLayer = () => {
+  emit('add-layer');
+};
+
+const removeLayer = (id) => {
+  emit('remove-layer', id);
+};
+</script>
+```
+
+## Advanced Patterns
+
+### Providing Canvas via Dependency Injection
+
+```js
+// provideCanvas.js
+import { inject, provide } from "vue";
+import { Canvas } from "fuderu";
+
+const CANVAS_KEY = Symbol("canvas");
+
+export function provideCanvas(canvasOptions) {
+  const canvasRef = ref(null);
+  const painter = ref(null);
+
+  onMounted(() => {
+    if (!canvasRef.value) return;
+
+    painter.value = new Canvas({
+      canvas: canvasRef.value,
+      ...canvasOptions,
+    });
+  });
+
+  onBeforeUnmount(() => {
+    if (painter.value) {
+      painter.value.destroy();
+      painter.value = null;
+    }
+  });
+
+  provide(CANVAS_KEY, {
+    canvasRef,
+    painter,
+    getCanvas: () => painter.value,
+  });
+
+  return canvasRef;
+}
+
+export function useCanvas() {
+  return inject(CANVAS_KEY);
+}
+```
+
+Usage:
+
+```vue
+<!-- Parent.vue -->
+<template>
+  <div>
+    <ChildCanvas />
+    <Toolbar :canvas="canvas" />
+  </div>
+</template>
+
+<script setup>
+import { provideCanvas } from "@/providers/provideCanvas";
+import ChildCanvas from "./ChildCanvas.vue";
+import Toolbar from "./Toolbar.vue";
+
+const canvas = provideCanvas({
+  width: 800,
+  height: 600,
+  brush: { color: "#000000", size: 20 },
+});
+</script>
+
+<!-- ChildCanvas.vue -->
+<script setup>
+import { useCanvas } from "@/providers/provideCanvas";
+
+const { canvasRef, painter } = useCanvas();
+// Access painter.value for direct manipulation
+</script>
+
+<template>
+  <canvas ref="canvasRef" width="800" height="600" />
+</template>
+```
+
+## Performance Optimization
+
+### useRequestAnimationFrame Composable
+
+```js
+// composables/useRequestAnimationFrame.js
+import { ref } from "vue";
+
+export function useRequestAnimationFrame(callback) {
+  const requestRef = ref(null);
+  const isRunning = ref(false);
+
+  const start = () => {
+    if (isRunning.value) return;
+    isRunning.value = true;
+
+    const loop = (time) => {
+      callback(time);
+      requestRef.value = requestAnimationFrame(loop);
+    };
+
+    requestRef.value = requestAnimationFrame(loop);
+  };
+
+  const stop = () => {
+    if (!isRunning.value) return;
+    isRunning.value = false;
+    if (requestRef.value) {
+      cancelAnimationFrame(requestRef.value);
+      requestRef.value = null;
+    }
+  };
+
+  // Auto-stop when component unmounts
+  onBeforeUnmount(stop);
+
+  return { start, stop };
+}
+```
+
+Usage in canvas component:
+
+```vue
+<script setup>
+import { ref, onMounted, onBeforeUnmount } from "vue";
+import { Canvas } from "fuderu";
+import { useRequestAnimationFrame } from "@/composables/useRequestAnimationFrame";
+
+const canvasRef = ref(null);
+let painter = null;
+let needsRender = ref(false);
+
+const { start: startRenderLoop, stop: stopRenderLoop } =
+  useRequestAnimationFrame(() => {
+    if (needsRender.value && painter) {
+      painter.render();
+      needsRender.value = false;
+    }
+  });
+
+onMounted(() => {
+  if (!canvasRef.value) return;
+
+  painter = new Canvas({
+    canvas: canvasRef.value,
+    // ... options
+  });
+
+  startRenderLoop();
+});
+
+onBeforeUnmount(() => {
+  stopRenderLoop();
+  if (painter) {
+    painter.destroy();
+  }
+});
+
+// Instead of calling painter.render() directly:
+const queueRender = () => {
+  needsRender.value = true;
+};
+
+// Call queueRender() when you need to update the canvas
+</script>
+```
+
+### Debouncing User Input
+
+```js
+// composables/useDebounce.js
+import { ref } from "vue";
+import { watch } from "vue";
+
+export function useDebounce(value, delay = 100) {
+  const debouncedValue = ref(value.value);
+
+  watch(
+    value,
+    (newValue) => {
+      if (timer.value) {
+        clearTimeout(timer.value);
+      }
+      timer.value = setTimeout(() => {
+        debouncedValue.value = newValue;
+      }, delay);
+    },
+    { immediate: true },
+  );
+
+  const timer = ref(null);
+
+  // Cleanup
+  onBeforeUnmount(() => {
+    if (timer.value) {
+      clearTimeout(timer.value);
+    }
+  });
+
+  return debouncedValue;
+}
+```
+
+Usage in brush controls:
+
+```vue
+<script setup>
+import { ref } from "vue";
+import { useDebounce } from "@/composables/useDebounce";
+
+const brushSize = ref(20);
+const debouncedBrushSize = useDebounce(brushSize, 150); // 150ms debounce
+
+// Apply debounced value to canvas
+watch(debouncedBrushSize, (newSize) => {
+  if (painter.value) {
+    painter.value.brush.config.size = newSize;
+  }
+});
+</script>
+
+<template>
+  <input
+    type="range"
+    min="1"
+    max="100"
+    v-model.number="brushSize"
+    @input="onSizeChange"
+  />
+</template>
+```
+
+## Handling Vue Specific Features
+
+### Vue 3 Reactivity with getters/setters
+
+```js
+// When working with Vue's reactivity system, be careful with direct object mutation
+import { reactive } from "vue";
+
+function createBrushState() {
+  return reactive({
+    size: 20,
+    color: "#000000",
+    opacity: 1,
+    flow: 1,
+  });
+}
+
+// Better approach - use individual refs for primitive values
+import { ref } from "vue";
+
+function createBrushState() {
+  return {
+    size: ref(20),
+    color: ref("#000000"),
+    opacity: ref(1),
+    flow: ref(1),
+  };
+}
+
+// Then use .value when accessing/setting
+// brushState.size.value = 24;
+```
+
+### Teleport for Overlays
+
+Use Teleport for popups/modals that should render outside the canvas container:
+
+```vue
+<template>
+  <div>
+    <canvas ref="canvasRef" width="800" height="600" />
+
+    <!-- Teleport color picker to body to avoid overflow issues -->
+    <Teleport to="body">
+      <div v-if="showColorPicker" class="color-picker">
+        <!-- Color picker implementation -->
+        <button @click="showColorPicker = false">Close</button>
+      </div>
+    </Teleport>
+  </div>
+</template>
+```
+
+## Server-Side Rendering (SSR) Considerations
+
+### Nuxt 3 Example
+
+```vue
+<!-- components/Canvas.client.vue (client-only) -->
+<template>
+  <canvas ref="canvasRef" width="800" height="600" />
+</template>
+
+<script setup>
+import { ref, onMounted, onBeforeUnmount } from "vue";
+import { Canvas } from "fuderu";
+
+const canvasRef = ref(null);
+let painter = null;
+
+onMounted(() => {
+  if (!canvasRef.value) return;
+
+  painter = new Canvas({
+    canvas: canvasRef.value,
+    // ... options
+  });
+});
+
+onBeforeUnmount(() => {
+  if (painter) {
+    painter.destroy();
+  }
+});
+</script>
+```
+
+Then use it in your page:
+
+```vue
+<template>
+  <div>
+    <h1>Drawing App</h1>
+    <ClientOnly>
+      <Canvas />
+    </ClientOnly>
+  </div>
+</template>
+```
+
+## Testing Vue Components
+
+### Unit Testing with Vue Test Utils and Vitest
+
+```js
+import { mount } from "@vue/test-utils";
+import { nextTick } from "vue";
+import DrawingCanvas from "@/components/DrawingCanvas.vue";
+import { Canvas } from "fuderu";
+
+// Mock Canvas
+vi.mock("fuderu", () => ({
+  Canvas: vi.fn().mockImplementation(() => ({
+    destroy: vi.fn(),
+    brush: {
+      config: { size: 20, color: "#000000" },
+    },
+    putPoint: vi.fn(),
+    render: vi.fn(),
+    clear: vi.fa(),
+  })),
+}));
+
+describe("DrawingCanvas.vue", () => {
+  let wrapper;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    wrapper = mount(DrawingCanvas);
+  });
+
+  it("renders canvas element", () => {
+    expect(wrapper.find("canvas").exists()).toBe(true);
+  });
+
+  it("initializes canvas on mount", () => {
+    expect(Canvas).toHaveBeenCalledTimes(1);
+    const canvasInstance = Canvas.mock.instances[0];
+    expect(canvasInstance.canvas).toBeInstanceOf(HTMLCanvasElement);
+  });
+
+  it("handles color input changes", async () => {
+    const colorInput = wrapper.find('input[type="color"]');
+    await colorInput.setValue("#ff0000");
+    await nextTick();
+
+    // Verify the mock was called with updated color
+    // Implementation-specific assertions would go here
+  });
+});
+```
+
+## Best Practices Summary
+
+### Do:
+
+1. **Use composition API for logic reuse** - Create composables for canvas management
+2. **Handle component lifecycle properly** - Initialize in onMounted, cleanup in onBeforeUnmount
+3. **Leverage Vue's reactivity system** - Use refs and reactive for state management
+4. **Implement performance optimizations** - Use requestAnimationFrame loops, debouncing
+5. **Handle SSR appropriately** - Use client-only components or conditional rendering
+6. **Use provide/inject for deep component communication** - Avoid prop drilling
+7. **Test thoroughly** - Cover mounting, user interactions, and cleanup
+
+### Don't:
+
+1. **Manipulate DOM directly outside lifecycle hooks** - Can cause race conditions
+2. **Forget to destroy Canvas instances** - Leads to memory leaks
+3. **Update canvas properties on every render** - Causes unnecessary work
+4. **Ignore Vue's reactivity caveats** - Especially with object/array mutations
+5. **Block the main thread** - Use async patterns for heavy computations
+6. **Assume immediate DOM availability** - Always check refs before using
+7. **Neglect touch events** - Remember to handle touch alongside mouse events
+
+## Troubleshooting
+
+### Canvas Not Initializing
+
+- Check if canvas ref is null during onMounted
+- Verify browser compatibility with required APIs
+- Ensure proper cleanup/recreation on route changes
+- Look for console errors during initialization
+
+### Performance Issues
+
+- Measure actual render times with performance.now()
+- Check for unnecessary re-renders in Vue Devtools
+- Verify you're not creating new Canvas instances excessively
+- Look for synchronous layouts or forced reflows
+- Consider worker-based approaches for heavy computations
+
+### State Not Updating
+
+- Verify reactivity is properly set up (refs vs reactive)
+- Check for mutation detection issues with objects/arrays
+- Ensure you're using .value when accessing ref values
+- Confirm watchers are firing as expected
+- Look for accidental replacement of reactive objects
+
+### SSR Hydration Mismatches
+
+- Ensure client and server render identical initial content
+- Use client-only components for browser-specific features
+- Handle window/document checks properly
+- Consider using useState or similar patterns for client-only state
+
+## Resources
+
+- [Vue 3 Composition API Guide](https://vuejs.org/guide/extras/composition-api-faq.html)
+- [Vue 3 Teleport](https://vuejs.org/guide/built-ins/teleport.html)
+- [Vue 3 Provide/Inject](https://vuejs.org/guide/components/provide-inject.html)
+- [Vue Testing Library](https://testing-library.com/docs/vue-testing-library/intro/)
+- [Nuxt 3 Documentation](https://nuxt.com/docs/getting-started/introduction)
+- [Vue Performance Best Practices](https://vuejs.org/guide/best-practices/performance.html)
+
+With these patterns and practices, you can create robust, performant Fuderu integrations in Vue 3 applications that follow Vue best practices while leveraging the full capabilities of the drawing engine.

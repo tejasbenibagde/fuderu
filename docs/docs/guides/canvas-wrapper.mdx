@@ -175,6 +175,24 @@ Each layer has the following properties:
 - **`opacity`** - Opacity of the layer (0-1, default: 1)
 - **`blendMode`** - How the layer composites with layers below it
 
+### Direct Layer Manager Access
+
+For advanced layer operations, you can access the underlying \`LayerManager\` instance via the \`layers\` property on the Canvas:
+
+```ts
+// Move a layer to a specific index (0-based)
+painter.layers.moveLayer(layerId, targetIndex);
+
+// Resize all layers (called automatically when canvas size changes)
+painter.layers.resize(width, height);
+
+// Clear all layers
+painter.layers.clear();
+
+// Get readonly array of all layers
+const allLayers = painter.layers.getAll();
+```
+
 ## Access The Brush
 
 The wrapper exposes the underlying brush:

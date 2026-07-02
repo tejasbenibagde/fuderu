@@ -1,0 +1,84 @@
+---
+sidebar_position: 6
+title: Layer
+hide_table_of_contents: false
+sidebar_label: Layer
+---
+
+# Layer API
+
+`Layer` represents an individual drawable surface with its own `<canvas>` element, blending mode, opacity, and visibility.
+
+```ts
+import { Layer } from "fuderu";
+```
+
+## Constructor
+
+```ts
+new Layer(options: LayerOptions);
+```
+
+### `LayerOptions`
+
+| Property     | Type        | Description                                        |
+| ------------ | ----------- | -------------------------------------------------- |
+| `id?`        | `string`    | Unique ID; if omitted a UUID is generated.         |
+| `name?`      | `string`    | Layer name (defaults to `"Layer"`).                |
+| `width`      | `number`    | Canvas width in pixels.                            |
+| `height`     | `number`    | Canvas height in pixels.                           |
+| `visible?`   | `boolean`   | Whether the layer is visible (defaults to `true`). |
+| `opacity?`   | `number`    | Opacity `0‑1` (defaults to `1`).                   |
+| `blendMode?` | `BlendMode` | Composite operation (defaults to `"source-over"`). |
+
+## Properties
+
+| Property    | Type                                  | Description                                                            |
+| ----------- | ------------------------------------- | ---------------------------------------------------------------------- |
+| `id`        | `string` (readonly)                   | Unique identifier.                                                     |
+| `name`      | `string`                              | Human‑readable name.                                                   |
+| `canvas`    | `HTMLCanvasElement` (readonly)        | The underlying canvas element.                                         |
+| `ctx`       | `CanvasRenderingContext2D` (readonly) | 2D rendering context of the canvas.                                    |
+| `visible`   | `boolean`                             | Toggles layer visibility during composition.                           |
+| `opacity`   | `number` (0‑1)                        | Opacity applied when the layer is composited.                          |
+| `blendMode` | `BlendMode`                           | Composite operation used when drawing the layer onto the canvas below. |
+
+## Methods
+
+### `clear(): void`
+
+Clears the entire canvas (`ctx.clearRect(0,0,width,height)`).
+
+### `resize(width: number, height: number): void`
+
+Resizes the internal canvas while preserving existing content via `getImageData`/`putImageData`.
+
+### `setOpacity(opacity: number): void`
+
+Sets the layer’s opacity, clamping the value to the range `[0, 1]`.
+
+## Usage Example
+
+```ts
+import { Layer } from "fuderu";
+
+// Create a layer 512×512, named "Line Art", with 50% opacity and multiply blend
+const lineArt = new Layer({
+  name: "Line Art",
+  width: 512,
+  height: 512,
+  opacity: 0.5,
+  blendMode: "multiply",
+});
+
+// Draw into the layer
+const ctx = lineArt.ctx;
+ctx.fillStyle = "#ff0000";
+ctx.fillRect(50, 50, 200, 200);
+
+// Later, change blend mode
+lineArt.blendMode = "overlay";
+
+// Resize the layer (e.g., when the canvas size changes)
+lineArt.resize(1024, 1024);
+```

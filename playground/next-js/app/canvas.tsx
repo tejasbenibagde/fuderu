@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  type PointerEvent as ReactPointerEvent,
+  type PointerEvent as ReactPointerEffect,
   useEffect,
   useRef,
   useState,
@@ -14,6 +14,8 @@ import {
   MousePressure,
   PatternModule,
   SpreadModule,
+  Layer,
+  LayerManager,
 } from "fuderu";
 
 import { useBrushStore } from "@/components/playground/brush-store";
@@ -41,6 +43,7 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
   const modulesRef = useRef<ModuleRefs | null>(null);
   const pressureRef = useRef(new MousePressure());
   const isDrawingRef = useRef(false);
+  const layerManagerRef = useRef<LayerManager | null>(null);
   const [cursor, setCursor] = useState({
     visible: false,
     x: 0,
@@ -52,47 +55,62 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
 
   const store = useBrushStore();
 
+  // Composite all layers onto the display canvas
+  const compositeLayers = () => {
+    const displayCanvas = canvasRef.current;
+    if (!displayCanvas) return;
+    const ctx = displayCanvas.getContext("2d");
+    if (!ctx) return;
+    const layerManager = layerManagerRef.current;
+    if (!layerManager) return;
+
+    const layers = layerManager.getAll();
+    // Clear the display canvas
+    ctx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+    // Draw each layer in order
+    for (const layer of layers) {
+      ctx.drawImage(layer.canvas, 0, 0);
+    }
+  };
+
+  // Initialize or reset the layer manager and brush when project size changes
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const layerManager = new LayerManager(project.width, project.height);
+    layerManagerRef.current = layerManager;
 
-    const initialState = useBrushStore.getState();
+    // Create brush on the active layer's canvas
+    const activeLayer = layerManager.getActive();
+    const brush = new Brush(activeLayer.canvas, {
+      size: store.size,
+      opacity: store.opacity,
+      color: store.color,
+      spacing: store.spacing,
+      flow: store.flow,
+      roundness: store.roundness,
+      angle: store.angle,
+      eraser: store.eraser,
+      rotation: {
+        mode: store.rotationMode,
+        offset: store.rotationOffset * Math.PI,
+        jitter: store.rotationJitter * Math.PI,
+        smoothing: store.rotationSmoothing,
+      },
+    });
 
-    canvas.width = project.width;
-    canvas.height = project.height;
-    canvas.style.touchAction = "none";
-    canvas.style.userSelect = "none";
-
+    // Initialize modules
     const dynamicShape = new DynamicShapeModule();
     const dynamicTransparency = new DynamicTransparencyModule();
     const spread = new SpreadModule({ spreadRange: 0 });
     const pattern = new PatternModule();
-
-    const brush = new Brush(canvas, {
-      size: initialState.size,
-      opacity: initialState.opacity,
-      color: initialState.color,
-      spacing: initialState.spacing,
-      flow: initialState.flow,
-      roundness: initialState.roundness,
-      angle: initialState.angle,
-      eraser: initialState.eraser,
-      rotation: {
-        mode: initialState.rotationMode,
-        offset: initialState.rotationOffset * Math.PI,
-        jitter: initialState.rotationJitter * Math.PI,
-        smoothing: initialState.rotationSmoothing,
-      },
-    });
 
     brush.useModule(dynamicShape);
     brush.useModule(dynamicTransparency);
     brush.useModule(spread);
     brush.useModule(pattern);
 
-    brush.isSmooth = initialState.smooth;
-    brush.isSpacing = initialState.spacingEnabled;
-    brush.isEraser = initialState.eraser;
+    brush.isSmooth = store.smooth;
+    brush.isSpacing = store.spacingEnabled;
+    brush.isEraser = store.eraser;
 
     brushRef.current = brush;
     modulesRef.current = {
@@ -102,15 +120,19 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
       pattern,
     };
 
+    // Initial composition
+    compositeLayers();
+
     return () => {
       brushRef.current = null;
       modulesRef.current = null;
+      layerManagerRef.current = null;
     };
-  }, [project.height, project.width]);
+  }, [project.width, project.height, store]);
 
+  // Update brush configuration when store changes
   useEffect(() => {
     const brush = brushRef.current;
-
     if (!brush) return;
 
     brush.loadConfig({
@@ -151,9 +173,9 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
     store.rotationSmoothing,
   ]);
 
+  // Update module configurations
   useEffect(() => {
     const modules = modulesRef.current;
-
     if (!modules) return;
 
     modules.dynamicShape.bindConfig({
@@ -180,7 +202,6 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
 
   useEffect(() => {
     const modules = modulesRef.current;
-
     if (!modules) return;
 
     modules.dynamicTransparency.bindConfig({
@@ -203,7 +224,6 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
 
   useEffect(() => {
     const modules = modulesRef.current;
-
     if (!modules) return;
 
     modules.spread.bindConfig({
@@ -217,29 +237,14 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
     store.spreadEnabled,
     store.spreadRange,
     store.spreadTrigger,
-    store.spreadCount,
-    store.spreadCountJitter,
-    store.spreadCountJitterTrigger,
+    store.spendCount,
+    store.spendCountJitter,
+    store.spendCountJitterTrigger,
   ]);
 
   useEffect(() => {
-    const brush = brushRef.current;
-
-    if (!brush) return;
-
-    if (!store.image) {
-      brush.removeImage();
-      return;
-    }
-
-    void brush.loadImageAsync(store.image);
-  }, [store.image]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
     const modules = modulesRef.current;
-
-    if (!canvas || !modules) return;
+    if (!modules) return;
 
     modules.pattern.bindConfig({
       scale: store.patternScale,
@@ -255,8 +260,8 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
 
     modules.pattern.loadPattern(
       store.patternImage,
-      canvas.width,
-      canvas.height,
+      canvasRef.current?.width ?? 0,
+      canvasRef.current?.height ?? 0,
       store.patternTint,
     );
   }, [
@@ -269,19 +274,21 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
   ]);
 
   useEffect(() => {
+    if (store.clearTrigger === 0) return;
     brushRef.current?.clear();
+    compositeLayers();
   }, [store.clearTrigger]);
 
   useEffect(() => {
     if (store.undoTrigger === 0) return;
-
     brushRef.current?.undo();
+    compositeLayers();
   }, [store.undoTrigger]);
 
   useEffect(() => {
     if (store.redoTrigger === 0) return;
-
     brushRef.current?.redo();
+    compositeLayers();
   }, [store.redoTrigger]);
 
   const updateCursor = (event: ReactPointerEvent<HTMLCanvasElement>) => {
@@ -337,17 +344,18 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
 
     brush.putPoint(point.x, point.y, point.pressure);
     brush.render();
+    compositeLayers();
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const brush = brushRef.current;
     const point = updateCursor(event);
-
     if (!brush || !point || !isDrawingRef.current) return;
 
     event.preventDefault();
     brush.putPoint(point.x, point.y, point.pressure);
     brush.render();
+    compositeLayers();
   };
 
   const clampZoom = (nextZoom: number) => Math.min(2, Math.max(0.25, nextZoom));
@@ -368,6 +376,7 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
     isDrawingRef.current = false;
     pressureRef.current.reset();
     brushRef.current?.finalizeStroke();
+    compositeLayers();
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);

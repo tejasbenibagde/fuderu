@@ -1,0 +1,136 @@
+---
+sidebar_position: 2
+title: Brush Modules Demo
+---
+
+# Brush Modules Example
+
+This example demonstrates how to use Fuderu's module system to create brushes with special effects like texture, jitter, and scattering.
+
+## Code
+
+```jsx
+import React, { useEffect, useRef } from "react";
+import { Canvas } from "fuderu";
+import { DynamicShapeModule, SpreadPatternModule } from "fuderu";
+
+export default function BrushModulesDemo() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    // Initialize Fuderu canvas
+    const painter = new Canvas({
+      canvas: canvasRef.current,
+      document: {
+        width: 800,
+        height: 600,
+      },
+      brush: {
+        color: "#10b981",
+        size: 18,
+        opacity: 0.7,
+        flow: 0.5,
+        spacing: 0.2,
+      },
+    });
+
+    // Add modules for interesting effects
+    const shapeModule = painter.brush.useModule(
+      new DynamicShapeModule({
+        sizeJitter: 0.4, // 40% size variation
+        sizeJitterTrigger: "pressure", // Size changes with pressure
+        roundJitter: 0.3, // 30% roundness variation
+        roundJitterTrigger: "pressure", // Roundness changes with pressure
+        minRoundness: 0.4, // Prevents getting too thin
+      }),
+    );
+
+    const spreadModule = painter.brush.useModule(
+      new SpreadPatternModule({
+        spreadRange: 0.3, // Spread distance
+        count: 5, // Number of additional points
+        countJitter: 0.4, // Variation in point count
+        spreadTrigger: "pressure", // Pressure affects spread amount
+      }),
+    );
+
+    // Cleanup on unmount
+    return () => {
+      painter.brush.removeModule(shapeModule);
+      painter.brush.removeModule(spreadModule);
+      painter.destroy();
+    };
+  }, []);
+
+  return (
+    <div>
+      <h2>Brush Modules Demo</h2>
+      <p>
+        This example shows how to combine DynamicShape and Spread modules to
+        create expressive brushes.
+      </p>
+      <div class="info">
+        <strong>Try this:</strong> Press harder with your stylus (or move mouse
+        faster/slower) to see how pressure affects the brush!
+      </div>
+      <canvas ref={canvasRef} width={800} height={600} />
+      <div class="module-info">
+        <h3>Active Modules:</h3>
+        <ul>
+          <li>
+            <strong>DynamicShape:</strong> Size and roundness jitter based on
+            pressure
+          </li>
+          <li>
+            <strong>Spread:</strong> Creates additional points around each stamp
+            for a textured effect
+          </li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+```
+
+## Key Concepts Demonstrated
+
+1. **Module Creation**: Creating instances of DynamicShapeModule and SpreadPatternModule
+2. **Module Configuration**: Setting parameters like jitter amounts, triggers, and spread characteristics
+3. **Module Attachment**: Using `useModule()` to attach modules to the brush and getting back IDs
+4. **Module Cleanup**: Properly removing modules when the component unmounts
+5. **Parameter Tuning**: Showing how different values affect the brush behavior
+
+## Module Parameters Explained
+
+### DynamicShapeModule
+
+- `sizeJitter`: How much the size can vary (0-1)
+- `sizeJitterTrigger`: What drives the size variation ("pressure" or "none")
+- `roundJitter`: How much the roundness can vary (0-1)
+- `roundJitterTrigger`: What drives the roundness variation
+- `minRoundness`: Minimum roundness as a fraction of base size (prevents overly thin strokes)
+
+### SpreadPatternModule
+
+- `spreadRange`: How far points can spread (0-1, multiplied by brush size)
+- `count`: Base number of additional points to generate
+- `countJitter`: Variation in the number of points (0-1)
+- `spreadTrigger`: What controls the spread amount ("pressure" or "none")
+
+## What You'll Learn
+
+- How to enhance basic brushes with modules for expressive effects
+- How to configure module parameters for different artistic results
+- The importance of cleaning up modules to prevent memory leaks
+- How pressure sensitivity can be used to control multiple brush characteristics simultaneously
+
+## Next Steps
+
+After understanding this example, try:
+
+- Adding the DynamicTransparencyModule for opacity and flow variations
+- Experimenting with the PatternModule to add texture
+- Creating your own custom modules for unique effects
+- Combining multiple modules to simulate real-world media like charcoal, watercolor, or spray paint

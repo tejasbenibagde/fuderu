@@ -1,0 +1,945 @@
+---
+sidebar_position: 7
+title: React Integration
+hide_table_of_contents: true
+sidebar_label: React
+---
+
+# React Integration Guide
+
+This guide covers best practices for integrating Fuderu with React applications, including hooks, lifecycle management, and performance optimization.
+
+## Basic Setup
+
+### Installation
+
+```bash
+npm install fuderu
+# or
+yarn add fuderu
+```
+
+### Basic Usage
+
+```tsx
+import React, { useEffect, useRef } from "react";
+import { Canvas } from "fuderu";
+
+function DrawingCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const painter = new Canvas({
+      canvas: canvasRef.current,
+      document: {
+        width: 800,
+        height: 600,
+      },
+    });
+
+    // Cleanup on unmount
+    return () => {
+      painter.destroy();
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} width={800} height={600} />;
+}
+```
+
+## Custom Hooks
+
+### useFuderuCanvas Hook
+
+Create a reusable hook for canvas management:
+
+```tsx
+import { useEffect, useRef } from "react";
+import { Canvas, Brush } from "fuderu";
+
+interface UseFuderuCanvasOptions {
+  width?: number;
+  height?: number;
+  brushConfig?: Partial<Brush.BrushConfig>;
+  onReady?: (painter: Canvas) => void;
+}
+
+export function useFuderuCanvas({
+  width = 800,
+  height = 600,
+  brushConfig,
+  onReady,
+}: UseFuderuCanvasOptions = {}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const painterRef = useRef<Canvas | null>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const painter = new Canvas({
+      canvas: canvasRef.current,
+      document: { width, height },
+      brush: brushConfig,
+    });
+
+    painterRef.current = painter;
+    onReady?.(painter);
+
+    return () => {
+      painter.destroy();
+      painterRef.current = null;
+    };
+  }, [width, height, brushConfig, onReady]);
+
+  return canvasRef;
+}
+```
+
+### Advanced Hook with Brush Controls
+
+```tsx
+import { useState, useCallback } from "react";
+import { Canvas, Brush } from "fuderu";
+
+export function useDrawingCanvas(
+  initialOptions: {
+    width?: number;
+    height?: number;
+    brushConfig?: Partial<Brush.BrushConfig>;
+  } = {},
+) {
+  const [canvasRef, setCanvasRef] =
+    useState<React.RefObject<HTMLCanvasElement> | null>(null);
+  const [painter, setPainter] = useState<Canvas | null>(null);
+  const [brushConfig, setBrushConfig] = useState<Brush.BrushConfig>({
+    size: 20,
+    color: "#000000",
+    opacity: 1,
+    flow: 1,
+    ...(initialOptions.brushConfig || {}),
+  });
+
+  // Initialize canvas
+  useEffect(() => {
+    if (!canvasRef?.current) return;
+
+    const newPainter = new Canvas({
+      canvas: canvasRef.current,
+      document: {
+        width: initialOptions.width ?? 800,
+        height: initialOptions.height ?? 600,
+      },
+      brush: brushConfig,
+    });
+
+    setPainter(newPainter);
+
+    return () => {
+      newPainter.destroy();
+    };
+  }, [canvasRef, initialOptions.width, initialOptions.height, brushConfig]);
+
+  // Brush control functions
+  const setBrushColor = useCallback(
+    (color: string) => {
+      setBrushConfig((prev) => ({ ...prev, color }));
+      if (painter) {
+        painter.brush.config.color = color;
+      }
+    },
+    [painter],
+  );
+
+  const setBrushSize = useCallback(
+    (size: number) => {
+      setBrushConfig((prev) => ({ ...prev, size }));
+      if (painter) {
+        painter.brush.config.size = size;
+      }
+    },
+    [painter],
+  );
+
+  const setBrushOpacity = useCallback(
+    (opacity: number) => {
+      setBrushConfig((prev) => ({ ...prev, opacity }));
+      if (painter) {
+        painter.brush.config.opacity = opacity;
+      }
+    },
+    [painter],
+  );
+
+  const clearCanvas = useCallback(() => {
+    if (painter) {
+      painter.clear();
+    }
+  }, [painter]);
+
+  const undo = useCallback(() => {
+    if (painter) {
+      painter.undo();
+    }
+  }, [painter]);
+
+  const redo = useCallback(() => {
+    if (painter) {
+      painter.redo();
+    }
+  }, [painter]);
+
+  return {
+    canvasRef,
+    setCanvasRef,
+    painter,
+    brushConfig,
+    setBrushColor,
+    setBrushSize,
+    setBrushOpacity,
+    clearCanvas,
+    undo,
+    redo,
+    setBrushConfig, // Direct setter for advanced use
+  };
+}
+```
+
+## Component Patterns
+
+### Drawing Toolbar Component
+
+```tsx
+import { useState } from "react";
+
+function DrawingToolbar({
+  onBrushChange,
+}: {
+  onBrushChange: (config: Partial<Brush.BrushConfig>) => void;
+}) {
+  const [color, setColor] = useState("#000000");
+  const [size, setSize] = useState(20);
+  const [opacity, setOpacity] = useState(1);
+  const [isEraser, setIsEraser] = useState(false);
+
+  return (
+    <div className="toolbar">
+      <div className="toolbar-group">
+        <label>Color:</label>
+        <input
+          type="color"
+          value={color}
+          onChange={(e) => {
+            setColor(e.target.value);
+            onBrushChange({ color: e.target.value });
+          }}
+        />
+      </div>
+
+      <div className="toolbar-group">
+        <label>Size:</label>
+        <input
+          type="range"
+          min={1}
+          max={100}
+          value={size}
+          onChange={(e) => {
+            setSize(Number(e.target.value));
+            onBrushChange({ size: Number(e.target.value) });
+          }}
+        />
+        <span>{size}px</span>
+      </div>
+
+      <div className="toolbar-group">
+        <label>Opacity:</label>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={opacity}
+          onChange={(e) => {
+            setOpacity(Number(e.target.value));
+            onBrushChange({ opacity: Number(e.target.value) });
+          }}
+        />
+        <span>{(opacity * 100).toFixed(0)}%</span>
+      </div>
+
+      <div className="toolbar-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={isEraser}
+            onChange={(e) => {
+              setIsEraser(e.target.checked);
+              onBrushChange({ eraser: e.target.checked });
+            }}
+          />
+          Eraser
+        </label>
+      </div>
+    </div>
+  );
+}
+```
+
+### Layer Panel Component
+
+```tsx
+import { useState } from "react";
+
+interface LayerProps {
+  onSelectLayer: (layerId: string) => void;
+  onUpdateLayer: (layerId: string, options: Partial<{
+    name: string;
+    visible: boolean;
+    opacity: number;
+    blendMode: ImportMeta["BlendMode"]
+  }>) => void;
+  onAddLayer: () => void;
+  onRemoveLayer: (layerId: string) => void;
+  layers: Array<{
+    id: string;
+    name: string;
+    visible: boolean;
+    opacity: number;
+    blendMode: ImportMeta["BlendMode"]
+  }>;
+  activeLayerId: string | null;
+}
+
+function LayerPanel({ layers, activeLayerId, onSelectLayer, onUpdateLayer, onAddLayer, onRemoveLayer }: LayerProps) {
+  return (
+    <div className="layer-panel">
+      <h3>Layers</div>
+      <button onClick={onAddLayer}>+ Add Layer</button>
+
+      <div className="layer-list">
+        {layers.map((layer) => (
+          <div
+            key={layer.id}
+            className={`layer-item ${layer.id === activeLayerId ? "active" : ""}`}
+            onClick={() => onSelectLayer(layer.id)}
+          >
+            <div className="layer-controls">
+              <input
+                type="checkbox"
+                checked={layer.visible}
+                onChange={(e) => {
+                  onUpdateLayer(layer.id, { visible: e.target.checked });
+                }}
+              />
+              <input
+                type="text"
+                value={layer.name}
+                onChange={(e) => {
+                  onUpdateLayer(layer.id, { name: e.target.value });
+                }}
+                placeholder="Layer name"
+              />
+            </div>
+
+            <div className="layer-properties">
+              <div>
+                <label>Opacity:</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={layer.opacity}
+                  onChange={(e) => {
+                    onUpdateLayer(layer.id, { opacity: Number(e.target.value) });
+                  }}
+                />
+              </div>
+
+              <div>
+                <label>Blend Mode:</label>
+                <select
+                  value={layer.blendMode}
+                  onChange={(e) => {
+                    onUpdateLayer(layer.id, { blendMode: e.target.value as ImportMeta["BlendMode"] });
+                  }}
+                >
+                  <option value="source-over">Normal</option>
+                  <option value="multiply">Multiply</option>
+                  <option value="screen">Screen</option>
+                  <option value="overlay">Overlay</option>
+                  {/* Add more blend modes as needed */}
+                </select>
+              </div>
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent layer selection
+                onRemoveLayer(layer.id);
+              }}
+              className="remove-layer"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+## Performance Optimization in React
+
+### Preventing Unnecessary Renders
+
+```tsx
+import { useMemo, useCallback } from "react";
+import { Canvas } from "fuderu";
+
+function OptimizedDrawingCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Memoize expensive configurations
+  const brushConfig = useMemo(
+    () => ({
+      size: 24,
+      color: "#ff6b6b",
+      opacity: 0.8,
+      flow: 0.9,
+      spacing: 0.2,
+    }),
+    [],
+  ); // Empty deps = never change
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const painter = new Canvas({
+      canvas: canvasRef.current,
+      brush: brushConfig,
+    });
+
+    return () => painter.destroy();
+  }, [canvasRef, brushConfig]); // Only recreate when brushConfig changes
+
+  return <canvas ref={canvasRef} width={800} height={600} />;
+}
+```
+
+### Debouncing Rapid Updates
+
+```tsx
+import { useState, useEffect, useRef } from "react";
+import { Canvas } from "fuderu";
+
+function DebouncedBrushControls() {
+  const [brushConfig, setBrushConfig] = useState({
+    size: 20,
+    color: "#000000",
+  });
+  const [debouncedConfig, setDebouncedConfig] = useState(brushConfig);
+  const timeoutRef = useRef<number | null>(null);
+
+  // Debounce config changes
+  useEffect(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = window.setTimeout(() => {
+      setDebouncedConfig(brushConfig);
+    }, 100); // 100ms debounce
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [brushConfig]);
+
+  // Apply debounced config to canvas
+  useEffect(() => {
+    // ... canvas setup with debouncedConfig
+  }, [debouncedConfig]);
+
+  return (
+    <div>
+      {/* Controls that update brushConfig (not debounced) */}
+      <input
+        type="range"
+        min={1}
+        max={100}
+        value={brushConfig.size}
+        onChange={(e) =>
+          setBrushConfig({ ...brushConfig, size: Number(e.target.value) })
+        }
+      />
+      {/* ... other controls */}
+    </div>
+  );
+}
+```
+
+### Virtualizing Large Canvases
+
+For applications that need to support very large virtual canvases:
+
+```tsx
+import { useState, useEffect } from "react";
+import { Canvas } from "fuderu";
+
+function VirtualCanvas({
+  virtualWidth,
+  virtualHeight,
+  viewWidth,
+  viewHeight,
+}: {
+  virtualWidth: number;
+  virtualHeight: number;
+  viewWidth: number;
+  viewHeight: number;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    // Create canvas at view size, not virtual size
+    const painter = new Canvas({
+      canvas: canvasRef.current,
+      document: { width: viewWidth, height: viewHeight },
+    });
+
+    // Implement panning logic here
+    // ...
+
+    return () => painter.destroy();
+  }, [canvasRef, viewWidth, viewHeight]);
+
+  return (
+    <div
+      style={{
+        width: `${viewWidth}px`,
+        height: `${viewHeight}px`,
+        overflow: "hidden",
+        position: "relative",
+      }}
+      onWheel={(e) => {
+        // Handle panning with mouse wheel
+        e.preventDefault();
+        setOffset((prev) => ({
+          x: Math.max(0, Math.min(virtualWidth - viewWidth, prev.x + e.deltaY)),
+          y: Math.max(
+            0,
+            Math.min(virtualHeight - viewHeight, prev.y + e.deltaX),
+          ),
+        }));
+      }}
+    >
+      <canvas ref={canvasRef} width={viewWidth} height={viewHeight} />
+    </div>
+  );
+}
+```
+
+## Handling React Specific Issues
+
+### Strict Mode and Double Execution
+
+In React 18's Strict Mode, effects may run twice in development:
+
+```tsx
+useEffect(() => {
+  if (!canvasRef.current) return;
+
+  let painter: Canvas | null = null;
+
+  // Initialize only once
+  if (!painter) {
+    painter = new Canvas({
+      canvas: canvasRef.current,
+      // ... options
+    });
+  }
+
+  return () => {
+    // Cleanup only runs once per actual unmount
+    if (painter) {
+      painter.destroy();
+      painter = null;
+    }
+  };
+}, []); // Empty deps - runs on mount/unmount
+```
+
+### Concurrent Mode Considerations
+
+For React Concurrent Mode, ensure your integration is interrupt-safe:
+
+```tsx
+function SafeDrawingCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    if (!canvasRef.current || isInitialized) return;
+
+    const painter = new Canvas({
+      canvas: canvasRef.current,
+      // ... options
+    });
+
+    setIsInitialized(true);
+
+    return () => {
+      if (isInitialized) {
+        painter.destroy();
+      }
+    };
+  }, [canvasRef.current, isInitialized]); // Re-run if canvas changes or initialization state changes
+
+  return <canvas ref={canvasRef} width={800} height={600} />;
+}
+```
+
+## Server-Side Rendering (SSR) Considerations
+
+### Next.js Example
+
+```tsx
+import { useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
+
+// Dynamically import to prevent SSR issues
+const DrawingCanvas = dynamic(() => import("./DrawingCanvas"), {
+  ssr: false, // Disable SSR since canvas requires browser
+});
+
+export default function Page() {
+  return (
+    <div>
+      <h1>Drawing App</h1>
+      <DrawingCanvas />
+    </div>
+  );
+}
+```
+
+### Creating a Placeholder for SSR
+
+```tsx
+import { useEffect, useRef } from "react";
+
+function DrawingCanvasSSR() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return; // Skip during SSR
+
+    if (!canvasRef.current) return;
+
+    const painter = new Canvas({
+      canvas: canvasRef.current,
+      // ... options
+    });
+
+    return () => painter.destroy();
+  }, []);
+
+  // Show placeholder during SSR
+  if (typeof window === "undefined") {
+    return <div className="canvas-placeholder">Drawing Canvas</div>;
+  }
+
+  return <canvas ref={canvasRef} width={800} height={600} />;
+}
+```
+
+## Advanced Integration Patterns
+
+### Context-Based State Management
+
+```tsx
+import { createContext, useContext, useState } from "react";
+import { Canvas } from "fuderu";
+
+const DrawingContext = createContext({
+  painter: null,
+  setBrushConfig: () => {},
+  clearCanvas: () => {},
+  // ... other actions
+});
+
+export function useDrawing() {
+  return useContext(DrawingContext);
+}
+
+export function DrawingProvider({ children }: { children: React.ReactNode }) {
+  const [painter, setPainter] = useState<Canvas | null>(null);
+
+  const setBrushConfig = useCallback(
+    (config: Partial<Brush.BrushConfig>) => {
+      if (painter) {
+        Object.assign(painter.brush.config, config);
+      }
+    },
+    [painter],
+  );
+
+  const clearCanvas = useCallback(() => {
+    if (painter) {
+      painter.clear();
+    }
+  }, [painter]);
+
+  return (
+    <DrawingContext.Provider
+      value={{
+        painter,
+        setBrushConfig,
+        clearCanvas,
+        // ... other values
+      }}
+    >
+      {children}
+    </DrawingContext.Provider>
+  );
+}
+```
+
+### Integration with State Management Libraries
+
+#### Redux Example
+
+```ts
+// actions.ts
+export const setBrushSize = (size: number) => ({
+  type: "BRUSH_SET_SIZE",
+  payload: size
+});
+
+export const setBrushColor = (color: string) => ({
+  type: "BRUSH_SET_COLOR",
+  payload: color
+});
+
+// reducer.ts
+const initialState = {
+  brushSize: 20,
+  brushColor: "#000000"
+};
+
+function brushReducer(state = initialState, action) {
+  switch (action.type) {
+    case "BRUSH_SET_SIZE":
+      return { ...state, brushSize: action.payload };
+    case "BRUSH_SET_COLOR":
+      return { ...state, brushColor: action.payload };
+    default:
+      return state;
+  }
+}
+
+// component.ts
+import { useDispatch, useSelector } from "react-redux";
+import { useEffect, useRef } from "react";
+import { Canvas } from "fuderu";
+
+function DrawingCanvas() {
+  const dispatch = useDispatch();
+  const brushSize = useSelector(state => state.brushSize);
+  const brushColor = useSelector(state => state.brushColor);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const painter = new Canvas({
+      canvas: canvasRef.current,
+      brush: {
+        size: brushSize,
+        color: brushColor
+      }
+    });
+
+    // Subscribe to store changes
+    const unsubscribe = store.subscribe(() => {
+      const newBrushSize = useSelector(state => state.brushSize);
+      const newBrushColor = useSelector(state => state.brushColor);
+
+      if (painter) {
+        painter.brush.config.size = newBrushSize;
+        painter.brush.config.color = newBrushColor;
+      }
+    });
+
+    return () => {
+      painter.destroy();
+      unsubscribe();
+    };
+  }, [brushSize, brushColor, canvasRef]);
+
+  return <canvas ref={canvasRef} width={800} height={600} />;
+}
+```
+
+## Testing React Components with Fuderu
+
+### Unit Testing with Jest and React Testing Library
+
+```tsx
+import { render, screen, fireEvent } from "@testing-library/react";
+import { Canvas } from "fuderu";
+import DrawingCanvas from "./DrawingCanvas";
+
+jest.mock("fuderu", () => ({
+  Canvas: jest.fn().mockImplementation(() => ({
+    destroy: jest.fn(),
+    brush: {
+      config: { size: 20, color: "#000000" },
+    },
+    putPoint: jest.fn(),
+    render: jest.fn(),
+    clear: jest.fn(),
+    undo: jest.fn(),
+    redo: jest.fn(),
+  })),
+}));
+
+describe("DrawingCanvas", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("renders canvas element", () => {
+    render(<DrawingCanvas />);
+    const canvasElement = screen.getByRole("img"); // or by testid
+    expect(canvasElement).toBeInTheDocument();
+  });
+
+  test("calls putPoint on mouse down", () => {
+    render(<DrawingCanvas />);
+    const canvasElement = screen.getByRole("img");
+
+    fireEvent.mouseDown(canvasElement, {
+      clientX: 100,
+      clientY: 100,
+    });
+
+    // @ts-ignore - accessing mocked implementation
+    expect(Canvas.mock.instances[0].brush.putPoint).toHaveBeenCalledWith(
+      100,
+      100,
+      0.5, // x, y, pressure (default)
+    );
+  });
+
+  test("clears canvas when clear button clicked", () => {
+    render(<DrawingCanvas />);
+    const clearButton = screen.getByRole("button", { name: /clear/i });
+
+    fireEvent.click(clearButton);
+
+    // @ts-ignore - accessing mocked implementation
+    expect(Canvas.mock.instances[0].brush.clear).toHaveBeenCalled();
+  });
+});
+```
+
+### End-to-End Testing with Cypress
+
+```cypress
+describe("Drawing Canvas", () => {
+  beforeEach(() => {
+    cy.visit("/drawing");
+  });
+
+  it("allows drawing with mouse", () => {
+    cy.get("canvas")
+      .trigger("mousedown", 100, 100)
+      .trigger("mousemove", 150, 150)
+      .trigger("mouseup", 200, 200);
+
+    // Verify canvas was modified (implementation dependent)
+    cy.canvas().should("have.been.modified");
+  });
+
+  it("responds to toolbar changes", () => {
+    cy.get('input[type="color"]').first().select("#ff0000");
+    cy.get("canvas")
+      .trigger("mousedown", 100, 100)
+      .trigger("mouseup", 150, 150);
+
+    // Would need implementation-specific way to verify color
+  });
+});
+```
+
+## Best Practices Summary
+
+### Do:
+
+1. **Use useEffect for canvas initialization** - Properly handle component lifecycle
+2. **Always destroy canvas instances** - Prevent memory leaks
+3. **Memoize expensive configurations** - Prevent unnecessary recalculations
+4. **Debounce rapid updates** - Improve performance for slider/color picker changes
+5. **Handle SSR properly** - Use dynamic imports or conditional rendering
+6. **Leverage React's declarative nature** - Let React manage the DOM when possible
+7. **Test edge cases** - Rapid updates, component unmounting, resize events
+
+### Don't:
+
+1. **Initialize canvas in render function** - Causes performance issues and potential memory leaks
+2. **Forget to cleanup effects** - Leads to memory leaks and zombie canvases
+3. **Update canvas properties on every render** - Causes unnecessary work
+4. **Ignore React Strict Mode warnings** - Can indicate double-execution issues
+5. **Block the main thread with heavy computations** - Use web workers or requestIdleCallback
+6. **Assume canvas size equals CSS size** - Account for devicePixelRatio
+7. **Neglect touch events** - Remember to handle touch alongside mouse events
+
+## Troubleshooting Common Issues
+
+### Canvas Not Drawing
+
+- Check if canvas element exists and has dimensions
+- Verify browser supports required APIs (PointerEvent, requestAnimationFrame)
+- Confirm Canvas instance is properly destroyed and recreated
+- Check for JavaScript errors in console
+
+### Poor Performance
+
+- Measure actual FPS with performance monitoring
+- Check for unnecessary re-renders in React DevTools
+- Verify you're not creating new Canvas instances on every render
+- Look for expensive operations in event handlers
+- Consider reducing canvas size or disabling expensive features
+
+### Memory Leaks
+
+- Ensure `destroy()` is called on all Canvas instances
+- Check for lingering references in closures or timers
+- Verify event listeners are properly removed
+- Monitor memory usage in Chrome DevTools
+
+### SSR Issues
+
+- Use `typeof window !== "undefined"` checks
+- Employ dynamic imports with `ssr: false`
+- Create appropriate placeholders for server-rendered content
+- Handle hydration mismatches carefully
+
+## Resources
+
+- [React Documentation: useEffect Hook](https://reactjs.org/docs/hooks-effect.html)
+- [React Documentation: Rules of Hooks](https://reactjs.org/docs/hooks-rules.html)
+- [React Concurrent Mode](https://reactjs.org/docs/concurrent-mode-intro.html)
+- [Next.js Dynamic Import](https://nextjs.org/docs/advanced-features/dynamic-import)
+- [Redux Toolkit](https://redux-toolkit.js.org/)
+- [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
+- [Cypress Testing](https://www.cypress.io/)
+
+With these patterns and practices, you can create robust, performant Fuderu integrations in React applications that follow React best practices while leveraging the full power of the Fuderu drawing engine.

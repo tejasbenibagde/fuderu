@@ -1,0 +1,760 @@
+---
+sidebar_position: 6
+title: Performance
+hide_table_of_contents: true
+sidebar_label: Performance Optimization
+---
+
+# Performance Optimization Guide
+
+Fuderu is designed to be performant, but complex brushes with multiple modules or large canvases can impact performance. This guide provides strategies for optimizing your Fuderu-based applications.
+
+## Understanding Performance Bottlenecks
+
+Before optimizing, it's important to understand where performance issues typically occur in Fuderu applications:
+
+### 1. Rendering Pipeline Bottlenecks
+
+- Point processing (`putEvent` → processing → rendering)
+- Module execution (especially `onChangePoint`)
+- Canvas composition and blending
+- Offscreen buffer operations
+
+### 2. Memory-Related Issues
+
+- Undo/redo stack growth
+- Offscreen buffer accumulation
+- Temporary object creation in hot paths
+- Image brush caching
+
+### 3. Canvas-Specific Limitations
+
+- Canvas size vs. resolution trade-offs
+- DevicePixelRatio impact on performance
+- Browser-specific canvas implementation differences
+
+## Measurement and Profiling
+
+### Using the Browser's Performance API
+
+```ts
+// Measure frame rate
+let lastTime = performance.now();
+let frameCount = 0;
+let fps = 0;
+
+function animate() {
+  const now = performance.now();
+  frameCount++;
+
+  if (now - lastTime >= 1000) {
+    fps = Math.round((frameCount * 1000) / (now - lastTime));
+    frameCount = 0;
+    lastTime = now;
+    // Update FPS display
+  }
+
+  requestAnimationFrame(animate);
+}
+
+// Measure specific operations
+function measureOperation(name: string, fn: () => void) {
+  const start = performance.now();
+  fn();
+  const end = performance.now();
+  console.debug(`${name} took ${(end - start).toFixed(2)}ms`);
+}
+```
+
+### Built-in Debugging Tools
+
+Fuderu includes debug flags for performance monitoring:
+
+```ts
+// Enable debug logging for performance metrics
+import { Canvas } from "fuderu";
+
+const canvas = new Canvas({
+  canvas: "#myCanvas",
+  // ... other options
+});
+
+// Access internal metrics (for debugging)
+if (import.meta.env.DEV) {
+  // @ts-ignore - accessing internal properties for debugging
+  console.log(canvas.brush.getPerformanceMetrics?.());
+}
+```
+
+## Optimization Strategies
+
+### 1. Canvas Size Optimization
+
+#### Match Canvas Size to Display Needs
+
+```ts
+// Bad - unnecessarily large canvas
+const painter = new Canvas({
+  canvas: "#canvas",
+  document: { width: 4000, height: 3000 }, // 12MP!
+});
+
+// Better - match to typical display size
+const painter = new Canvas({
+  canvas: "#canvas",
+  document: {
+    width: Math.min(1920, window.innerWidth * devicePixelRatio),
+    height: Math.min(1080, window.innerHeight * devicePixelRatio),
+  },
+});
+```
+
+#### Dynamic Resolution Scaling
+
+```ts
+function optimizeCanvasSize(painter: Canvas) {
+  const container = painter.canvas.parentElement;
+  if (!container) return;
+
+  const scale = Math.min(
+    container.clientWidth / 800, // Base width
+    container.clientHeight / 600, // Base height
+    2, // Max scale factor
+  );
+
+  const width = Math.floor(800 * scale);
+  const height = Math.floor(600 * scale);
+
+  painter.setDocumentSize(width, height);
+}
+
+// Call on resize
+window.addEventListener("resize", () => optimizeCanvasSize(painter));
+```
+
+### 2. Brush Configuration Optimization
+
+#### Minimize Property Changes
+
+```ts
+// Less efficient - creates new object each time
+function updateBrushBad(painter: Canvas, props: Partial<BrushConfig>) {
+  painter.loadConfig({ ...painter.brush.config, ...props });
+}
+
+// More efficient - modify existing config
+function updateBrushGood(painter: Canvas, props: Partial<BrushConfig>) {
+  const config = { ...painter.brush.config };
+  Object.assign(config, props);
+  painter.loadConfig(config);
+}
+
+// Best - direct property access when possible
+function updateBrushBest(painter: Canvas, props: Partial<BrushConfig>) {
+  Object.assign(painter.brush.config, props);
+  // No need to call loadConfig if modifying directly
+}
+```
+
+#### Batch Property Updates
+
+```ts
+// Multiple separate calls - triggers multiple updates
+painter.loadConfig({ color: "#ff0000" });
+painter.loadConfig({ size: 24 });
+painter.loadConfig({ opacity: 0.8 });
+
+// Single call - one update
+painter.loadConfig({
+  color: "#ff0000",
+  size: 24,
+  opacity: 0.8,
+});
+```
+
+### 3. Module Optimization
+
+#### Choose the Right Hook
+
+```ts
+// Expensive - runs for every point
+class ExpensivePointModule implements Module {
+  onChangePoint(point: PurePoint, config: BrushBasicConfig) {
+    // Heavy computation per point
+    return {
+      ...point,
+      size: Math.sqrt(point.x * point.x + point.y * point.y) * 0.01,
+    };
+  }
+}
+
+// More efficient - runs per stroke
+class EfficientStrokeModule implements Module {
+  private strokeStart: Point | null = null;
+
+  onChangePoint(point: Point, config: BrushBasicConfig): Point {
+    // Light work per point
+    if (!this.strokeStart) {
+      this.strokeStart = {
+        ...point,
+        ...{ config: {} as any, opacity: 0, rotation: 0 },
+      };
+    }
+    return point;
+  }
+
+  onChangeConfig(config: BrushBasicConfig, pressure: number): void {
+    // Heavy computation once per stroke
+    if (this.strokeStart) {
+      const dx = point.x - this.strokeStart.x;
+      const dy = point.y - this.strokeStart.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      config.size = Math.min(50, distance * 0.1);
+    }
+  }
+}
+```
+
+#### Minimize Object Creation
+
+```ts
+// Avoid in hot paths
+class BadModule implements Module {
+  onChangePoint(point: PurePoint, config: BrushBasicConfig) {
+    return {
+      x: point.x + Math.random() * 10 - 5,
+      y: point.y + Math.random() * 10 - 5,
+      pressure: point.pressure,
+    }; // Creates new object each time
+  }
+}
+
+// Better approach
+class GoodModule implements Module {
+  private tempPoint: Point = {
+    x: 0,
+    y: 0,
+    pressure: 0,
+    config: {} as any,
+    opacity: 0,
+    rotation: 0,
+  };
+
+  onChangePoint(point: Point, config: BrushBasicConfig): Point {
+    this.tempPoint.x = point.x + Math.random() * 10 - 5;
+    this.tempPoint.y = point.y + Math.random() * 10 - 5;
+    this.tempPoint.pressure = point.pressure;
+    this.tempPoint.config = structuredClone(config); // Still creates object, but less frequently
+    this.tempPoint.opacity = point.opacity;
+    this.tempPoint.rotation = point.rotation ?? 0;
+
+    return this.tempPoint;
+  }
+}
+```
+
+### 4. Event Handling Optimization
+
+#### Coalesced Events
+
+```ts
+// Efficiently handle pointer events
+private handlePointerMove = (e: PointerEvent) => {
+  if (!this.isDrawing) return;
+
+  // Process all coalesced events at once
+  const coalesced = e.getCoalescedEvents?.();
+  const events = coalesced && coalesced.length > 0 ? coalesced : [e];
+
+  for (const event of events) {
+    const point = this.getPoint(event);
+    // Batch process points when possible
+    this.batchPoints.push(point);
+  }
+
+  // Flush batch periodically or when buffer full
+  if (this.batchPoints.length >= 30) {
+    this.flushPointBatch();
+  }
+};
+
+private flushPointBatch() {
+  if (this.batchPoints.length === 0) return;
+
+  // Send all points at once
+  for (const point of this.batchPoints) {
+    this.brush.putPoint(point.x, point.y, point.pressure);
+  }
+
+  this.brush.render();
+  this.batchPoints = [];
+}
+```
+
+#### Throttle Rapid Updates
+
+```ts
+// For UI controls that update brush properties
+let lastUpdate = 0;
+const throttleInterval = 16; // ~60fps
+
+function handleSliderChange(e: Event) {
+  const now = performance.now();
+  if (now - lastUpdate < throttleInterval) return;
+
+  lastUpdate = now;
+  // Update brush properties here
+}
+```
+
+### 5. Memory Management
+
+#### Limit Undo/Redo History
+
+```ts
+const painter = new Canvas({
+  canvas: "#canvas",
+  // ... other options
+  brush: {
+    // ... other brush config
+    maxUndoRedoStackSize: 20, // Limit history to 20 states
+  },
+});
+
+// Or dynamically adjust based on memory usage
+function adjustUndoHistory(painter: Canvas) {
+  // In a real app, you might check memory usage
+  const memoryUsage = performance.memory?.usedJSHeapSize;
+  if (memoryUsage && memoryUsage > 100 * 1024 * 1024) {
+    // 100MB
+    painter.brush.maxUndoRedoStackSize = 10;
+  } else {
+    painter.brush.maxUndoRedoStackSize = 50;
+  }
+}
+```
+
+#### Clean Up Image Resources
+
+```ts
+// When done with an image brush
+async function cleanupImageBrush(painter: Canvas) {
+  await painter.brush.loadImage(""); // Empty string clears
+  // Or
+  painter.brush.removeImage();
+}
+
+// For temporary images
+function useTemporaryImage(url: string) {
+  return new Promise(async (resolve) => {
+    const img = new Image();
+    img.onload = async () => {
+      await painter.brush.loadImage(img);
+      // ... do drawing
+      painter.brush.removeImage(); // Clean up
+      resolve();
+    };
+    img.onerror = () => {
+      painter.brush.removeImage();
+      resolve();
+    };
+    img.src = url;
+  });
+}
+```
+
+## Advanced Optimization Techniques
+
+### 1. Spatial Partitioning for Dense Strokes
+
+For brushes that generate many points (like spray brushes):
+
+```ts
+class OptimizedSpreadModule implements Module {
+  private spatialGrid: Map<string, Point[]> = new Map();
+  private cellSize = 50;
+
+  onChangePoint(point: Point, config: BrushBasicConfig): Point[] {
+    // Add points to spatial grid for efficient lookup
+    const cellX = Math.floor(point.x / this.cellSize);
+    const cellY = Math.floor(point.y / this.cellSize);
+    const key = `${cellX},${cellY}`;
+
+    if (!this.spatialGrid.has(key)) {
+      this.spatialGrid.set(key, []);
+    }
+
+    const cell = this.spatialGrid.get(key)!;
+    cell.push(point);
+
+    // Only return points that need immediate rendering
+    // (e.g., those near the current drawing position)
+    return this.getNearbyPoints(point.x, point.y, 100);
+  }
+
+  private getNearbyPoints(x: number, y: number, radius: number): Point[] {
+    const results: Point[] = [];
+    const cellRadius = Math.ceil(radius / this.cellSize);
+
+    for (let dx = -cellRadius; dx <= cellRadius; dx++) {
+      for (let dy = -cellRadius; dy <= cellRadius; dy++) {
+        const cellX = Math.floor(x / this.cellSize) + dx;
+        const cellY = Math.floor(y / this.cellSize) + dy;
+        const key = `${cellX},${cellY}`;
+
+        const cell = this.spatialGrid.get(key);
+        if (cell) {
+          for (const point of cell) {
+            const dist = Math.sqrt((point.x - x) ** 2 + (point.y - y) ** 2);
+            if (dist <= radius) {
+              results.push(point);
+            }
+          }
+        }
+      }
+    }
+
+    return results;
+  }
+}
+```
+
+### 2. GPU Acceleration Considerations
+
+While Fuderu uses Canvas 2D API, you can optimize for GPU-friendly operations:
+
+```ts
+// Prefer these operations (GPU-friendly):
+// - drawImage
+// - fillRect/strokeRect
+// - simple paths (rectangles, circles)
+// - globalAlpha changes
+// - simple color changes
+
+// Avoid these when possible (can be CPU-intensive):
+// - complex paths with many points
+// - frequent clip operations
+// - pixel-by-pixel manipulation (getImageData/putImageData)
+// - complex shadows/blurs
+```
+
+### 3. RequestAnimationFrame Alignment
+
+Align your rendering with the display refresh rate:
+
+```ts
+class FrameAlignedBrush {
+  private needsRender = false;
+  private animationFrameId: number = 0;
+
+  private renderLoop = () => {
+    if (this.needsRender) {
+      this.brush.render();
+      this.needsRender = false;
+    }
+    this.animationFrameId = requestAnimationFrame(this.renderLoop);
+  };
+
+  start() {
+    this.cancel(); // Ensure clean state
+    this.animationFrameId = requestAnimationFrame(this.renderLoop);
+  }
+
+  stop() {
+    this.cancel();
+  }
+
+  private cancel() {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = 0;
+    }
+  }
+
+  // Call this instead of brush.render() directly
+  queueRender() {
+    this.needsRender = true;
+  }
+}
+```
+
+## Device-Specific Optimizations
+
+### Mobile Devices
+
+```ts
+function optimizeForMobile(painter: Canvas) {
+  // Reduce quality for better performance on mobile
+  if (/Mobi|Android/i.test(navigator.userAgent)) {
+    // Lower quality settings
+    painter.brush.isSmooth = false; // Disable expensive smoothing
+    painter.brush.isSpacing = false; // Disable spacing calculations
+
+    // Reduce texture sizes for image brushes
+    // ...
+
+    // Lower undo history limits
+    painter.brush.maxUndoRedoStackSize = 10;
+  }
+}
+```
+
+### High-DPI Displays
+
+```ts
+function optimizeForHiDPI(painter: Canvas) {
+  const dpr = window.devicePixelRatio || 1;
+
+  if (dpr > 2) {
+    // On very high DPI screens, consider lowering internal resolution
+    // to maintain performance while keeping visual quality acceptable
+    const scaleFactor = 1.5; // Render at 1.5x instead of 2x or 3x
+    const baseWidth = Math.round(window.innerWidth * scaleFactor);
+    const baseHeight = Math.round(window.innerHeight * scaleFactor);
+
+    painter.setDocumentSize(baseWidth, baseHeight);
+
+    // Scale up visually via CSS
+    painter.canvas.style.width = `${window.innerWidth}px`;
+    painter.canvas.style.height = `${window.innerHeight}px`;
+  }
+}
+```
+
+## Testing Performance
+
+### Synthetic Benchmarks
+
+Create standardized tests for different brush configurations:
+
+```ts
+function benchmarkBrushStroke(
+  painter: Canvas,
+  strokePoints: Array<{ x: number; y: number; pressure: number }>,
+  iterations = 5,
+): number {
+  const times: number[] = [];
+
+  for (let i = 0; i < iterations; i++) {
+    // Clear canvas
+    painter.clear();
+
+    const start = performance.now();
+
+    // Simulate the stroke
+    for (const point of strokePoints) {
+      painter.brush.putPoint(point.x, point.y, point.pressure);
+    }
+
+    painter.brush.render();
+
+    const end = performance.now();
+    times.push(end - start);
+
+    // Brief pause between iterations
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+
+  const average = times.reduce((a, b) => a + b, 0) / times.length;
+  return average;
+}
+```
+
+### Real-World Usage Testing
+
+Simulate common user interactions:
+
+1. **Quick strokes** (tapping, clicking)
+2. **Long continuous lines** (drawing, writing)
+3. **Complex patterns** (circles, spirals)
+4. **Pressure variations** (light to heavy)
+5. **Rapid property changes** (color, size switching)
+
+## Monitoring in Production
+
+### Performance Metrics Collection
+
+```ts
+// Collect and report performance metrics
+class PerformanceMonitor {
+  private frameTimes: number[] = [];
+  private readonly maxSamples = 100;
+
+  start() {
+    this.lastFrame = performance.now();
+    requestAnimationFrame(this.frameLoop.bind(this));
+  }
+
+  private frameLoop() {
+    const now = performance.now();
+    const frameTime = now - this.lastFrame;
+    this.lastFrame = now;
+
+    this.frameTimes.push(frameTime);
+    if (this.frameTimes.length > this.maxSamples) {
+      this.frameTimes.shift();
+    }
+
+    // Report every second
+    if (performance.now() - this.lastReport > 1000) {
+      this.reportMetrics();
+      this.lastReport = performance.now();
+    }
+
+    requestAnimationFrame(this.frameLoop.bind(this));
+  }
+
+  private reportMetrics() {
+    if (this.frameTimes.length === 0) return;
+
+    const avgFrameTime =
+      this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
+    const fps = 1000 / avgFrameTime;
+
+    // Send to your analytics service
+    // analytics.track('performance', { fps, avgFrameTime });
+
+    // Also log to console in development
+    if (import.meta.env.DEV) {
+      console.debug(
+        `Performance: ${fps.toFixed(1)} FPS, ${avgFrameTime.toFixed(2)}ms/frame`,
+      );
+    }
+  }
+}
+```
+
+### User-Reported Performance Issues
+
+Provide way for users to report performance problems:
+
+```ts
+function reportPerformanceIssue() {
+  // Collect relevant info
+  const report = {
+    timestamp: Date.now(),
+    userAgent: navigator.userAgent,
+    screenResolution: `${window.screen.width}x${window.screen.height}`,
+    devicePixelRatio: window.devicePixelRatio,
+    // Add any app-specific state
+  };
+
+  // Send to feedback system
+  // feedbackService.submitIssue('performance', report);
+}
+```
+
+## Common Performance Pitfalls and Fixes
+
+### 1. Excessive Point Generation
+
+**Problem:** Brushes generating hundreds of points per stroke
+**Solutions:**
+
+- Implement distance-based sampling
+- Use adaptive sampling based on curvature
+- Limit maximum points per stroke
+
+### 2. Inefficient Blend Modes
+
+**Problem:** Using expensive blend modes unnecessarily
+**Solutions:**
+
+- Reserve complex blend modes for special effects
+- Consider simpler alternatives for common use cases
+- Allow users to disable expensive blend modes
+
+### 3. Unnecessary Redraws
+
+**Problem:** Redrawing entire canvas when only small area changed
+**Solutions:**
+
+- Implement dirty rectangle tracking
+- Use partial updates when possible
+- Only redraw affected layers
+
+### 4. Blocking the Main Thread
+
+**Problem:** Long-running JS operations blocking UI
+**Solutions:**
+
+- Use `requestIdleCallback` for non-urgent work
+- Web Workers for heavy computations
+- Break large operations into chunks
+
+## Performance Budgets
+
+| Device Tier              | Target FPS | Max Frame Time | Max Canvas Size |
+| ------------------------ | ---------- | -------------- | --------------- |
+| High-end Desktop         | `60 FPS`   | `≤16.7ms`      | `4096x4096`     |
+| Mid-range Desktop/Laptop | `30 FPS`   | `≤33.3ms`      | `2048x2048`     |
+| Mobile High-end          | `30 FPS`   | `≤33.3ms`      | `1024x1024`     |
+| Mobile Low-end           | `20 FPS`   | `≤50ms`        | `512x512`       |
+
+### Implementing Budgets
+
+```ts
+function checkPerformanceBudget(metrics: {
+  frameTime: number;
+  canvasWidth: number;
+  canvasHeight: number;
+}) {
+  const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+  const isLowEnd = /* determine based on device */;
+
+  let maxFrameTime: number;
+  let maxCanvasSize: number;
+
+  if (isLowEnd) {
+    maxFrameTime = 50; // 20 FPS
+    maxCanvasSize = 512;
+  } else if (isMobile) {
+    maxFrameTime = 33.3; // 30 FPS
+    maxCanvasSize = 1024;
+  } else {
+    // Desktop
+    maxFrameTime = 16.7; // 60 FPS
+    maxCanvasSize = 4096;
+  }
+
+  const violations = [];
+
+  if (metrics.frameTime > maxFrameTime) {
+    violations.push(`Frame time ${metrics.frameTime.toFixed(2)}ms exceeds budget of ${maxFrameTime}ms`);
+  }
+
+  if (Math.max(metrics.canvasWidth, metrics.canvasHeight) > maxCanvasSize) {
+    violations.push(`Canvas size exceeds budget of ${maxCanvasSize}px`);
+  }
+
+  if (violations.length > 0) {
+    console.warn('Performance budget violations:', violations);
+    // Optionally trigger quality reductions
+  }
+}
+```
+
+## When to Optimize
+
+Remember Knuth's famous quote: "Premature optimization is the root of all evil." Follow this optimization workflow:
+
+1. **Make it work** - Implement functionality correctly first
+2. **Make it right** - Ensure code is clean and maintainable
+3. **Make it fast** - Only then optimize based on measurements
+
+### Optimization Checklist
+
+- [ ] Have you measured the actual performance bottleneck?
+- [ ] Is the optimization addressing the real issue?
+- [ ] Does the optimization make the code significantly harder to maintain?
+- [ ] Have you tested the optimization on target devices?
+- [ ] Does the optimization provide meaningful user benefit?
+
+## Resources
+
+- [MDN Web Docs: Optimizing your JavaScript code](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Performance)
+- [HTML5 Rocks: Instant rendering with Google's Infinite Dashboard](https://www.html5rocks.com/en/tutorials/canvas/performance/)
+- [Google Web Fundamentals: Rendering Performance](https://developers.google.com/web/fundamentals/performance/rendering/)
+- [Browser DevTools Performance Panel](https://developer.chrome.com/docs/devtools/evaluate-performance/)
+
+Remember: The best performance optimization is often doing less work. Before optimizing a specific path, ask if that work is truly necessary for the user experience.

@@ -1,0 +1,82 @@
+---
+sidebar_position: 7
+title: Blend Modes
+hide_table_of_contents: false
+sidebar_label: Blend Modes
+---
+
+# Blend Modes (`BlendMode` type)
+
+`BlendMode` is a union type that maps directly to the HTMLCanvasElement `globalCompositeOperation` values supported by Fuderu. It determines how a layer’s pixels combine with the layers beneath it.
+
+```ts
+import type { BlendMode } from "fuderu";
+```
+
+## Type Definition
+
+```ts
+export type BlendMode =
+  | "source-over"
+  | "multiply"
+  | "screen"
+  | "overlay"
+  | "darken"
+  | "lighten"
+  | "color-dodge"
+  | "color-burn"
+  | "hard-light"
+  | "soft-light"
+  | "difference"
+  | "exclusion"
+  | "hue"
+  | "saturation"
+  | "color"
+  | "luminosity";
+```
+
+## Visual Reference
+
+| Mode          | Description                                                                   |
+| ------------- | ----------------------------------------------------------------------------- |
+| `source-over` | Default – normal stacking (source over destination).                          |
+| `multiply`    | Multiplies the colors; result is always darker.                               |
+| `screen`      | Inverts, multiplies, then inverts; result is always lighter.                  |
+| `overlay`     | Combines multiply and screen – light parts become lighter, dark parts darker. |
+| `darken`      | Keeps the darker of the source or destination.                                |
+| `lighten`     | Keeps the lighter of the source or destination.                               |
+| `color-dodge` | Brightens the destination to reflect the source.                              |
+| `color-burn`  | Darkens the destination to reflect the source.                                |
+| `hard-light`  | Similar to overlay but with source and destination swapped.                   |
+| `soft-light`  | A softer version of hard‑light.                                               |
+| `difference`  | Subtracts the darker color from the lighter (producing high contrast).        |
+| `exclusion`   | Like difference but with lower contrast.                                      |
+| `hue`         | Uses the hue of the source, with saturation and luminosity of destination.    |
+| `saturation`  | Uses the saturation of the source, with hue and luminosity of destination.    |
+| `color`       | Uses hue and saturation of the source, luminosity of destination.             |
+| `luminosity`  | Uses luminosity of the source, with hue and saturation of destination.        |
+
+## Usage Example
+
+```ts
+import { Canvas } from "fuderu";
+
+const painter = new Canvas({
+  canvas: "#myCanvas",
+  document: { width: 1024, height: 768 },
+});
+
+// Add a base color layer
+const base = painter.createLayer({
+  name: "Base Color",
+  blendMode: "source-over",
+});
+// … draw your base colors …
+
+// Add a shading layer that darkens the base
+const shade = painter.createLayer({
+  name: "Shading",
+  blendMode: "multiply",
+});
+// … draw shadows with a dark color …
+```

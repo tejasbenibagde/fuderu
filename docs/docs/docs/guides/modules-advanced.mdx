@@ -1,0 +1,449 @@
+---
+sidebar_position: 10
+title: Advanced Modules
+hide_table_of_contents: true
+sidebar_label: Advanced Modules
+---
+
+# Advanced Modules
+
+This guide dives deep into the module system, covering advanced patterns, performance optimization, and custom module development.
+
+## Module Performance Deep Dive
+
+Understanding the performance characteristics of different modules system is crucial for building high-performance drawing applications.
+
+### Execution Pipeline
+
+Modules are executed in this order for each point in a stroke:
+
+1. `onChangePoint` - Modifies or generates points
+2. `onChangeConfig` - Modifies brush configuration per stroke
+3. During rendering: `onMixinCanvas` - Modifies the stroke canvas before blending
+
+Each module in the chain adds computational overhead. Understanding where the bottlenecks occur helps optimize performance.
+
+### Performance Characteristics by Module Type
+
+| Module Type                                                | Typical Cost per Point | Best Practices                                   |
+| ---------------------------------------------------------- | ---------------------- | ------------------------------------------------ |
+| **None** (no modification)                                 | Minimal                | N/A                                              |
+| **Simple property modifiers** (size, angle, opacity)       | Low                    | Prefer `onChangeConfig` over `onChangePoint`     |
+| **Position modifiers** (jitter, scatter)                   | Medium                 | Use sparingly, avoid in high-frequency scenarios |
+| **Canvas modifiers** (filters, blending)                   | High                   | Execute less frequently when possible            |
+| **Point generators** (spray, scatter with multiple points) | High                   | Limit point count, consider spatial partitioning |
+
+### Benchmarking Your Modules
+
+Create a simple benchmark to measure module performance:
+
+```ts
+function benchmarkModule(module: Module, iterations = 10000) {
+  const start = performance.now();
+
+  const config: BrushBasicConfig = {
+    size: 20,
+    opacity: 1,
+    flow: 1,
+    color: "#000000",
+    angle: 0,
+    roundness: 1,
+    spacing: 0.12,
+    eraser: false,
+  };
+
+  const point: PurePoint = { x: 100, y: 100, pressure: 0.5 };
+
+  for (let i = 0; i < iterations; i++) {
+    if (module.onChangePoint) {
+      module.onChangePoint(point, structuredClone(config));
+    }
+    if (module.onChangeConfig) {
+      module.onChangeConfig(structuredClone(config), 0.5);
+    }
+  }
+
+  const end = performance.now();
+  return {
+    totalTime: end - start,
+    avgPerPoint: (end - start) / iterations,
+    operationsPerSecond: iterations / ((end - start) / 1000),
+  };
+}
+```
+
+## Advanced Module Patterns
+
+### State Management in Modules
+
+Modules can maintain internal state for advanced effects:
+
+```ts
+class NoiseFieldModule implements Module {
+  private noiseCache: Map<string, number> = new Map();
+  private cellSize = 50;
+
+  constructor(private scale: number = 0.1) {}
+
+  onChangePoint(point: PurePoint, config: BrushBasicConfig): PurePoint {
+    // Create deterministic noise based on position
+    const cellX = Math.floor(point.x / this.cellSize);
+    const cellY = Math.floor(point.y / this.cellSize);
+    const key = `${cellX},${cellY}`;
+
+    if (!this.noiseCache.has(key)) {
+      // Generate noise value for this cell (in real implementation, use noise library)
+      const noise = Math.sin(cellX * 0.1) * Math.cos(cellY * 0.1);
+      this.noiseCache.set(key, noise);
+    }
+
+    const noise = this.noiseCache.get(key) || 0;
+
+    return {
+      ...point,
+      x: point.x + noise * this.scale * 10,
+      y: point.y + noise * this.scale * 10,
+    };
+  }
+}
+```
+
+### Conditional Module Application
+
+Apply modules conditionally based on stroke characteristics:
+
+```ts
+class AdaptiveModule implements Module {
+  private strokeStartTime = 0;
+  private pointCount = 0;
+
+  onChangePoint(point: PurePoint, config: BrushBasicConfig): PurePoint {
+    // Track stroke characteristics
+    if (this.pointCount === 0) {
+      this.startTime = performance.now();
+    }
+    this.pointCount++;
+
+    const strokeDuration = performance.now() - this.strokeStartTime;
+    const pointDensity = this.pointCount / Math.max(strokeDuration, 1);
+
+    // Apply different effects based on drawing speed
+    if (pointDensity > 10) {
+      // Fast drawing - add motion blur effect
+      return {
+        ...point,
+        opacity: point.opacity * 0.7,
+      };
+    } else {
+      // Slow drawing - add detail enhancement
+      return {
+        ...point,
+        size: point.size * 1.2,
+      };
+    }
+  }
+
+  onEndStroke(): void {
+    // Reset for next stroke
+    this.pointCount = 0;
+  }
+}
+```
+
+### Modular Pipeline Pattern
+
+Complex effects can be built by chaining simpler modules:
+
+```ts
+// Instead of one complex module, use multiple simple ones
+class PressureSmoothModule implements Module {
+  onChangeConfig(config: BrushBasicConfig, pressure: number): void {
+    // Smooth size transition based on pressure
+    // ...implementation
+  }
+}
+
+class PressureOpacityModule implements Module {
+  onChangeConfig(config: BrushBasicConfig, pressure: number): void {
+    // Adjust opacity with pressure
+    // ...implementation
+  }
+}
+
+// Use both together for a natural brush feel
+brush.useModule(new PressureSmoothModule());
+brush.useModule(new PressureOpacityModule());
+```
+
+## Memory Management
+
+### Avoiding Memory Leaks
+
+Modules that allocate resources must clean them up properly:
+
+```ts
+class TextureModule implements Module {
+  private textureCanvas: HTMLCanvasElement | null = null;
+
+  onMixinCanvas(
+    strokeCanvas: HTMLCanvasElement,
+    strokeContext: CanvasRenderingContext2D,
+  ): [HTMLCanvasElement, CanvasRenderingContext2D] {
+    if (!this.textureCanvas) {
+      this.textureCanvas = this.createTexture();
+    }
+
+    // Apply texture...
+    return [strokeCanvas, strokeContext];
+  }
+
+  onEndStroke(): void {
+    // Clean up resources when stroke ends
+    if (this.textureCanvas) {
+      this.textureCanvas.remove();
+      this.textureCanvas = null;
+    }
+  }
+
+  private createTexture(): HTMLCanvasElement {
+    // Create and return texture canvas
+    const canvas = document.createElement("canvas");
+    // ... initialize texture
+    return canvas;
+  }
+}
+```
+
+### Garbage Collection Considerations
+
+Minimize object creation in hot paths:
+
+```ts
+// ❌ Avoid - creates new objects every call
+class BadModule implements Module {
+  onChangePoint(point: PurePoint, config: BrushBasicConfig): Point {
+    return {
+      x: point.x + Math.random(),
+      y: point.y + Math.random(),
+      pressure: point.pressure,
+    };
+  }
+}
+
+// ✅ Better - reuse objects when possible
+class GoodModule implements Module {
+  private tempPoint: Point = {
+    x: 0,
+    y: 0,
+    pressure: 0,
+    config: {} as any,
+    opacity: 0,
+    rotation: 0,
+  };
+
+  onChangePoint(point: Point, config: BrushBasicConfig): Point {
+    this.tempPoint.x = point.x + (Math.random() - 0.5) * 2;
+    this.tempPoint.y = point.y + (Math.random() - 0.5) * 2;
+    this.tempPoint.pressure = point.pressure;
+    this.tempPoint.config = structuredClone(config);
+    this.tempPoint.opacity = point.opacity;
+    this.tempPoint.rotation = point.rotation ?? 0;
+
+    return this.tempPoint;
+  }
+}
+```
+
+## Advanced Combination Patterns
+
+### Layered Effects
+
+Create complex visual effects by layering multiple simple modules:
+
+```ts
+// Create a "wet ink" effect
+const wetInkBrush = new Brush(canvas, { color: "#000000", size: 12 });
+
+// Base shape variation
+wetInkBrush.useModule(
+  new DynamicShapeModule({
+    sizeJitter: 0.3,
+    sizeJitterTrigger: "pressure",
+    roundJitter: 0.2,
+    roundJitterTrigger: "pressure",
+  }),
+);
+
+// Flow variation for wet/dry edges
+wetInkBrush.useModule(
+  new DynamicTransparencyModule({
+    flowJitter: 0.4,
+    flowJitterTrigger: "pressure",
+    minFlowJitter: 0.3,
+  }),
+);
+
+// Light scattering for wet look
+wetInkBrush.useModule(
+  new SpreadModule({
+    spreadRange: 0.15,
+    count: 8,
+    countJitter: 0.5,
+  }),
+);
+
+// Paper texture interaction
+wetInkBrush.useModule(
+  new PatternModule({
+    scale: 0.8,
+    contrast: 12,
+    blendMode: "color-burn",
+  }),
+);
+
+// Build up ink density slowly
+wetInkBrush.useModule(
+  new DynamicTransparencyModule({
+    opacityJitter: 0.3,
+    opacityJitterTrigger: "pressure",
+    minOpacityJitter: 0.4,
+  }),
+);
+```
+
+### Feedback Systems
+
+Create modules that respond to the canvas state:
+
+```ts
+class WetEdgeModule implements Module {
+  private lastPoints: Point[] = [];
+  private readonly historySize = 10;
+
+  onChangePoint(point: Point, config: BrushBasicConfig): Point[] {
+    // Add current point to history
+    this.lastPoints.push(point);
+    if (this.lastPoints.length > this.historySize) {
+      this.lastPoints.shift();
+    }
+
+    // If we have enough history, create a wet edge effect
+    if (this.lastPoints.length >= 3) {
+      const results: Point[] = [point];
+
+      // Add fading trail points
+      for (let i = 0; i < this.lastPoints.length - 1; i++) {
+        const alpha = (i + 1) / this.lastPoints.length;
+        results.push({
+          ...this.lastPoints[i],
+          opacity: this.lastPoints[i].opacity * alpha * 0.5,
+        });
+      }
+
+      return results;
+    }
+
+    return [point];
+  }
+}
+```
+
+## Debugging and Visualization
+
+### Module Debug Visualization
+
+Create debug versions of modules that visualize their effects:
+
+```ts
+class DebugModule implements Module {
+  constructor(
+    private originalModule: Module,
+    private debugCanvas: HTMLCanvasElement,
+  ) {}
+
+  onChangePoint(
+    point: PurePoint,
+    config: BrushBasicConfig,
+  ): PurePoint | PurePoint[] {
+    // Log the transformation
+    console.log("Input:", point);
+    const result = this.originalModule.onChangePoint?.(point, config) || point;
+    console.log("Output:", result);
+    return result;
+  }
+
+  // Delegate all other methods to the original module
+  onChangeConfig?(config: BrushBasicConfig, pressure: number): void {
+    return this.originalModule.onChangeConfig?.(config, pressure);
+  }
+
+  onMixinCanvas?(
+    strokeCanvas: HTMLCanvasElement,
+    strokeContext: CanvasRenderingContext2D,
+  ): [HTMLCanvasElement, CanvasRenderingContext2D] {
+    return (
+      this.originalModule.onMixinCanvas?.(strokeCanvas, strokeContext) || [
+        strokeCanvas,
+        strokeContext,
+      ]
+    );
+  }
+
+  onEndStroke?(): void {
+    return this.originalModule.onEndStroke?.();
+  }
+}
+```
+
+### Performance Profiling Integration
+
+Integrate with browser performance APIs:
+
+```ts
+class ProfiledModule implements Module {
+  constructor(
+    private originalModule: Module,
+    private name: string,
+  ) {}
+
+  onChangePoint(point: PurePoint, config: BrushBasicConfig): Point | Point[] {
+    const start = performance.now();
+    const result = this.originalModule.onChangePoint?.(point, config) || point;
+    const end = performance.now();
+
+    // Log to console or send to analytics
+    console.debug(`Module ${this.name} took ${(end - start).toFixed(2)}ms`);
+
+    return result;
+  }
+
+  // Similar implementations for other methods...
+}
+```
+
+## Best Practices Summary
+
+### Do:
+
+1. **Keep hot paths fast** - Minimize work in `onChangePoint`
+2. **Use object pooling** - Reuse temporary objects when possible
+3. **Batch operations** - Precompute values that don't change per point
+4. **Profile regularly** - Use the browser's performance tools
+5. **Test edge cases** - Empty strokes, single points, very long strokes
+6. **Document assumptions** - Make clear what your module expects
+
+### Don't:
+
+1. **Allocate objects in loops** - Especially in `onChangePoint`
+2. **Do expensive operations per point** - Like image processing or complex math
+3. **Hold references to canvas elements** - Unless necessary for your function
+4. **Assume stroke continuity** - Handle gaps and jumps gracefully
+5. **Ignore pressure variations** - Test with min/max pressure values
+6. **Modify input objects directly** - Always clone when necessary
+
+## Next Steps
+
+- Explore the [Module API Reference](../api/modules.mdx) for complete interface details
+- Check out the [Performance Guide](../guides/performance.mdx) for broader optimization strategies
+- Look at the [Examples](../examples/) for real-world implementations of advanced modules
+- Experiment with the [Module Playground](../examples/modules-demo.mdx) to test your ideas

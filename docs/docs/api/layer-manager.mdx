@@ -1,0 +1,151 @@
+---
+sidebar_position: 5
+title: LayerManager
+hide_table_of_contents: false
+sidebar_label: LayerManager
+---
+
+# LayerManager API
+
+`LayerManager` manages the stack of `[Layer]` objects, handles active layer tracking, and provides layer creation, deletion, duplication, reordering, and property updates.
+
+```ts
+import { LayerManager } from "fuderu";
+```
+
+## Constructor
+
+```ts
+new LayerManager(width: number, height: number);
+```
+
+Creates a manager with a base "Background" layer sized to the given dimensions.
+
+## Properties
+
+### `layers: Layer[]` (read‑only via `getAll()`)
+
+Returns a **readonly** array of all layers ordered from bottom (index 0) to top.
+
+### `activeLayerId: string | null` (read‑only via `getActiveId()`)
+
+The ID of the currently active layer, or `null` if no layers exist.
+
+## Methods
+
+### `getAll(): readonly Layer[]`
+
+Returns a shallow‑copy, read‑only array of all layers.
+
+### `getActive(): Layer`
+
+Returns the currently active layer. Throws if no active layer exists.
+
+### `getActiveId(): string | null`
+
+Returns the ID of the active layer.
+
+### `setActive(layerId: string): void`
+
+Sets the layer with the given ID as the active layer. Throws if the layer does not exist.
+
+### `createLayer(options?: CreateLayerOptions | string): Layer`
+
+Creates a new layer, adds it to the top of the stack, and sets it as active.
+
+#### Options
+
+| Property     | Type        | Description                                        |
+| ------------ | ----------- | -------------------------------------------------- |
+| `id?`        | `string`    | Unique ID; if omitted a UUID is generated.         |
+| `name?`      | `string`    | Layer name (defaults to `"Layer"`).                |
+| `visible?`   | `boolean`   | Visibility (defaults to `true`).                   |
+| `opacity?`   | `number`    | Opacity `0‑1` (defaults to `1`).                   |
+| `blendMode?` | `BlendMode` | Composite operation (defaults to `"source-over"`). |
+
+You can also pass a string directly to create a layer with just a name:
+
+```ts
+const layer = painter.layers.createLayer("Line Art");
+```
+
+### `deleteLayer(layerId: string): void`
+
+Removes the layer with the given ID. Throws if attempting to delete the last remaining layer. If the deleted layer was active, the next layer below (or topmost if none) becomes active.
+
+### `duplicateLayer(layerId: string): Layer`
+
+Duplicates the specified layer (copies its current canvas content), inserts the copy directly after the original, and makes the copy the active layer. Returns the new `Layer` instance.
+
+### `moveLayer(layerId: string, targetIndex: number): void`
+
+Moves the layer with `layerId` to the position `targetIndex` (0‑based, bottom = 0). The index is clamped to the valid range `[0, layers.length‑1]`.
+
+### `updateLayer(layerId: string, options: UpdateLayerOptions): Layer`
+
+Updates the layer’s properties and returns the layer instance.
+
+#### Options
+
+| Property     | Type        | Description              |
+| ------------ | ----------- | ------------------------ |
+| `name?`      | `string`    | New layer name.          |
+| `visible?`   | `boolean`   | New visibility.          |
+| `opacity?`   | `number`    | New opacity `0‑1`.       |
+| `blendMode?` | `BlendMode` | New composite operation. |
+
+### `getById(layerId: string): Layer`
+
+Returns the layer with the given ID, or throws if not found.
+
+### `resize(width: number, height: number): void`
+
+Resizes **all** layers’ internal canvases to the new dimensions. Called automatically by the `Canvas` wrapper when the drawing buffer changes size.
+
+### `clear(): void`
+
+Clears the drawing buffer of every layer (calls `clear()` on each).
+
+### `clearActiveLayer(): void`
+
+Clears only the currently active layer’s drawing buffer.
+
+## Interfaces
+
+### `CreateLayerOptions`
+
+See the `createLayer` method description.
+
+### `UpdateLayerOptions`
+
+See the `updateLayer` method description.
+
+## Usage Example
+
+```ts
+import { LayerManager } from "fuderu";
+
+const layerManager = new LayerManager(1024, 768);
+
+// Add a sketch layer with multiply blend mode
+const sketch = layerManager.createLayer({
+  name: "Sketch",
+  opacity: 0.8,
+  blendMode: "multiply",
+});
+
+// Get all layers
+const all = layerManager.getAll();
+
+// Switch to the background layer
+layerManager.setActive(all[0].id);
+
+// Duplicate the sketch layer
+const sketchCopy = layerManager.duplicateLayer(sketch.id);
+
+// Move the copy to the bottom (index 0)
+layerManager.moveLayer(sketchCopy.id, 0);
+
+// Update the original sketch layer
+layerManager.updateLayer(sketch.id, { name: "Final Sketch", visible: true });
+```

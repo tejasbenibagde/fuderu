@@ -1,0 +1,962 @@
+---
+sidebar_position: 9
+title: Svelte Integration
+hide_table_of_contents: true
+sidebar_label: Svelte
+---
+
+# Svelte Integration Guide
+
+This guide covers best practices for integrating Fuderu with Svelte applications, including stores, component patterns, and performance optimization.
+
+## Basic Setup
+
+### Installation
+
+```bash
+npm install fuderu
+# or
+yarn add fuderu
+```
+
+### Basic Usage
+
+```svelte
+<script>
+  import { onMount, onDestroy } from 'svelte';
+  import { Canvas } from 'fuderu';
+
+  let canvas;
+  let painter = null;
+
+  onMount(() => {
+    if (!canvas) return;
+
+    painter = new Canvas({
+      canvas,
+      document: {
+        width: 800,
+        height: 600
+      }
+    });
+  });
+
+  onDestroy(() => {
+    if (painter) {
+      painter.destroy();
+      painter = null;
+    }
+  });
+</script>
+
+<canvas bind:this={canvas} width="800" height="600" />
+```
+
+## Stores
+
+### Canvas Store
+
+Create a reusable store for canvas management:
+
+```js
+// stores/canvas.js
+import { writable } from "svelte/store";
+import { Canvas } from "fuderu";
+
+export function createCanvasStore(options = {}) {
+  const { subscribe, set, update } = writable({
+    canvas: null,
+    painter: null,
+    width: options.width ?? 800,
+    height: options.height ?? 600,
+    brushConfig: options.brushConfig ?? {},
+  });
+
+  let painterInstance = null;
+
+  return {
+    subscribe,
+    setCanvasElement: (canvasElement) => {
+      update((state) => ({ ...state, canvas: canvasElement }));
+      initialize(canvasElement);
+    },
+    setSize: (width, height) => {
+      update((state) => ({
+        ...state,
+        width,
+        height,
+      }));
+      resizeCanvas(width, height);
+    },
+    updateBrushConfig: (newConfig) => {
+      update((state) => ({
+        ...state,
+        brushConfig: { ...state.brushConfig, ...newConfig },
+      }));
+      applyBrushConfig(newConfig);
+    },
+    getPainter: () => painterInstance,
+    destroy: () => {
+      if (painterInstance) {
+        painterInstance.destroy();
+        painterInstance = null;
+      }
+      update((state) => ({ ...state, painter: null }));
+    },
+  };
+
+  function initialize(canvasElement) {
+    if (!canvasElement) return;
+
+    // Clean up existing instance
+    if (painterInstance) {
+      painterInstance.destroy();
+    }
+
+    // Create new instance
+    const { width, height, brushConfig } = getStoreValue();
+    painterInstance = new Canvas({
+      canvas: canvasElement,
+      document: { width, height },
+      brush: brushConfig,
+    });
+
+    update((state) => ({ ...state, painter: painterInstance }));
+  }
+
+  function resizeCanvas(width, height) {
+    if (painterInstance) {
+      painterInstance.setDocumentSize(width, height);
+    }
+  }
+
+  function applyBrushConfig(newConfig) {
+    if (painterInstance) {
+      Object.assign(painterInstance.brush.config, newConfig);
+    }
+  }
+
+  // Helper to get current store value
+  function getStoreValue() {
+    let value;
+    const unsub = subscribe((val) => {
+      value = val;
+    })();
+    unsub();
+    return value;
+  }
+}
+
+// Usage in components:
+// import { canvasStore } from './stores/canvas';
+// canvasStore.setCanvasElement(canvas);
+```
+
+### Brush Controls Store
+
+```js
+// stores/brushControls.js
+import { writable } from "svelte/store";
+
+export function createBrushStore(initialValues = {}) {
+  const { subscribe, set, update } = writable({
+    size: 20,
+    color: "#000000",
+    opacity: 1,
+    flow: 1,
+    angle: 0,
+    roundness: 1,
+    spacing: 0.12,
+    eraser: false,
+    ...initialValues,
+  });
+
+  return {
+    subscribe,
+    setSize: (size) => update((s) => ({ ...s, size })),
+    setColor: (color) => update((s) => ({ ...s, color })),
+    setOpacity: (opacity) => update((s) => ({ ...s, opacity })),
+    setFlow: (flow) => update((s) => ({ ...s, flow })),
+    setAngle: (angle) => update((s) => ({ ...s, angle })),
+    setRoundness: (roundness) => update((s) => ({ ...s, roundness })),
+    setSpacing: (spacing) => update((s) => ({ ...s, spacing })),
+    setEraser: (isEraser) => update((s) => ({ ...s, eraser: isEraser })),
+    reset: () =>
+      set({
+        size: 20,
+        color: "#000000",
+        opacity: 1,
+        flow: 1,
+        angle: 0,
+        roundness: 1,
+        spacing: 0.12,
+        eraser: false,
+      }),
+  };
+}
+```
+
+## Component Patterns
+
+### DrawingCanvas Component
+
+```svelte
+<!-- DrawingCanvas.svelte -->
+<script>
+  import { onMount, onDestroy } from 'svelte';
+  import { Canvas } from 'fuderu';
+  import { brushStore } from './stores/brushStore';
+
+  export let width = 800;
+  let height = 600;
+  let canvas;
+  let painter = null;
+
+  // Subscribe to brush store
+  let brushUnsubscribe;
+
+  onMount(() => {
+    brushUnsubscribe = brushStore.subscribe((brushConfig) => {
+      if (painter) {
+        Object.assign(painter.brush.config, brushConfig);
+      }
+    });
+
+    if (!canvas) return;
+
+    painter = new Canvas({
+      canvas,
+      document: { width, height }
+    });
+  });
+
+  onDestroy(() => {
+    if (brushUnsubscribe) brushUnsubscribe();
+    if (painter) {
+      painter.destroy();
+      painter = null;
+    }
+  });
+
+  // Handle resize
+  function handleResize() {
+    if (painter) {
+      // Update dimensions from canvas size
+      const rect = canvas.getBoundingClientRect();
+      height = rect.height;
+      // Width is typically fixed or controlled externally
+      painter.setDocumentSize(rect.width, rect.height);
+    }
+  }
+</script>
+
+<canvas
+  bind:this={canvas}
+  width={width}
+  height={height}
+  on:resize={handleResize}
+/>
+```
+
+### Brush Controls Component
+
+```svelte
+<!-- BrushControls.svelte -->
+<script>
+  import { brushStore } from './stores/brushStore';
+
+  // Create writable aliases for two-way binding
+  export let size = 20;
+  export let color = '#000000';
+  export let opacity = 1;
+  export let isEraser = false;
+
+  // Synchronize with store
+  $: if ($brushStore) {
+    size = $brushStore.size;
+    color = $brushStore.color;
+    opacity = $brushStore.opacity;
+    isEraser = $brushStore.eraser;
+  }
+
+  // Update store when local values change
+  function updateBrush() {
+    brushStore.update($brushStore => ({
+      ...$brushStore,
+      size,
+      color,
+      opacity,
+      eraser: isEraser
+    }));
+  }
+</script>
+
+<div class="brush-controls">
+  <div class="control-group">
+    <label>Color:</label>
+    <input type="color" bind:value={color} on:input={updateBrush} />
+  </div>
+
+  <div class="control-group">
+    <label>Size:</label>
+    <input type="range" min="1" max="100" bind:value={size} on:input={updateBrush} />
+    <span>{size}px</span>
+  </div>
+
+  <div class="control-group">
+    <label>Opacity:</label>
+    <input type="range" min="0" max="1" step="0.01" bind:value={opacity} on:input={updateBrush} />
+    <span>{(opacity * 100).toFixed(0)}%</span>
+  </div>
+
+  <div class="control-group">
+    <label>
+      <input type="checkbox" bind:checked={isEraser} on:change={updateBrush} />
+      Eraser
+    </label>
+  </div>
+</div>
+```
+
+### Layer Manager Component
+
+```svelte
+<!-- LayerManager.svelte -->
+<script>
+  import { writable } from 'svelte/store';
+
+  // Layer store
+  const layerStore = writable([]);
+  let selectedLayerId = null;
+
+  // Expose layer management functions
+  function addLayer(name = 'New Layer') {
+    layerStore.update(layers => [
+      ...layers,
+      {
+        id: crypto.randomUUID(),
+        name,
+        visible: true,
+        opacity: 1,
+        blendMode: 'source-over'
+      }
+    ]);
+  }
+
+  function removeLayer(id) {
+    layerStore.update(layers => layers.filter(layer => layer.id !== id));
+  }
+
+  function selectLayer(id) {
+    selectedLayerId = id;
+  }
+
+  function updateLayer(id, updates) {
+    layerStore.update(layers =>
+      layers.map(layer =>
+        layer.id === id ? { ...layer, ...updates } : layer
+      )
+    );
+  }
+
+  // Initialize with a default layer
+  let unsubscribe;
+  onMount(() => {
+    if ($layerStore.length === 0) {
+      addLayer('Background');
+    }
+
+    unsubscribe = layerStore.subscribe(($layers) => {
+      if ($layers.length === 0) {
+        addLayer('Background');
+      }
+    });
+  });
+
+  onDestroy(() => {
+    if (unsubscribe) unsubscribe();
+  });
+</script>
+
+<div class="layer-manager">
+  <h3>Layers</h3>
+  <button on:click={addLayer}>+ Add Layer</button>
+
+  <div class="layer-list">
+    {#each $layerStore as layer (layer.id)}
+      <div
+        class="layer-item {selectedLayerId === layer.id ? 'active' : ''}"
+        on:click={() => selectLayer(layer.id)}
+      >
+        <div class="layer-controls">
+          <input
+            type="checkbox"
+            bind:checked={layer.visible}
+            on:change={() => updateLayer(layer.id, { visible: !layer.visible })}
+          />
+          <input
+            type="text"
+            bind:value={layer.name}
+            on:input={() => updateLayer(layer.id, { name: line.name })}
+            placeholder="Layer name"
+          />
+        </div>
+
+        <div class="layer-properties">
+          <div>
+            <label>Opacity:</label>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              bind:value={layer.opacity}
+              on:input={() => updateLayer(layer.id, { opacity: layer.opacity })}
+            />
+          </div>
+
+          <div>
+            <label>Blend Mode:</label>
+            <select
+              bind:value={layer.blendMode}
+              on:change={() => updateLayer(layer.id, { blendMode: layer.blendMode })}
+            >
+              <option value="source-over">Normal</option>
+              <option value="multiply">Multiply</option>
+              <option value="screen">Screen</option>
+              <option value="overlay">Overlay</option>
+              <option value="darken">Darken</option>
+              <option value="lighten">Lighten</option>
+              <option value="color-dodge">Color Dodge</option>
+              <option value="color-burn">Color Burn</option>
+              <option value="hard-light">Hard Light</option>
+              <option value="soft-light">Soft Light</option>
+              <option value="difference">Difference</option>
+              <option value="exclusion">Exclusion</option>
+              <option value="hue">Hue</option>
+              <option value="saturation">Saturation</option>
+              <option value="color">Color</option>
+              <option value="luminosity">Luminosity</option>
+            </select>
+          </div>
+        </div>
+
+        <button
+          on:click={(e) => {
+            e.stopPropagation();
+            removeLayer(layer.id);
+          }}
+          class="remove-layer"
+        >
+          ×
+        </button>
+      </div>
+    {/each}
+  </div>
+</div>
+</svelte>
+
+<style>
+  .layer-manager {
+    width: 250px;
+  }
+
+  .layer-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border: 1px solid #eee;
+    margin-bottom: 4px;
+    border-radius: 4px;
+  }
+
+  .layer-item.active {
+    border-color: #007acc;
+    background-color: #f0f8ff;
+  }
+
+  .layer-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .layer-properties {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.8em;
+  }
+
+  .remove-layer {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    color: #999;
+  }
+
+  .remove-layer:hover {
+    color: #f00;
+  }
+</style>
+```
+
+## Advanced Patterns
+
+### Animation Loop with Svelte's Ticker
+
+```svelte
+<script>
+  import { onMount, onDestroy } from 'svelte';
+  import { Canvas } from 'fuderu';
+  import { tick } from 'svelte';
+
+  let canvas;
+  let painter = null;
+  let animationFrame = null;
+  let needsRender = false;
+
+  onMount(() => {
+    if (!canvas) return;
+
+    painter = new Canvas({
+      canvas,
+      // ... options
+    });
+
+    startRenderLoop();
+  });
+
+  onDestroy(() => {
+    stopRenderLoop();
+    if (painter) {
+      painter.destroy();
+    }
+  });
+
+  function startRenderLoop() {
+    function loop() {
+      if (needsRender && painter) {
+        painter.render();
+        needsRender = false;
+      }
+      animationFrame = requestAnimationFrame(loop);
+    }
+
+    loop();
+  }
+
+  function stopRenderLoop() {
+    if (animationFrame) {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = null;
+    }
+  }
+
+  // Function to request a render
+  function requestRender() {
+    needsRender = true;
+  }
+
+  // Alternative: Use Svelte's upcoming run loop (experimental)
+  // import { __unstable_useUpdate } from 'svelte';
+  // const update = __unstable_useUpdate();
+  // function requestRender() { update(); }
+</script>
+
+<canvas bind:this={canvas} width="800" height="600" />
+```
+
+### Custom Event System for Canvas Interactions
+
+```js
+// events/canvasEvents.js
+import { writable } from "svelte/store";
+
+export function createCanvasEventStore() {
+  const { subscribe, set, update } = writable({
+    lastPoint: null,
+    isDrawing: false,
+    pressure: 0,
+  });
+
+  return {
+    subscribe,
+    setPoint: (x, y, pressure) => {
+      update((state) => ({
+        ...state,
+        lastPoint: { x, y, pressure: pressure ?? 0 },
+        isTurning: true,
+      }));
+    },
+    endStroke: () => {
+      update((state) => ({ ...state, isDrawing: false, lastPoint: null }));
+    },
+    getState: () => {
+      let state;
+      const unsub = subscribe((s) => {
+        state = s;
+      })();
+      unsub();
+      return state;
+    },
+  };
+}
+
+// Usage in canvas component:
+// import { canvasEventStore } from './events/canvasEvents';
+//
+// onMount(() => {
+//   // Set up event listeners that update the store
+//   canvas.addEventListener('pointerdown', (e) => {
+//     // ... calculate position
+//     canvasEventStore.setPoint(x, y, pressure);
+//   });
+//   // ... other event listeners
+// });
+```
+
+## Performance Optimization
+
+### Request Animation Frame Wrapper
+
+```js
+// utils/raf.js
+let frameCallback = null;
+let frameRequest = null;
+let lastTime = 0;
+
+export function initRenderLoop(callback) {
+  frameCallback = callback;
+
+  function loop(timestamp) {
+    const deltaTime = timestamp - lastTime;
+    lastTime = timestamp;
+
+    if (frameCallback) {
+      frameCallback(deltaTime);
+    }
+
+    frameRequest = requestAnimationFrame(loop);
+  }
+
+  frameRequest = requestAnimationFrame(loop);
+
+  return () => {
+    if (frameRequest) {
+      cancelAnimationFrame(frameRequest);
+      frameRequest = null;
+    }
+    frameCallback = null;
+  };
+}
+
+// Usage:
+// import { initRenderLoop } from './utils/raf';
+//
+// let cleanup;
+// onMount(() => {
+//   cleanup = initRenderLoop((deltaTime) => {
+//     if (painter && needsRender) {
+//       painter.render();
+//       needsRender = false;
+//     }
+//   });
+// });
+//
+// onDestroy(() => {
+//   if (cleanup) cleanup();
+// });
+```
+
+### Virtualized Canvas for Large Documents
+
+```svelte
+<!-- VirtualCanvas.svelte -->
+<script>
+  import { onMount, onDestroy } from 'svelte';
+  import { Canvas } from 'fuderu';
+
+  export let virtualWidth = 4000;
+  export let virtualHeight = 3000;
+  export let viewportWidth = 800;
+  export let viewportHeight = 600;
+
+  let container;
+  let canvas;
+  let painter = null;
+  let offset = { x: 0, y: 0 }; // Top-left of viewport in virtual space
+
+  let animationFrame = null;
+  let needsRender = false;
+
+  // Create canvas at viewport size, not virtual size
+  onMount(() => {
+    if (!container || !canvas) return;
+
+    painter = new Canvas({
+      canvas,
+      document: { width: viewportWidth, height: viewportHeight }
+    });
+
+    startRenderLoop();
+  });
+
+  onDestroy(() => {
+    stopRenderLoop();
+    if (painter) {
+      painter.destroy();
+    }
+  });
+
+  function startRenderLoop() {
+    function loop() {
+      if (needsRender && painter) {
+        // Save current state
+        const savedTransform = painter.brush.context.getTransform();
+
+        // Translate to show correct portion of virtual canvas
+        painter.brush.context.save();
+        painter.brush.context.translate(-offset.x, -offset.y);
+
+        // Render only the visible portion
+        painter.render();
+
+        // Restore state
+        painter.brush.context.restore();
+        painter.brush.context.setTransform(savedTransform);
+
+        needsRender = false;
+      }
+      animationFrame = requestAnimationFrame(loop);
+    }
+
+    loop();
+  }
+
+  function stopRenderLoop() {
+    if (animationFrame) {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = null;
+    }
+  }
+
+  function requestRender() {
+    needsRender = true;
+  }
+
+  // Pan handling
+  function handleWheel(event) {
+    event.preventDefault();
+
+    // Convert wheel delta to pan movement
+    const panSpeed = 0.5; // pixels per delta unit
+    offset.x = Math.max(0, Math.min(virtualWidth - viewportWidth,
+      offset.x + event.deltaX * panSpeed));
+    offset.y = Math.max(0, Math.min(virtualHeight - viewportHeight,
+      offset.y + event.deltaY * panSpeed));
+
+    requestRender();
+  }
+
+  // Click-drag panning
+  let isPanning = false;
+  let lastPanPoint = null;
+
+  function handleMouseDown(event) {
+    isPanning = true;
+    lastPanPoint = { x: event.clientX, y: event.clientY };
+  }
+
+  function handleMouseMove(event) {
+    if (!isPanning || !lastPanPoint) return;
+
+    const dx = event.clientX - lastPanPoint.x;
+    const dy = event.clientY - lastPanPoint.y;
+
+    offset.x = Math.max(0, Math.min(virtualWidth - viewportWidth,
+      offset.x - dx));
+    offset.y = Math.max(0, Math.min(virtualHeight - viewportHeight,
+      offset.y - dy));
+
+    lastPanPoint = { x: event.clientX, y: event.clientY };
+    requestRender();
+  }
+
+  function handleMouseUp() {
+    isPanning = false;
+    lastPanPoint = null;
+  }
+
+  function handleMouseLeave() {
+    isPanning = false;
+    lastPanPoint = null;
+  }
+</script>
+
+<div
+  bind:this={container}
+  class="canvas-container"
+  on:wheel={handleWheel}
+  on:mousedown={handleMouseDown}
+  on:mousemove={handleMouseMove}
+  on:mouseup={handleMouseUp}
+  on:mouseleave={handleMouseLeave}
+  style="position: relative; overflow: hidden;"
+>
+  <canvas
+    bind:this={canvas}
+    width={viewportWidth}
+    height={viewportHeight}
+    style="position: absolute; top: 0; left: 0;"
+  />
+
+  {/* Optional: show viewport indicator */}
+  <div
+    class="viewport-indicator"
+    style="
+      position: absolute;
+      border: 2px dashed #007acc;
+      pointer-events: none;
+    "
+  />
+</div>
+
+<style>
+  .canvas-container {
+    width: 100%;
+    height: 100%;
+    touch-action: none; /* Important for panning */
+  }
+
+  .viewport-indicator {
+    /* Will be positioned by JS to show current viewport */
+  }
+</style>
+```
+
+## Handling Svelte Specific Features
+
+### Stores and Reactivity
+
+```svelte
+<script>
+  import { writable } from 'svelte/store';
+  import { Canvas } from 'fuderu';
+
+  // Correct way to store non-primitive values
+  const brushSettings = writable({
+    size: 20,
+    color: '#000000'
+  });
+
+  // When updating, always create a new object
+  function updateBrushSize(newSize) {
+    brushSettings.update(settings => ({
+      ...settings,
+      size: newSize
+    }));
+  }
+
+  // Incorrect - mutating the store value directly (won't trigger updates)
+  // function badUpdateSize(newSize) {
+  //   brushSettings.update(settings => {
+  //     // This won't work as expected because we're mutating the existing object
+  //     settings.size = newSize;
+  //     return settings; // Same object reference
+  //   });
+  // }
+</script>
+```
+
+### Event Handling and Delegation
+
+```svelte
+<script>
+  import { onMount, onDestroy } from 'svelte';
+  import { Canvas } from 'fuderu';
+
+  let canvas;
+  let painter = null;
+
+  // Event handler reuse to prevent creating new functions on each render
+  function handlePointerDown(event) {
+    // ... implementation
+  }
+
+  function handlePointerMove(event) {
+    // ... implementation
+  }
+
+  function handlePointerUp(event) {
+    // ... implementation
+  }
+
+  onMount(() => {
+    if (!canvas) return;
+
+    painter = new Canvas({
+      canvas,
+      // ... options
+    });
+
+    // Use captured event handlers
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerup', handlePointerUp);
+  });
+
+  onDestroy(() => {
+    if (!canvas) return;
+
+    // Remove the same function references
+    canvas.removeEventListener('pointerdown', handlePointerDown);
+    canvas.removeEventListener('pointermove', handlePointerMove);
+    canvas.removeEventListener('pointerup', handlePointerUp);
+
+    if (painter) {
+      painter.destroy();
+    }
+  });
+</script>
+
+<canvas bind:this={canvas} width="800" height="600" />
+```
+
+### Lifecycle Awareness with Stores
+
+```js
+// stores/lifecycleStore.js
+import { writable } from "svelte/store";
+
+export function createLifecycleStore() {
+  const { subscribe, set } = writable({
+    isMounted: false,
+    isDestroyed: false,
+  });
+
+  return {
+    subscribe,
+    mount: () => set({ isMounted: true, isDestroyed: false }),
+    destroy: () => set({ isMounted: false, isDestroyed: true }),
+    reset: () => set({ isMounted: false, isDestroyed: false }),
+  };
+}
+
+// Usage in component:
+// import { lifecycleStore } from './stores/lifecycleStore';
+//
+// $: if ($lifecycleStore.isMounted && !painter) {
+//   // Initialize
+// }
+//
+// $: if (!$lifecycleStore.isMounted && painter) {
+//   // Cleanup
+// }
+```
+
+```
+
+```

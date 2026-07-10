@@ -1,16 +1,12 @@
-import {
-  type PointerEvent as ReactPointerEvent,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 import Layout from "@theme/Layout";
 import {
-  Brush,
+  Canvas,
   DynamicShapeModule,
   DynamicTransparencyModule,
-  MousePressure,
   SpreadModule,
+  type BlendMode,
+  type Layer,
 } from "fuderu";
 
 import styles from "./editor.module.css";
@@ -26,6 +22,25 @@ const presets = [
   { label: "Square", width: 1536, height: 1536 },
   { label: "Portrait", width: 1440, height: 1920 },
   { label: "Landscape", width: 1920, height: 1080 },
+];
+
+const blendModes: BlendMode[] = [
+  "source-over",
+  "multiply",
+  "screen",
+  "overlay",
+  "darken",
+  "lighten",
+  "color-dodge",
+  "color-burn",
+  "hard-light",
+  "soft-light",
+  "difference",
+  "exclusion",
+  "hue",
+  "saturation",
+  "color",
+  "luminosity",
 ];
 
 export default function EditorPage() {
@@ -47,11 +62,12 @@ export default function EditorPage() {
                 width={224}
                 height={76}
               />
-              <span className={styles.badge}>Fuderu 0.8.7 Editor</span>
+              <span className={styles.badge}>Fuderu 0.8.8 Editor</span>
               <h1>Create a drawing project</h1>
               <p>
-                Pick a logical document size first. The editor scales the view,
-                while Fuderu keeps the artwork at the chosen resolution.
+                Start with a document size and build a layered composition. The
+                editor highlights the core workflow for brush control and layer
+                compositing.
               </p>
 
               <div className={styles.form}>
@@ -152,12 +168,10 @@ function Editor({
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const brushRef = useRef<Brush | null>(null);
+  const painterRef = useRef<Canvas | null>(null);
   const shapeModuleRef = useRef<DynamicShapeModule | null>(null);
   const transparencyModuleRef = useRef<DynamicTransparencyModule | null>(null);
   const spreadModuleRef = useRef<SpreadModule | null>(null);
-  const pressureRef = useRef(new MousePressure());
-  const isDrawingRef = useRef(false);
 
   const [size, setSize] = useState(28);
   const [opacity, setOpacity] = useState(1);
@@ -182,50 +196,61 @@ function Editor({
   const [spreadRange, setSpreadRange] = useState(0.42);
   const [spreadCount, setSpreadCount] = useState(4);
   const [spreadCountJitter, setSpreadCountJitter] = useState(0.35);
-  const [cursor, setCursor] = useState({
-    visible: false,
-    x: 0,
-    y: 0,
-    size: 28,
-  });
+  const [layers, setLayers] = useState<Layer[]>([]);
+  const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
   const [displaySize, setDisplaySize] = useState({
     width: project.width,
     height: project.height,
   });
 
+  const refreshLayers = () => {
+    const painter = painterRef.current;
+    if (!painter) return;
+
+    const nextLayers = [...painter.getLayers()];
+    setLayers(nextLayers);
+    setActiveLayerId(painter.getActiveLayer().id);
+  };
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    canvas.width = project.width;
-    canvas.height = project.height;
-    canvas.style.touchAction = "none";
-    canvas.style.userSelect = "none";
-
-    const brush = new Brush(canvas, {
-      color,
-      size,
-      opacity,
-      flow,
-      spacing,
-      eraser,
-      roundness,
+    const painter = new Canvas({
+      canvas,
+      document: {
+        width: project.width,
+        height: project.height,
+      },
+      brush: {
+        color,
+        size,
+        opacity,
+        flow,
+        spacing,
+        eraser,
+        roundness,
+      },
+      pressureSimulation,
     });
 
     const shapeModule = new DynamicShapeModule();
     const transparencyModule = new DynamicTransparencyModule();
     const spreadModule = new SpreadModule({ spreadRange: 0 });
 
-    brush.useModule(shapeModule);
-    brush.useModule(transparencyModule);
-    brush.useModule(spreadModule);
-    brushRef.current = brush;
+    painter.brush.useModule(shapeModule);
+    painter.brush.useModule(transparencyModule);
+    painter.brush.useModule(spreadModule);
+
+    painterRef.current = painter;
     shapeModuleRef.current = shapeModule;
     transparencyModuleRef.current = transparencyModule;
     spreadModuleRef.current = spreadModule;
+    refreshLayers();
 
     return () => {
-      brushRef.current = null;
+      painter.destroy();
+      painterRef.current = null;
       shapeModuleRef.current = null;
       transparencyModuleRef.current = null;
       spreadModuleRef.current = null;
@@ -233,10 +258,10 @@ function Editor({
   }, [project.height, project.width]);
 
   useEffect(() => {
-    const brush = brushRef.current;
-    if (!brush) return;
+    const painter = painterRef.current;
+    if (!painter) return;
 
-    brush.loadConfig({
+    painter.loadConfig({
       color,
       size,
       opacity,
@@ -246,8 +271,18 @@ function Editor({
       roundness,
     });
 
-    brush.isEraser = eraser;
-  }, [color, eraser, flow, opacity, roundness, size, spacing]);
+    painter.setEraser(eraser);
+    painter.pressureSimulation = pressureSimulation;
+  }, [
+    color,
+    eraser,
+    flow,
+    opacity,
+    roundness,
+    size,
+    spacing,
+    pressureSimulation,
+  ]);
 
   useEffect(() => {
     const shape = shapeModuleRef.current;
@@ -344,75 +379,54 @@ function Editor({
     return () => observer.disconnect();
   }, [project.height, project.width]);
 
-  const updateCursor = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    const stage = stageRef.current;
-    if (!canvas || !stage) return null;
+  const handleLayerSelect = (layerId: string) => {
+    const painter = painterRef.current;
+    if (!painter) return;
 
-    const canvasRect = canvas.getBoundingClientRect();
-    const stageRect = stage.getBoundingClientRect();
-    const scaleX = canvas.width / canvasRect.width;
-    const scaleY = canvas.height / canvasRect.height;
-    const x = (event.clientX - canvasRect.left) * scaleX;
-    const y = (event.clientY - canvasRect.top) * scaleY;
-    const hasRealPressure = event.pointerType === "pen" && event.pressure > 0;
-    const pressure = hasRealPressure
-      ? event.pressure
-      : pressureSimulation
-        ? pressureRef.current.getPressure(x, y)
-        : 1;
+    painter.setActiveLayer(layerId);
+    refreshLayers();
+  };
 
-    setCursor({
-      visible: true,
-      x: event.clientX - stageRect.left,
-      y: event.clientY - stageRect.top,
-      size: Math.max(8, size * 2 * Math.min(1, 1 / scaleX)),
+  const handleLayerUpdate = (layerId: string, updates: Partial<Layer>) => {
+    const painter = painterRef.current;
+    if (!painter) return;
+
+    painter.updateLayer(layerId, updates as never);
+    refreshLayers();
+  };
+
+  const addLayer = () => {
+    const painter = painterRef.current;
+    if (!painter) return;
+
+    const layer = painter.createLayer({
+      name: `Layer ${layers.length + 1}`,
+      blendMode: "source-over",
     });
 
-    return { x, y, pressure };
+    painter.setActiveLayer(layer.id);
+    refreshLayers();
   };
 
-  const draw = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    const brush = brushRef.current;
-    const point = updateCursor(event);
-    if (!brush || !point) return;
+  const duplicateLayer = (layerId: string) => {
+    const painter = painterRef.current;
+    if (!painter) return;
 
-    brush.putPoint(point.x, point.y, point.pressure);
-    brush.render();
+    painter.duplicateLayer(layerId);
+    refreshLayers();
   };
 
-  const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    isDrawingRef.current = true;
-    pressureRef.current.reset();
-    draw(event);
-  };
+  const deleteLayer = (layerId: string) => {
+    const painter = painterRef.current;
+    if (!painter || layers.length <= 1) return;
 
-  const handlePointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawingRef.current) {
-      updateCursor(event);
-      return;
-    }
-
-    event.preventDefault();
-    draw(event);
-  };
-
-  const finishStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawingRef.current) return;
-    event.preventDefault();
-    isDrawingRef.current = false;
-    pressureRef.current.reset();
-    brushRef.current?.finalizeStroke();
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
+    painter.deleteLayer(layerId);
+    refreshLayers();
   };
 
   return (
     <section className={styles.editor}>
-      <aside className={styles.sidebar}>
+      <aside className={styles.sidebarLeft}>
         <div className={styles.sidebarHeader}>
           <img src="/img/fuderu.webp" alt="Fuderu" width={140} height={48} />
           <div className={styles.section}>
@@ -601,30 +615,6 @@ function Editor({
               </div>
             )}
           </div>
-
-          <div className={styles.toolRow}>
-            <button
-              className={styles.toolButton}
-              type="button"
-              onClick={() => brushRef.current?.undo()}
-            >
-              Undo
-            </button>
-            <button
-              className={styles.toolButton}
-              type="button"
-              onClick={() => brushRef.current?.redo()}
-            >
-              Redo
-            </button>
-          </div>
-          <button
-            className={styles.toolButton}
-            type="button"
-            onClick={() => brushRef.current?.clear()}
-          >
-            Clear Canvas
-          </button>
         </div>
       </aside>
 
@@ -654,32 +644,155 @@ function Editor({
                 width: `${displaySize.width}px`,
                 height: `${displaySize.height}px`,
               }}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={finishStroke}
-              onPointerCancel={finishStroke}
-              onPointerEnter={updateCursor}
-              onPointerLeave={() => {
-                if (!isDrawingRef.current) {
-                  setCursor((value) => ({ ...value, visible: false }));
-                }
-              }}
             />
-            {cursor.visible && (
-              <div
-                className={styles.cursor}
-                style={{
-                  width: cursor.size,
-                  height: cursor.size,
-                  left: cursor.x,
-                  top: cursor.y,
-                  transform: "translate(-50%, -50%)",
-                }}
-              />
-            )}
           </div>
         </div>
       </div>
+
+      <aside className={styles.sidebarRight}>
+        <div className={styles.panelHeader}>
+          <div>
+            <h2>Layer Stack</h2>
+            <p>Build your composition with visible, ordered layers.</p>
+          </div>
+          <button
+            className={styles.toolButton}
+            type="button"
+            onClick={addLayer}
+          >
+            + Layer
+          </button>
+        </div>
+
+        <div className={styles.controls}>
+          <div className={styles.section}>
+            <div className={styles.layerActions}>
+              <button
+                className={styles.toolButton}
+                type="button"
+                onClick={() => duplicateLayer(activeLayerId ?? "")}
+                disabled={!activeLayerId}
+              >
+                Duplicate
+              </button>
+              <button
+                className={styles.toolButton}
+                type="button"
+                onClick={() => deleteLayer(activeLayerId ?? "")}
+                disabled={!activeLayerId || layers.length <= 1}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+
+          {layers.length === 0 ? (
+            <div className={styles.emptyState}>
+              Create a layer to start composing your drawing.
+            </div>
+          ) : (
+            <div className={styles.layerList}>
+              {layers.map((layer) => {
+                const isActive = layer.id === activeLayerId;
+
+                return (
+                  <div
+                    key={layer.id}
+                    className={`${styles.layerCard} ${
+                      isActive ? styles.layerCardActive : ""
+                    }`}
+                  >
+                    <button
+                      className={styles.layerRowButton}
+                      type="button"
+                      onClick={() => handleLayerSelect(layer.id)}
+                    >
+                      <span className={styles.layerRowLabel}>{layer.name}</span>
+                      <span className={styles.layerBadge}>
+                        {isActive ? "Active" : "Ready"}
+                      </span>
+                    </button>
+
+                    <div className={styles.layerControls}>
+                      <div className={styles.layerControlRow}>
+                        <label
+                          className={styles.layerControlLabel}
+                          htmlFor={`name-${layer.id}`}
+                        >
+                          Name
+                        </label>
+                        <input
+                          id={`name-${layer.id}`}
+                          className={styles.layerNameInput}
+                          value={layer.name}
+                          onChange={(event) =>
+                            handleLayerUpdate(layer.id, {
+                              name: event.target.value,
+                            })
+                          }
+                        />
+                      </div>
+
+                      <label className={styles.toggle}>
+                        <input
+                          type="checkbox"
+                          checked={layer.visible}
+                          onChange={(event) =>
+                            handleLayerUpdate(layer.id, {
+                              visible: event.target.checked,
+                            })
+                          }
+                        />
+                        Visible
+                      </label>
+
+                      <div className={styles.layerControlRow}>
+                        <label className={styles.layerControlLabel}>
+                          Opacity
+                        </label>
+                        <input
+                          className={styles.range}
+                          type="range"
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          value={layer.opacity}
+                          onChange={(event) =>
+                            handleLayerUpdate(layer.id, {
+                              opacity: Number(event.target.value),
+                            })
+                          }
+                        />
+                      </div>
+
+                      <div className={styles.layerControlRow}>
+                        <label className={styles.layerControlLabel}>
+                          Blend mode
+                        </label>
+                        <select
+                          className={styles.select}
+                          value={layer.blendMode}
+                          onChange={(event) =>
+                            handleLayerUpdate(layer.id, {
+                              blendMode: event.target.value as BlendMode,
+                            })
+                          }
+                        >
+                          {blendModes.map((mode) => (
+                            <option key={mode} value={mode}>
+                              {mode}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </aside>
     </section>
   );
 }

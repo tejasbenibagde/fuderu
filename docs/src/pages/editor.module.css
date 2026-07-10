@@ -198,16 +198,24 @@
 
 .editor {
   display: grid;
-  grid-template-columns: 19rem 1fr;
+  grid-template-columns: 18rem minmax(0, 1fr) 18rem;
   min-height: calc(100vh - var(--ifm-navbar-height));
 }
 
-.sidebar {
+.sidebarLeft,
+.sidebarRight {
   background: #ffffff;
-  border-right: 1px solid rgba(15, 23, 42, 0.1);
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+.sidebarLeft {
+  border-right: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.sidebarRight {
+  border-left: 1px solid rgba(15, 23, 42, 0.1);
 }
 
 .sidebarHeader {
@@ -274,13 +282,17 @@
 
 .toolButton {
   background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
   color: #0f172a;
+  cursor: pointer;
+  font: inherit;
   min-height: 2.35rem;
 }
 
-.toolButtonActive {
-  background: #0f172a;
-  color: #ffffff;
+.toolButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .workspace {
@@ -339,24 +351,113 @@
   border: 1px solid rgba(15, 23, 42, 0.12);
   border-radius: 6px;
   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.14);
-  cursor: none;
   display: block;
   max-height: 100%;
   max-width: 100%;
   touch-action: none;
 }
 
-.cursor {
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(15, 23, 42, 0.9);
+.panelHeader {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+.panelHeader h2 {
+  color: #0f172a;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.panelHeader p {
+  color: #64748b;
+  font-size: 0.8rem;
+  margin: 0.2rem 0 0;
+}
+
+.layerActions {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.layerList {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.layerCard {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.layerCardActive {
+  border-color: rgba(15, 23, 42, 0.24);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.layerRowButton {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.layerRowLabel {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.layerBadge {
+  background: rgba(15, 23, 42, 0.08);
   border-radius: 999px;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.85),
-    0 12px 28px rgba(15, 23, 42, 0.16);
-  mix-blend-mode: difference;
-  pointer-events: none;
-  position: absolute;
-  z-index: 3;
+  color: #334155;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.55rem;
+}
+
+.layerControls {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.7rem;
+}
+
+.layerControlRow {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.layerControlLabel {
+  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.layerNameInput,
+.select {
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  color: #0f172a;
+  font: inherit;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.6rem;
+}
+
+.emptyState {
+  background: #f8fafc;
+  border: 1px dashed rgba(15, 23, 42, 0.16);
+  border-radius: 10px;
+  color: #64748b;
+  padding: 1rem;
 }
 
 @media (max-width: 900px) {
@@ -373,8 +474,10 @@
     min-height: auto;
   }
 
-  .sidebar {
+  .sidebarLeft,
+  .sidebarRight {
     border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+    border-left: 0;
     border-right: 0;
   }
 

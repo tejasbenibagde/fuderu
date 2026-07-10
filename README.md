@@ -23,20 +23,26 @@
 
 ## Features
 
-- **Layer System** – Full layer stack with visibility, opacity, and 16 blend modes.
-- **Canvas API** – Built-in `Canvas` wrapper for pointer drawing with layer support.
-- **Standalone Brush** – `Brush` engine for custom integrations.
-- **Smooth Interpolation** – Adaptive brush spacing and Bezier smoothing.
+- **Layer System** – A focused layer stack with visibility, opacity, and 16 blend modes.
+- **Canvas API** – A dependable `Canvas` wrapper for pointer drawing and layer-based composition.
+- **Standalone Brush** – `Brush` engine for custom integrations and advanced render pipelines.
+- **Smooth Interpolation** – Adaptive brush spacing and Bezier smoothing for natural stroke flow.
 - **Pressure Support** – Real pen pressure with optional mouse/touch simulation.
-- **Device-Pixel-Ratio Aware** – Automatic HiDPI scaling with explicit document sizing.
 - **Runtime Configuration** – Update brush properties on the fly.
-- **Image Brushes** – PNG/WebP stamps with recoloring and rotation.
-- **Rotation Modes** – `fixed`, `flow`, and `random` with smoothing, offset, and jitter.
-- **Brush Dynamics** – Opacity, flow, angle, roundness, blend mode, and filter support.
-- **Eraser Mode** – Built-in eraser with runtime toggle.
-- **Undo/Redo** – Full history stack with configurable depth.
-- **Module System** – Extensible with built-in dynamic shape, transparency, spread, and pattern modules.
-- **TypeScript-First** – Full type safety with framework-agnostic design.
+- **Undo/Redo** – A practical history stack for iterative drawing workflows.
+- **Module System** – Extensible brush behavior with built-in modules for dynamics and patterns.
+- **TypeScript-First** – Full type safety with a framework-agnostic design.
+
+## Release Focus
+
+For the first stable release, Fuderu is intentionally narrowing the scope around a cohesive core:
+
+- reliable brush rendering
+- layer-based compositing with blend modes
+- undo/redo and a clear canvas wrapper
+- optional advanced modules without overcomplicating the API
+
+If you are evaluating Fuderu for production, start with those primitives and treat the more experimental effects as additive.
 
 ## Latest Release
 

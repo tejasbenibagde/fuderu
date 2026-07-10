@@ -208,6 +208,26 @@ describe("Canvas", () => {
     expect(mockBrushInstance.clear).toHaveBeenCalledTimes(1);
   });
 
+  it("should finalize a stroke when pointer input is cancelled", () => {
+    const canvas = createCanvas();
+    const instance = new Canvas({
+      canvas,
+    });
+
+    (instance as unknown as { isDrawing: boolean }).isDrawing = true;
+
+    (
+      instance as unknown as { handlePointerCancel: (e: PointerEvent) => void }
+    ).handlePointerCancel({
+      pointerId: 1,
+    } as PointerEvent);
+
+    expect(mockBrushInstance.finalizeStroke).toHaveBeenCalledTimes(1);
+    expect((instance as unknown as { isDrawing: boolean }).isDrawing).toBe(
+      false,
+    );
+  });
+
   it("should expose layer management methods", () => {
     const canvas = createCanvas();
 

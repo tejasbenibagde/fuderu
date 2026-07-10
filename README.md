@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Lightweight, extensible canvas drawing engine for the web.
+  Stable 1.0.0 canvas drawing engine for the web.
 </p>
 
 <p align="center">
@@ -46,13 +46,12 @@ If you are evaluating Fuderu for production, start with those primitives and tre
 
 ## Latest Release
 
-### 0.8.8
+### 1.0.0
 
-- Added professional layer stack with create, delete, duplicate, reorder, and active layer selection.
-- Per-layer visibility, opacity, and 16 blend modes (Normal, Multiply, Screen, Overlay, etc.).
-- Brush now draws directly into the active layer's canvas.
-- Layer compositing with `renderLayers()` hook.
-- Fixed layer UI interactions (no more dropdown/input flicker).
+- Stable 1.0.0 baseline for the core canvas, brush, layer, and undo/redo APIs.
+- Hardened pointer lifecycle handling for cancelled or interrupted input gestures.
+- Improved stroke reset behavior after clearing or reloading the drawing context.
+- A focused public API around reliable brush rendering, layer-based compositing, and extensible modules.
 
 ## Installation
 
@@ -209,11 +208,11 @@ brush.useModule(
 
 ## Status
 
-Fuderu is currently pre-`1.0`. The core brush, canvas, pressure, image, eraser, and module systems are implemented, but public APIs may still change while the library stabilizes.
+Fuderu 1.0.0 is now the stable baseline for the core brush, canvas, pressure, image, eraser, and module systems.
 
-Validated with Vitest and jsdom tests.
+The library is validated with Vitest, browser-style canvas tests, and local playground builds.
 
-See [ROADMAP.md](./ROADMAP.md) for the current stabilization plan.
+See [ROADMAP.md](./ROADMAP.md) for the next milestones beyond the 1.0.0 release.
 
 ## License
 

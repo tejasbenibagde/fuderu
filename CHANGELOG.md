@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.0
+
+### Added
+
+- Stable 1.0.0 release for the core canvas, brush, layers, and undo/redo experience.
+- Hardened pointer lifecycle handling for interrupted input, including pointer cancellation and pointer capture recovery.
+- Improved stroke reset behavior when the drawing context is reloaded or the canvas is cleared.
+
+### Changed
+
+- Documentation and examples now focus on the stable core API instead of the earlier experimental framing.
+- The public API is now positioned as the baseline for production use.
+
 ## 0.8.8
 
 ### Added

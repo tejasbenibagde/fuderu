@@ -168,6 +168,11 @@ export class Canvas {
   private bindEvents(): void {
     this.canvas.addEventListener("pointerdown", this.handlePointerDown);
     this.canvas.addEventListener("pointermove", this.handlePointerMove);
+    this.canvas.addEventListener("pointercancel", this.handlePointerCancel);
+    this.canvas.addEventListener(
+      "lostpointercapture",
+      this.handlePointerCancel,
+    );
     window.addEventListener("pointerup", this.handlePointerUp);
   }
 
@@ -198,6 +203,12 @@ export class Canvas {
     this.isDrawing = true;
     this.mousePressure.reset();
 
+    try {
+      this.canvas.setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore environments where pointer capture is unavailable.
+    }
+
     const p = this.getPoint(e);
     this.brush.putPoint(p.x, p.y, p.pressure);
     this.brush.render();
@@ -220,10 +231,42 @@ export class Canvas {
     this.renderLayers();
   };
 
-  private handlePointerUp = () => {
+  private handlePointerUp = (e?: PointerEvent) => {
     if (!this.isDrawing) return;
+
     this.isDrawing = false;
     this.mousePressure.reset();
+
+    if (e?.pointerId != null) {
+      try {
+        if (this.canvas.hasPointerCapture(e.pointerId)) {
+          this.canvas.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        // Ignore environments where pointer capture is unavailable.
+      }
+    }
+
+    this.brush.finalizeStroke();
+    this.renderLayers();
+  };
+
+  private handlePointerCancel = (e?: PointerEvent) => {
+    if (!this.isDrawing) return;
+
+    this.isDrawing = false;
+    this.mousePressure.reset();
+
+    if (e?.pointerId != null) {
+      try {
+        if (this.canvas.hasPointerCapture(e.pointerId)) {
+          this.canvas.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        // Ignore environments where pointer capture is unavailable.
+      }
+    }
+
     this.brush.finalizeStroke();
     this.renderLayers();
   };
@@ -354,6 +397,11 @@ export class Canvas {
   destroy(): void {
     this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
     this.canvas.removeEventListener("pointermove", this.handlePointerMove);
+    this.canvas.removeEventListener("pointercancel", this.handlePointerCancel);
+    this.canvas.removeEventListener(
+      "lostpointercapture",
+      this.handlePointerCancel,
+    );
     window.removeEventListener("pointerup", this.handlePointerUp);
   }
 }

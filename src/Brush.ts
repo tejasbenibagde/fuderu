@@ -126,6 +126,7 @@ export class Brush {
     this.initOriCanvas(canvas);
     this.initStrokeCanvas(canvas);
     this.initTransferCanvasCanvas(canvas);
+    this.resetStrokeState();
     this.initCanvasStack();
   }
 
@@ -442,9 +443,7 @@ export class Brush {
    * Clear all canvas
    */
   clear() {
-    this.points = [];
-    this.prePoint = void 0;
-    this.prePrePoint = void 0;
+    this.resetStrokeState();
 
     if (this.canvas && this.context) {
       this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -572,6 +571,19 @@ export class Brush {
   private initTransferCanvasCanvas(canvas: HTMLCanvasElement) {
     this.transferCanvas = createCanvas(canvas.width, canvas.height);
     this.transferContext = getContext(this.transferCanvas);
+  }
+
+  private resetStrokeState() {
+    this.points = [];
+    this.prePoint = void 0;
+    this.prePrePoint = void 0;
+    this.previousRotationAngle = 0;
+    this.lastProcessedPointForRotation = undefined;
+    this._pendingFirstPointIndex = undefined;
+    this.strokeHistory = [];
+    this._strokeOpacity = 1;
+    this.drawCount = 0;
+    this.isRender = false;
   }
 
   private initCanvasStack() {

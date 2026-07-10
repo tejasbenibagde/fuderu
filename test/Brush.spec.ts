@@ -258,6 +258,19 @@ describe("Brush — canvas behavior", () => {
     brush.redo();
     expect(mockContext.putImageData).toHaveBeenCalledTimes(4);
   });
+
+  it("resets pending stroke state when the drawing context is reloaded", () => {
+    const brush = new Brush(createMockCanvas());
+
+    brush.putPoint(0, 0, 1);
+    brush.putPoint(20, 20, 1);
+
+    brush.loadContext(createMockCanvas());
+
+    expect(getInternalBrush(brush).points.length).toBe(0);
+    expect(getInternalBrush(brush).prePoint).toBeUndefined();
+    expect(getInternalBrush(brush).prePrePoint).toBeUndefined();
+  });
 });
 
 describe("Brush — rendering", () => {

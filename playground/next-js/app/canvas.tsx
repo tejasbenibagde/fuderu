@@ -19,6 +19,7 @@ import {
 } from "fuderu";
 
 import { useBrushStore } from "@/components/playground/brush-store";
+import { useLayerManager } from "@/hooks/use-layer-manager";
 import { Button } from "@/components/ui/button";
 import {
   IconArrowsMaximize,
@@ -36,14 +37,23 @@ type ModuleRefs = {
   pattern: PatternModule;
 };
 
-const Canvas = ({ project }: { project: PlaygroundProject }) => {
+interface CanvasProps {
+  project: PlaygroundProject;
+  onLayersChange?: (layers: any[]) => void;
+  onLayerManagerReady?: (manager: any) => void;
+}
+
+const Canvas = ({
+  project,
+  onLayersChange,
+  onLayerManagerReady,
+}: CanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const brushRef = useRef<Brush | null>(null);
   const modulesRef = useRef<ModuleRefs | null>(null);
   const pressureRef = useRef(new MousePressure());
   const isDrawingRef = useRef(false);
-  const layerManagerRef = useRef<LayerManager | null>(null);
   const [cursor, setCursor] = useState({
     visible: false,
     x: 0,
@@ -54,6 +64,7 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
   const [rotation, setRotation] = useState(0);
 
   const store = useBrushStore();
+  const layerManager = useLayerManager(project.width, project.height);
 
   // Composite all layers onto the display canvas
   const compositeLayers = () => {
@@ -61,25 +72,33 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
     if (!displayCanvas) return;
     const ctx = displayCanvas.getContext("2d");
     if (!ctx) return;
-    const layerManager = layerManagerRef.current;
-    if (!layerManager) return;
+    const manager = layerManager.getLayerManager();
+    if (!manager) return;
 
-    const layers = layerManager.getAll();
+    const layers = manager.getAll();
     // Clear the display canvas
     ctx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
-    // Draw each layer in order
+
+    // Draw each layer in order, respecting visibility and opacity
     for (const layer of layers) {
+      const layerInfo = layerManager.layers.find((l) => l.layer === layer);
+
+      if (layerInfo && !layerInfo.visible) continue;
+
+      ctx.save();
+      if (layerInfo) {
+        ctx.globalAlpha = layerInfo.opacity;
+      }
       ctx.drawImage(layer.canvas, 0, 0);
+      ctx.restore();
     }
   };
 
-  // Initialize or reset the layer manager and brush when project size changes
+  // Initialize brush when active layer changes
   useEffect(() => {
-    const layerManager = new LayerManager(project.width, project.height);
-    layerManagerRef.current = layerManager;
+    const activeLayer = layerManager.getActiveLayer();
+    if (!activeLayer) return;
 
-    // Create brush on the active layer's canvas
-    const activeLayer = layerManager.getActive();
     const brush = new Brush(activeLayer.canvas, {
       size: store.size,
       opacity: store.opacity,
@@ -126,9 +145,18 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
     return () => {
       brushRef.current = null;
       modulesRef.current = null;
-      layerManagerRef.current = null;
     };
-  }, [project.width, project.height, store]);
+  }, [layerManager.activeLayerId, store]);
+
+  // Notify parent of layer changes
+  useEffect(() => {
+    onLayersChange?.(layerManager.layers);
+  }, [layerManager.layers, onLayersChange]);
+
+  // Expose layer manager to parent
+  useEffect(() => {
+    onLayerManagerReady?.(layerManager);
+  }, [layerManager, onLayerManagerReady]);
 
   // Update brush configuration when store changes
   useEffect(() => {
@@ -237,9 +265,9 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
     store.spreadEnabled,
     store.spreadRange,
     store.spreadTrigger,
-    store.spendCount,
-    store.spendCountJitter,
-    store.spendCountJitterTrigger,
+    store.spreadCount,
+    store.spreadCountJitter,
+    store.spreadCountJitterTrigger,
   ]);
 
   useEffect(() => {
@@ -291,7 +319,7 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
     compositeLayers();
   }, [store.redoTrigger]);
 
-  const updateCursor = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+  const updateCursor = (event: ReactPointerEffect<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
 
@@ -330,7 +358,7 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
     return { x, y, pressure };
   };
 
-  const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+  const handlePointerDown = (event: ReactPointerEffect<HTMLCanvasElement>) => {
     const brush = brushRef.current;
     if (!brush) return;
 
@@ -347,7 +375,7 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
     compositeLayers();
   };
 
-  const handlePointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+  const handlePointerMove = (event: ReactPointerEffect<HTMLCanvasElement>) => {
     const brush = brushRef.current;
     const point = updateCursor(event);
     if (!brush || !point || !isDrawingRef.current) return;
@@ -369,7 +397,7 @@ const Canvas = ({ project }: { project: PlaygroundProject }) => {
   const rotateLeft = () => setRotation((value) => (value - 90 + 360) % 360);
   const rotateRight = () => setRotation((value) => (value + 90) % 360);
 
-  const finishStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+  const finishStroke = (event: ReactPointerEffect<HTMLCanvasElement>) => {
     if (!isDrawingRef.current) return;
 
     event.preventDefault();

@@ -1,6 +1,7 @@
 "use client";
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { LayersSidebar } from "@/components/layout/layers-sidebar";
 import { CustomTrigger } from "@/components/layout/sidebar-trigger";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,8 @@ import { SidebarInset } from "@/components/ui/sidebar";
 import Canvas from "./canvas";
 import { IconArrowRight, IconBrush, IconFilePlus } from "@tabler/icons-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import type { LayerInfo } from "@/hooks/use-layer-manager";
 
 export type PlaygroundProject = {
   id: number;
@@ -30,6 +32,9 @@ export default function Home() {
   const [name, setName] = useState("Untitled Canvas");
   const [width, setWidth] = useState(1536);
   const [height, setHeight] = useState(1536);
+  const [layers, setLayers] = useState<LayerInfo[]>([]);
+  const [activeLayerId, setActiveLayerId] = useState<string>("");
+  const [layerManager, setLayerManager] = useState<any>(null);
 
   const createProject = () => {
     setProject({
@@ -39,6 +44,97 @@ export default function Home() {
       height: Math.max(1, Math.round(height)),
     });
   };
+
+  const handleLayersChange = useCallback(
+    (newLayers: LayerInfo[]) => {
+      setLayers(newLayers);
+      if (newLayers.length > 0 && !activeLayerId) {
+        setActiveLayerId(newLayers[0].id);
+      }
+    },
+    [activeLayerId],
+  );
+
+  const handleCreateLayer = useCallback(() => {
+    if (layerManager) {
+      layerManager.createLayer();
+    }
+  }, [layerManager]);
+
+  const handleDeleteLayer = useCallback(
+    (id: string) => {
+      if (layerManager) {
+        layerManager.deleteLayer(id);
+      }
+    },
+    [layerManager],
+  );
+
+  const handleRenameLayer = useCallback(
+    (id: string, name: string) => {
+      if (layerManager) {
+        layerManager.renameLayer(id, name);
+      }
+    },
+    [layerManager],
+  );
+
+  const handleToggleVisibility = useCallback(
+    (id: string, visible: boolean) => {
+      if (layerManager) {
+        layerManager.setLayerVisibility(id, visible);
+      }
+    },
+    [layerManager],
+  );
+
+  const handleSetOpacity = useCallback(
+    (id: string, opacity: number) => {
+      if (layerManager) {
+        layerManager.setLayerOpacity(id, opacity);
+      }
+    },
+    [layerManager],
+  );
+
+  const handleSelectLayer = useCallback(
+    (id: string) => {
+      if (layerManager) {
+        layerManager.setActiveLayer(id);
+      }
+      setActiveLayerId(id);
+    },
+    [layerManager],
+  );
+
+  const handleDuplicateLayer = useCallback(
+    (id: string) => {
+      if (layerManager?.getLayerManager()) {
+        // TODO: Implement duplication
+      }
+    },
+    [layerManager],
+  );
+
+  const handleSetBlendMode = useCallback(
+    (id: string, blendMode: string) => {
+      if (layerManager) {
+        const manager = layerManager.getLayerManager();
+        const allLayers = manager?.getAll();
+        const layer = allLayers?.find((l: any) => l.id === id);
+        if (layer) {
+          layer.blendMode = blendMode;
+          layerManager.updateLayersList();
+        }
+      }
+    },
+    [layerManager],
+  );
+
+  const handleLayerManagerReady = useCallback((manager: any) => {
+    // Only set if not already set
+    setLayerManager((prev: any) => prev || manager);
+  }, []);
 
   if (!project) {
     return (
@@ -186,9 +282,27 @@ export default function Home() {
         {/* Playground Area */}
         <main className="flex flex-1 overflow-hidden">
           {/* Canvas */}
-          <Canvas key={project.id} project={project} />
+          <Canvas
+            key={project.id}
+            project={project}
+            onLayersChange={handleLayersChange}
+            onLayerManagerReady={handleLayerManagerReady}
+          />
         </main>
       </SidebarInset>
+
+      <LayersSidebar
+        layers={layers}
+        activeLayerId={activeLayerId}
+        onCreateLayer={handleCreateLayer}
+        onDeleteLayer={handleDeleteLayer}
+        onRenameLayer={handleRenameLayer}
+        onToggleVisibility={handleToggleVisibility}
+        onSetOpacity={handleSetOpacity}
+        onSelectLayer={handleSelectLayer}
+        onDuplicateLayer={handleDuplicateLayer}
+        onSetBlendMode={handleSetBlendMode}
+      />
     </>
   );
 }

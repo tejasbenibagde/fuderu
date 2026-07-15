@@ -4,7 +4,13 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
-## [1.0.0] - 2026-07-15
+## [1.0.1] - 2026-07-15
+
+### Fixed
+
+- **Browser Compatibility** – Added fallback UUID generation for environments where `crypto.randomUUID()` is not available (e.g., older browsers, non-secure contexts). The library now gracefully degrades to a deterministic UUID v4-like generator while preserving the existing behavior where native support exists.
+
+## [1.0.0] - 2026-07-10
 
 ### Added
 

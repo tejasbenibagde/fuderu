@@ -397,7 +397,7 @@ export function createBrushStore(initialValues = {}) {
           <input
             type="text"
             bind:value={layer.name}
-            on:input={() => updateLayer(layer.id, { name: line.name })}
+            on:input={() => updateLayer(layer.id, { name: layer.name })}
             placeholder="Layer name"
           />
         </div>
@@ -454,7 +454,6 @@ export function createBrushStore(initialValues = {}) {
     {/each}
   </div>
 </div>
-</svelte>
 
 <style>
   .layer-manager {

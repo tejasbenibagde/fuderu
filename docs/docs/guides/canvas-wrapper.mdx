@@ -92,30 +92,30 @@ The Canvas instance includes a `layers` property that provides access to the
 layer management API:
 
 ```ts
-// Create a new layer
-const layerId = painter.createLayer({
+// Create a new layer (this automatically sets it as active)
+const layer = painter.createLayer({
   name: "Line Art",
   opacity: 0.8,
   blendMode: "multiply",
 });
 
-// Get the active layer
+// Get the active layer (which is now the new layer)
 const activeLayer = painter.getActiveLayer();
 
-// Set a layer as active
-painter.setActiveLayer(layerId);
+// Set a layer as active manually using its ID
+painter.setActiveLayer(layer.id);
 
-// Delete a layer
+// Delete a layer by ID
 painter.deleteLayer("some-layer-id");
 
 // Duplicate a layer
-const duplicatedLayer = painter.duplicateLayer(layerId);
+const duplicatedLayer = painter.duplicateLayer(layer.id);
 
 // Get all layers
 const allLayers = painter.getLayers();
 
-// Update layer properties
-painter.updateLayer(layerId, {
+// Update layer properties by ID
+painter.updateLayer(layer.id, {
   opacity: 0.5,
   blendMode: "screen",
   visible: true,
@@ -149,7 +149,7 @@ Example using blend modes for a multiply blending effect:
 // Create a base color layer
 const baseLayer = painter.createLayer({
   name: "Base Color",
-  blendMode: "normal",
+  blendMode: "source-over",
 });
 
 // Draw your base colors on this layer

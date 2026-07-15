@@ -126,15 +126,16 @@ npm install fuderu
       // Update brush color
       function updateColor() {
         if (painter) {
-          painter.brush.color = colorPicker.value;
+          painter.loadConfig({ color: colorPicker.value });
         }
       }
 
       // Update brush size
       function updateSize() {
         if (painter) {
-          painter.brush.size = parseInt(sizeSlider.value);
-          sizeValue.textContent = `${sizeSlider.value}px`;
+          const size = parseInt(sizeSlider.value);
+          painter.loadConfig({ size });
+          sizeValue.textContent = `${size}px`;
         }
       }
 
@@ -381,6 +382,10 @@ Create `src/lib/DrawingCanvas.svelte`:
 Modify `src/routes/+page.svelte`:
 
 ```svelte
+<script>
+  import DrawingCanvas from '../lib/DrawingCanvas.svelte';
+</script>
+
 <svelte:head>
   <title>Fuderu Drawing App</title>
 </svelte:head>

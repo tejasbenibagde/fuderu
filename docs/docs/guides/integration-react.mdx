@@ -290,15 +290,19 @@ function DrawingToolbar({
 
 ```tsx
 import { useState } from "react";
+import type { BlendMode } from "fuderu";
 
 interface LayerProps {
   onSelectLayer: (layerId: string) => void;
-  onUpdateLayer: (layerId: string, options: Partial<{
-    name: string;
-    visible: boolean;
-    opacity: number;
-    blendMode: ImportMeta["BlendMode"]
-  }>) => void;
+  onUpdateLayer: (
+    layerId: string,
+    options: Partial<{
+      name: string;
+      visible: boolean;
+      opacity: number;
+      blendMode: BlendMode;
+    }>,
+  ) => void;
   onAddLayer: () => void;
   onRemoveLayer: (layerId: string) => void;
   layers: Array<{
@@ -306,15 +310,22 @@ interface LayerProps {
     name: string;
     visible: boolean;
     opacity: number;
-    blendMode: ImportMeta["BlendMode"]
+    blendMode: BlendMode;
   }>;
   activeLayerId: string | null;
 }
 
-function LayerPanel({ layers, activeLayerId, onSelectLayer, onUpdateLayer, onAddLayer, onRemoveLayer }: LayerProps) {
+function LayerPanel({
+  layers,
+  activeLayerId,
+  onSelectLayer,
+  onUpdateLayer,
+  onAddLayer,
+  onRemoveLayer,
+}: LayerProps) {
   return (
     <div className="layer-panel">
-      <h3>Layers</div>
+      <h3>Layers</h3>
       <button onClick={onAddLayer}>+ Add Layer</button>
 
       <div className="layer-list">
@@ -352,7 +363,9 @@ function LayerPanel({ layers, activeLayerId, onSelectLayer, onUpdateLayer, onAdd
                   step={0.01}
                   value={layer.opacity}
                   onChange={(e) => {
-                    onUpdateLayer(layer.id, { opacity: Number(e.target.value) });
+                    onUpdateLayer(layer.id, {
+                      opacity: Number(e.target.value),
+                    });
                   }}
                 />
               </div>
@@ -362,7 +375,9 @@ function LayerPanel({ layers, activeLayerId, onSelectLayer, onUpdateLayer, onAdd
                 <select
                   value={layer.blendMode}
                   onChange={(e) => {
-                    onUpdateLayer(layer.id, { blendMode: e.target.value as ImportMeta["BlendMode"] });
+                    onUpdateLayer(layer.id, {
+                      blendMode: e.target.value as ImportMeta["BlendMode"],
+                    });
                   }}
                 >
                   <option value="source-over">Normal</option>

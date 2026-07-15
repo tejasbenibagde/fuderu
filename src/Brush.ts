@@ -104,8 +104,6 @@ export class Brush {
   onRender?: () => void;
 
   /*********************************** Undo / Redo ***********************************/
-  private canvasStack: ImageData[] = [];
-  private canvasStackIndex: number = -1;
   /**
    * Maximum number of undo/redo operations (0 means no limit)
    */
@@ -481,30 +479,14 @@ export class Brush {
    * Undo
    */
   undo() {
-    if (this.canvasStackIndex > 0) {
-      this.canvasStackIndex--;
-      this.context?.putImageData(this.canvasStack[this.canvasStackIndex], 0, 0);
-      this.oriContext?.putImageData(
-        this.canvasStack[this.canvasStackIndex],
-        0,
-        0,
-      );
-    }
+    // Handled by Canvas.HistoryManager
   }
 
   /**
    * Redo
    */
   redo() {
-    if (this.canvasStackIndex < this.canvasStack.length - 1) {
-      this.canvasStackIndex++;
-      this.context?.putImageData(this.canvasStack[this.canvasStackIndex], 0, 0);
-      this.oriContext?.putImageData(
-        this.canvasStack[this.canvasStackIndex],
-        0,
-        0,
-      );
-    }
+    // Handled by Canvas.HistoryManager
   }
 
   /**
@@ -587,22 +569,7 @@ export class Brush {
   }
 
   private initCanvasStack() {
-    this.canvasStack = [];
-    this.canvasStackIndex = -1;
-    if (this.maxUndoRedoStackSize <= 0) {
-      return;
-    }
-    if (this.oriCanvas && this.oriContext) {
-      this.canvasStack.push(
-        this.oriContext.getImageData(
-          0,
-          0,
-          this.oriCanvas.width,
-          this.oriCanvas.height,
-        ),
-      );
-      this.canvasStackIndex++;
-    }
+    // Handled by Canvas.HistoryManager
   }
 
   private imageInitColoring() {
@@ -909,28 +876,6 @@ export class Brush {
 
     this._strokeOpacity = 1;
     this.strokeHistory = [];
-
-    if (this.maxUndoRedoStackSize > 0) {
-      if (this.canvasStackIndex != this.canvasStack.length - 1) {
-        this.canvasStack.splice(
-          this.canvasStackIndex + 1,
-          this.canvasStack.length - this.canvasStackIndex - 1,
-        );
-      }
-      this.canvasStackIndex =
-        this.canvasStack.push(
-          this.context!.getImageData(
-            0,
-            0,
-            this.canvas!.width,
-            this.canvas!.height,
-          ),
-        ) - 1;
-      if (this.canvasStack.length > this.maxUndoRedoStackSize) {
-        this.canvasStack.shift();
-        this.canvasStackIndex--;
-      }
-    }
 
     for (const [, module] of this.modules) {
       if (module.onEndStroke) {

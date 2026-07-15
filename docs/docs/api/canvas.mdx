@@ -236,7 +236,30 @@ Sizing the element on screen is the caller's responsibility.
 
 ### `undo()`, `redo()`, `clear()`
 
-Undo/redo the last stroke or clear the canvas.
+Undo/redo the last user action or clear the canvas.
+
+Starting in version 1.1.0, `Canvas` manages a unified history stack via `HistoryManager`. It supports undoing and redoing not just paint strokes, but also a variety of layer operations:
+
+- **Drawing strokes** (`CanvasStateHistoryEntry`)
+- **Layer creations** (`LayerCreatedHistoryEntry`)
+- **Layer deletions** (`LayerDeletedHistoryEntry`)
+- **Layer reorderings** (`MoveLayerHistoryEntry`)
+- **Layer property changes** such as name, visibility, opacity, and blend modes (`LayerPropertyHistoryEntry`)
+
+Because history is managed at the high-level `Canvas` wrapper, **switching the active layer no longer wipes the undo/redo stack**. Users can switch layers freely and still undo/redo their strokes across layers seamlessly.
+
+### `history`
+
+The `HistoryManager` instance on the canvas. It provides low-level control over the undo/redo stack:
+
+```ts
+// Check if undo or redo are available
+const canUndo = painter.history.canUndo();
+const canRedo = painter.history.canRedo();
+
+// Clear the history stack manually
+painter.history.clear();
+```
 
 ### `setSmooth(enabled)`, `setSpacing(enabled)`, `setEraser(enabled)`
 

@@ -205,13 +205,12 @@ describe("Brush — point processing", () => {
 });
 
 describe("Brush — stroke lifecycle", () => {
-  it("finalizes a stroke without queued points and commits to the undo stack", () => {
+  it("finalizes a stroke without queued points", () => {
     const brush = new Brush(createMockCanvas());
 
     brush.finalizeStroke();
 
     expect(mockContext.drawImage).toHaveBeenCalled();
-    expect(getInternalBrush(brush).canvasStackIndex).toBeGreaterThanOrEqual(0);
   });
 
   it("resets rotation state between successive strokes", () => {
@@ -246,17 +245,6 @@ describe("Brush — canvas behavior", () => {
     expect(getInternalBrush(brush).prePoint).toBeUndefined();
     expect(getInternalBrush(brush).prePrePoint).toBeUndefined();
     expect(mockContext.clearRect).toHaveBeenCalledTimes(4);
-  });
-
-  it("stores image history and restores it via undo/redo", () => {
-    const brush = new Brush(createMockCanvas());
-
-    brush.finalizeStroke();
-    brush.undo();
-    expect(mockContext.putImageData).toHaveBeenCalledTimes(2);
-
-    brush.redo();
-    expect(mockContext.putImageData).toHaveBeenCalledTimes(4);
   });
 
   it("resets pending stroke state when the drawing context is reloaded", () => {

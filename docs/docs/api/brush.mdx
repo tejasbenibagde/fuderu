@@ -8,10 +8,10 @@ title: Brush
 import FuderuDemo from "@site/src/components/FuderuDemo";
 
 `Brush` is the lower-level stroke engine. It receives points, interpolates them,
-renders stamps, manages image brushes, and owns undo/redo state.
+renders stamps, and manages image brushes.
 
 The Brush API is part of the stable 1.0.0 surface and is designed for both
-simple integrations and more advanced custom rendering pipelines.
+simple integrations and more advanced custom rendering pipelines. Starting with version 1.1.0, undo/redo history is decoupled from the `Brush` and managed at the higher-level `Canvas` wrapper via `HistoryManager`. This ensures full support for multi-layer operations.
 
 <FuderuDemo
   title="Brush engine controls"
@@ -123,6 +123,8 @@ undo(): void;
 redo(): void;
 clear(): void;
 ```
+
+> **Note on History**: In low-level standalone usage, you can implement custom history tracking. When using the standard `Canvas` wrapper, the history is fully handled by the global `HistoryManager` (accessed via `canvas.history`). These methods remain on the `Brush` signature for backward compatibility.
 
 ## Modules
 

@@ -9,6 +9,15 @@ import {
   type UpdateLayerOptions,
 } from "./LayerManager";
 import type { Layer } from "./Layer";
+import {
+  HistoryManager,
+  CanvasStateHistoryEntry,
+  LayerCreatedHistoryEntry,
+  LayerDeletedHistoryEntry,
+  LayerPropertyHistoryEntry,
+  MoveLayerHistoryEntry,
+  type HistoryContext,
+} from "./HistoryManager";
 
 export interface CanvasOptions {
   canvas: HTMLCanvasElement | string;
@@ -26,12 +35,15 @@ export interface CanvasOptions {
   pressureSimulation?: boolean;
 }
 
-export class Canvas {
+export class Canvas implements HistoryContext {
   private canvas: HTMLCanvasElement;
   public brush: Brush;
   public layers!: LayerManager;
+  public history: HistoryManager;
 
   private isDrawing = false;
+  private currentStrokeBeforeData: ImageData | null = null;
+  private currentStrokeLayerId: string | null = null;
 
   /** The logical drawing resolution width (internal pixel buffer) */
   public documentWidth: number;
@@ -82,6 +94,7 @@ export class Canvas {
 
     this.setupCanvas();
     this.brush = new Brush(this.layers.getActive().canvas, options.brush);
+    this.history = new HistoryManager(30);
     this.brush.onRender = () => this.renderLayers();
     this.bindEvents();
     this.renderLayers();
@@ -89,7 +102,7 @@ export class Canvas {
 
   // Private setup
 
-  private renderLayers(): void {
+  public renderLayers(): void {
     const ctx = this.canvas.getContext("2d");
 
     if (!ctx) return;
@@ -209,6 +222,18 @@ export class Canvas {
       // Ignore environments where pointer capture is unavailable.
     }
 
+    const activeLayer = this.layers.getActive();
+    const ctx = activeLayer.canvas.getContext("2d");
+    if (ctx) {
+      this.currentStrokeBeforeData = ctx.getImageData(
+        0,
+        0,
+        activeLayer.canvas.width,
+        activeLayer.canvas.height,
+      );
+      this.currentStrokeLayerId = activeLayer.id;
+    }
+
     const p = this.getPoint(e);
     this.brush.putPoint(p.x, p.y, p.pressure);
     this.brush.render();
@@ -231,6 +256,34 @@ export class Canvas {
     this.renderLayers();
   };
 
+  private commitStroke() {
+    const beforeData = this.currentStrokeBeforeData;
+    const layerId = this.currentStrokeLayerId;
+    this.currentStrokeBeforeData = null;
+    this.currentStrokeLayerId = null;
+
+    this.brush.finalizeStroke(() => {
+      if (beforeData && layerId) {
+        const layer = this.layers.getById(layerId);
+        if (layer) {
+          const afterCtx = layer.canvas.getContext("2d");
+          if (afterCtx) {
+            const afterData = afterCtx.getImageData(
+              0,
+              0,
+              layer.canvas.width,
+              layer.canvas.height,
+            );
+            this.history.push(
+              new CanvasStateHistoryEntry(layerId, beforeData, afterData, this),
+            );
+          }
+        }
+      }
+      this.renderLayers();
+    });
+  }
+
   private handlePointerUp = (e?: PointerEvent) => {
     if (!this.isDrawing) return;
 
@@ -247,8 +300,7 @@ export class Canvas {
       }
     }
 
-    this.brush.finalizeStroke();
-    this.renderLayers();
+    this.commitStroke();
   };
 
   private handlePointerCancel = (e?: PointerEvent) => {
@@ -267,8 +319,7 @@ export class Canvas {
       }
     }
 
-    this.brush.finalizeStroke();
-    this.renderLayers();
+    this.commitStroke();
   };
 
   // Public API
@@ -291,6 +342,8 @@ export class Canvas {
   public createLayer(options?: CreateLayerOptions | string): Layer {
     const layer = this.layers.createLayer(options);
 
+    this.history.push(new LayerCreatedHistoryEntry(layer, this));
+
     this.brush.loadContext(layer.canvas);
     this.renderLayers();
 
@@ -298,11 +351,17 @@ export class Canvas {
   }
 
   public deleteLayer(layerId: string): void {
-    const activeLayerId = this.layers.getActiveId();
+    const layer = this.layers.getById(layerId);
+    const index = this.layers.getAll().indexOf(layer);
+    const wasActive = this.layers.getActiveId() === layerId;
 
     this.layers.deleteLayer(layerId);
 
-    if (activeLayerId === layerId) {
+    this.history.push(
+      new LayerDeletedHistoryEntry(layer, index, wasActive, this),
+    );
+
+    if (wasActive) {
       this.brush.loadContext(this.layers.getActive().canvas);
     }
 
@@ -312,6 +371,8 @@ export class Canvas {
   public duplicateLayer(layerId: string): Layer {
     const layer = this.layers.duplicateLayer(layerId);
 
+    this.history.push(new LayerCreatedHistoryEntry(layer, this));
+
     this.brush.loadContext(layer.canvas);
     this.renderLayers();
 
@@ -319,28 +380,127 @@ export class Canvas {
   }
 
   public moveLayer(layerId: string, targetIndex: number): void {
+    const beforeIndex = this.layers.getAll().findIndex((l) => l.id === layerId);
     this.layers.moveLayer(layerId, targetIndex);
+    const afterIndex = this.layers.getAll().findIndex((l) => l.id === layerId);
+
+    if (beforeIndex !== afterIndex) {
+      this.history.push(
+        new MoveLayerHistoryEntry(layerId, beforeIndex, afterIndex, this),
+      );
+    }
+
     this.renderLayers();
   }
 
   public updateLayer(layerId: string, options: UpdateLayerOptions): Layer {
-    const layer = this.layers.updateLayer(layerId, options);
-    this.renderLayers();
+    const layer = this.layers.getById(layerId);
 
-    return layer;
+    const originalValues: Record<string, string | number | boolean> = {};
+    const keys: ("name" | "visible" | "opacity" | "blendMode")[] = [
+      "name",
+      "visible",
+      "opacity",
+      "blendMode",
+    ];
+    for (const key of keys) {
+      if (options[key] !== undefined) {
+        originalValues[key] = layer[key];
+      }
+    }
+
+    const updated = this.layers.updateLayer(layerId, options);
+
+    for (const key of keys) {
+      if (options[key] !== undefined && originalValues[key] !== options[key]) {
+        this.history.push(
+          new LayerPropertyHistoryEntry(
+            layerId,
+            key,
+            originalValues[key],
+            options[key],
+            this,
+          ),
+        );
+      }
+    }
+
+    this.renderLayers();
+    return updated;
   }
 
   clear(): void {
-    this.brush.clear();
+    const activeLayer = this.layers.getActive();
+    const ctx = activeLayer.canvas.getContext("2d");
+    if (ctx) {
+      const beforeData = ctx.getImageData(
+        0,
+        0,
+        activeLayer.canvas.width,
+        activeLayer.canvas.height,
+      );
+
+      this.brush.clear();
+
+      const afterData = ctx.getImageData(
+        0,
+        0,
+        activeLayer.canvas.width,
+        activeLayer.canvas.height,
+      );
+      this.history.push(
+        new CanvasStateHistoryEntry(
+          activeLayer.id,
+          beforeData,
+          afterData,
+          this,
+        ),
+      );
+    } else {
+      this.brush.clear();
+    }
     this.renderLayers();
   }
+
   undo(): void {
+    this.history.undo();
     this.brush.undo();
     this.renderLayers();
   }
+
   redo(): void {
+    this.history.redo();
     this.brush.redo();
     this.renderLayers();
+  }
+
+  // HistoryContext implementation
+  public getLayer(layerId: string): Layer | undefined {
+    try {
+      return this.layers.getById(layerId);
+    } catch {
+      return undefined;
+    }
+  }
+
+  public getBrush(): Brush {
+    return this.brush;
+  }
+
+  public deleteLayerOnly(layerId: string): void {
+    const activeLayerId = this.layers.getActiveId();
+    this.layers.removeLayerOnly(layerId);
+    if (activeLayerId === layerId) {
+      this.brush.loadContext(this.layers.getActive().canvas);
+    }
+  }
+
+  public insertLayerOnly(layer: Layer, index: number): void {
+    this.layers.addLayerAt(layer, index);
+  }
+
+  public moveLayerOnly(layerId: string, index: number): void {
+    this.layers.moveLayer(layerId, index);
   }
 
   setSmooth(enabled: boolean): void {
@@ -391,6 +551,7 @@ export class Canvas {
     if (ctx) ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     this.brush.loadContext(this.layers.getActive().canvas);
+    this.history.clear();
     this.renderLayers();
   }
 

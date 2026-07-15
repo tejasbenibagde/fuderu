@@ -96,6 +96,21 @@ export class LayerManager {
     }
   }
 
+  addLayerAt(layer: Layer, index: number): void {
+    const boundedIndex = Math.min(Math.max(index, 0), this.layers.length);
+    this.layers.splice(boundedIndex, 0, layer);
+  }
+
+  removeLayerOnly(layerId: string): void {
+    const layerIndex = this.layers.findIndex((layer) => layer.id === layerId);
+    if (layerIndex !== -1) {
+      this.layers.splice(layerIndex, 1);
+      if (this.activeLayerId === layerId && this.layers.length > 0) {
+        this.activeLayerId = this.layers[0].id;
+      }
+    }
+  }
+
   duplicateLayer(layerId: string): Layer {
     const source = this.layers.find((l) => l.id === layerId);
 

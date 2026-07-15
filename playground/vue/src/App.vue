@@ -28,7 +28,7 @@
 </template>
 
 <script setup>
-import {useCanvas} from "../composables/useCanvas";
+import { useCanvas } from "../composables/useCanvas";
 
 const { canvasRef, width, height, brushConfig, setBrushColor, setBrushSize } =
   useCanvas({

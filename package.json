@@ -45,6 +45,7 @@
     "playground": "cross-env PLAYGROUND=vanilla vite",
     "vanilla": "cross-env PLAYGROUND=vanilla vite",
     "next": "npm --prefix playground/next-js run dev",
+    "vue": "npm --prefix playground/vue run dev",
     "preview": "vite preview",
     "docs": "npm --prefix docs run start",
     "docs:build": "npm --prefix docs run build",

@@ -210,9 +210,9 @@ brush.useModule(
 
 Fuderu 1.0.0 is now the stable baseline for the core brush, canvas, pressure, image, eraser, and module systems.
 
-The library is validated with Vitest, browser-style canvas tests, and local playground builds.
+The library is fully verified with robust unit testing via Vitest, browser-style canvas rendering tests, and various local playground environments across multiple web frameworks.
 
-See [ROADMAP.md](./ROADMAP.md) for the next milestones beyond the 1.0.0 release.
+For full detailed guides and API documentations, check out the live documentation portal or look under the `/docs` folder.
 
 ## License
 

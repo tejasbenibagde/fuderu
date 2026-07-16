@@ -4,7 +4,7 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
-## [1.1.0-beta.1] - 2026-07-15
+## 1.1.0 - 2026-07-16
 
 ### Added
 

@@ -469,11 +469,13 @@ $("clearBtn").addEventListener("click", () => {
 
 $("undoBtn").addEventListener("click", () => {
   painter.undo();
+  renderLayerList();
   status.textContent = "Undo";
 });
 
 $("redoBtn").addEventListener("click", () => {
   painter.redo();
+  renderLayerList();
   status.textContent = "Redo";
 });
 
@@ -525,19 +527,26 @@ $("removeImageBtn").addEventListener("click", () => {
 });
 
 canvasEl.addEventListener("pointermove", updateCursorLabel);
-// window.addEventListener("pointerup", () => {
-//   // Only refresh thumbnails after a stroke — full rebuild is fine here
-//   // since no input element is mid-interaction at this point.
-//   window.setTimeout(renderLayerList, 0);
-// });
+window.addEventListener("pointerup", () => {
+  refreshLayerPreviews();
+});
+window.addEventListener("pointercancel", () => {
+  refreshLayerPreviews();
+});
 canvasEl.addEventListener("pointerleave", () => {
   cursorLabel.textContent = "—";
 });
 
 window.addEventListener("keydown", (event) => {
   const key = event.key.toLowerCase();
-  if ((event.ctrlKey || event.metaKey) && key === "z") painter.undo();
-  if ((event.ctrlKey || event.metaKey) && key === "y") painter.redo();
+  if ((event.ctrlKey || event.metaKey) && key === "z") {
+    painter.undo();
+    renderLayerList();
+  }
+  if ((event.ctrlKey || event.metaKey) && key === "y") {
+    painter.redo();
+    renderLayerList();
+  }
 });
 
 // ── Inline icon set (stroke-based, currentColor) ────────────

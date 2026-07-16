@@ -489,3 +489,119 @@
     min-height: 32rem;
   }
 }
+
+.topbarLeft {
+  display: flex;
+  flex-direction: column;
+}
+
+.topbarMiddle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.topbarRight {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.actionButton {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 6px;
+  color: #334155;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.45rem 0.75rem;
+  transition: all 0.15s ease;
+}
+
+.actionButton:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.24);
+  color: #0f172a;
+}
+
+.actionButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.icon {
+  flex-shrink: 0;
+  display: block;
+}
+
+.exportButton {
+  background: #0f172a !important;
+  color: #ffffff !important;
+  border-color: #0f172a !important;
+}
+
+.exportButton:hover {
+  background: #1e293b !important;
+}
+
+.layerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  padding-bottom: 0.5rem;
+}
+
+.layerHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.layerHeaderRight {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.reorderButton {
+  background: transparent;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 4px;
+  color: #475569;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  transition: all 0.15s ease;
+}
+
+.reorderButton:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: rgba(15, 23, 42, 0.2);
+  color: #0f172a;
+}
+
+.reorderButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.layerThumbnail {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 6px;
+  height: 2.75rem;
+  width: 2.75rem;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}

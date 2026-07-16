@@ -62,7 +62,7 @@ export default function EditorPage() {
                 width={224}
                 height={76}
               />
-              <span className={styles.badge}>Fuderu 0.8.8 Editor</span>
+              <span className={styles.badge}>Fuderu 1.1.0 Editor</span>
               <h1>Create a drawing project</h1>
               <p>
                 Start with a document size and build a layered composition. The
@@ -203,6 +203,10 @@ function Editor({
     height: project.height,
   });
 
+  const [strokeCount, setStrokeCount] = useState(0);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
   const refreshLayers = () => {
     const painter = painterRef.current;
     if (!painter) return;
@@ -210,6 +214,8 @@ function Editor({
     const nextLayers = [...painter.getLayers()];
     setLayers(nextLayers);
     setActiveLayerId(painter.getActiveLayer().id);
+    setCanUndo(painter.history.canUndo());
+    setCanRedo(painter.history.canRedo());
   };
 
   useEffect(() => {
@@ -424,6 +430,94 @@ function Editor({
     refreshLayers();
   };
 
+  const handleMoveUp = (layerId: string) => {
+    const painter = painterRef.current;
+    if (!painter) return;
+    const index = layers.findIndex((l) => l.id === layerId);
+    if (index >= 0 && index < layers.length - 1) {
+      painter.moveLayer(layerId, index + 1);
+      refreshLayers();
+    }
+  };
+
+  const handleMoveDown = (layerId: string) => {
+    const painter = painterRef.current;
+    if (!painter) return;
+    const index = layers.findIndex((l) => l.id === layerId);
+    if (index > 0) {
+      painter.moveLayer(layerId, index - 1);
+      refreshLayers();
+    }
+  };
+
+  const handleUndo = () => {
+    const painter = painterRef.current;
+    if (!painter) return;
+    painter.undo();
+    refreshLayers();
+    setStrokeCount((c) => c + 1);
+  };
+
+  const handleRedo = () => {
+    const painter = painterRef.current;
+    if (!painter) return;
+    painter.redo();
+    refreshLayers();
+    setStrokeCount((c) => c + 1);
+  };
+
+  const handleClear = () => {
+    const painter = painterRef.current;
+    if (!painter) return;
+    if (window.confirm("Are you sure you want to clear the active layer?")) {
+      painter.clear();
+      refreshLayers();
+      setStrokeCount((c) => c + 1);
+    }
+  };
+
+  const handleExport = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const url = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.download = `${project.name}.png`;
+    link.href = url;
+    link.click();
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
+
+      if (isCmdOrCtrl && key === "z") {
+        e.preventDefault();
+        const painter = painterRef.current;
+        if (painter) {
+          if (e.shiftKey) {
+            painter.redo();
+          } else {
+            painter.undo();
+          }
+          refreshLayers();
+          setStrokeCount((c) => c + 1);
+        }
+      } else if (isCmdOrCtrl && key === "y") {
+        e.preventDefault();
+        const painter = painterRef.current;
+        if (painter) {
+          painter.redo();
+          refreshLayers();
+          setStrokeCount((c) => c + 1);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [layers]);
+
   return (
     <section className={styles.editor}>
       <aside className={styles.sidebarLeft}>
@@ -620,19 +714,116 @@ function Editor({
 
       <div className={styles.workspace}>
         <header className={styles.topbar}>
-          <div>
+          <div className={styles.topbarLeft}>
             <div className={styles.projectName}>{project.name}</div>
             <div className={styles.projectMeta}>
               {project.width} x {project.height} document
             </div>
           </div>
-          <button
-            className={styles.toolButton}
-            type="button"
-            onClick={onNewProject}
-          >
-            New Project
-          </button>
+
+          <div className={styles.topbarMiddle}>
+            <button
+              className={styles.actionButton}
+              type="button"
+              onClick={handleUndo}
+              disabled={!canUndo}
+              title="Undo last action (Ctrl+Z)"
+            >
+              <svg
+                className={styles.icon}
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+              </svg>
+              Undo
+            </button>
+            <button
+              className={styles.actionButton}
+              type="button"
+              onClick={handleRedo}
+              disabled={!canRedo}
+              title="Redo action (Ctrl+Y)"
+            >
+              <svg
+                className={styles.icon}
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg>
+              Redo
+            </button>
+            <button
+              className={styles.actionButton}
+              type="button"
+              onClick={handleClear}
+              title="Clear active layer"
+            >
+              <svg
+                className={styles.icon}
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 6h18"></path>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              Clear
+            </button>
+          </div>
+
+          <div className={styles.topbarRight}>
+            <button
+              className={`${styles.toolButton} ${styles.exportButton}`}
+              type="button"
+              onClick={handleExport}
+              title="Export composition as PNG image"
+            >
+              <svg
+                className={styles.icon}
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Export PNG
+            </button>
+            <button
+              className={styles.toolButton}
+              type="button"
+              onClick={onNewProject}
+            >
+              New Project
+            </button>
+          </div>
         </header>
 
         <div className={styles.surface}>
@@ -644,6 +835,8 @@ function Editor({
                 width: `${displaySize.width}px`,
                 height: `${displaySize.height}px`,
               }}
+              onPointerUp={() => setStrokeCount((c) => c + 1)}
+              onPointerCancel={() => setStrokeCount((c) => c + 1)}
             />
           </div>
         </div>
@@ -692,103 +885,143 @@ function Editor({
             </div>
           ) : (
             <div className={styles.layerList}>
-              {layers.map((layer) => {
-                const isActive = layer.id === activeLayerId;
+              {(() => {
+                const reversedLayers = [...layers].reverse();
+                return reversedLayers.map((layer) => {
+                  const isActive = layer.id === activeLayerId;
+                  const originalIndex = layers.indexOf(layer);
 
-                return (
-                  <div
-                    key={layer.id}
-                    className={`${styles.layerCard} ${
-                      isActive ? styles.layerCardActive : ""
-                    }`}
-                  >
-                    <button
-                      className={styles.layerRowButton}
-                      type="button"
-                      onClick={() => handleLayerSelect(layer.id)}
+                  return (
+                    <div
+                      key={layer.id}
+                      className={`${styles.layerCard} ${
+                        isActive ? styles.layerCardActive : ""
+                      }`}
                     >
-                      <span className={styles.layerRowLabel}>{layer.name}</span>
-                      <span className={styles.layerBadge}>
-                        {isActive ? "Active" : "Ready"}
-                      </span>
-                    </button>
-
-                    <div className={styles.layerControls}>
-                      <div className={styles.layerControlRow}>
-                        <label
-                          className={styles.layerControlLabel}
-                          htmlFor={`name-${layer.id}`}
-                        >
-                          Name
-                        </label>
-                        <input
-                          id={`name-${layer.id}`}
-                          className={styles.layerNameInput}
-                          value={layer.name}
-                          onChange={(event) =>
-                            handleLayerUpdate(layer.id, {
-                              name: event.target.value,
-                            })
-                          }
-                        />
+                      <div className={styles.layerHeader}>
+                        <div className={styles.layerHeaderLeft}>
+                          <LayerThumbnail
+                            layer={layer}
+                            strokeCount={strokeCount}
+                          />
+                          <button
+                            className={styles.layerRowButton}
+                            type="button"
+                            onClick={() => handleLayerSelect(layer.id)}
+                          >
+                            <span className={styles.layerRowLabel}>
+                              {layer.name}
+                            </span>
+                            <span className={styles.layerBadge}>
+                              {isActive ? "Active" : "Ready"}
+                            </span>
+                          </button>
+                        </div>
+                        <div className={styles.layerHeaderRight}>
+                          <button
+                            title="Move layer up"
+                            className={styles.reorderButton}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveUp(layer.id);
+                            }}
+                            disabled={originalIndex === layers.length - 1}
+                          >
+                            ▲
+                          </button>
+                          <button
+                            title="Move layer down"
+                            className={styles.reorderButton}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveDown(layer.id);
+                            }}
+                            disabled={originalIndex === 0}
+                          >
+                            ▼
+                          </button>
+                        </div>
                       </div>
 
-                      <label className={styles.toggle}>
-                        <input
-                          type="checkbox"
-                          checked={layer.visible}
-                          onChange={(event) =>
-                            handleLayerUpdate(layer.id, {
-                              visible: event.target.checked,
-                            })
-                          }
-                        />
-                        Visible
-                      </label>
+                      <div className={styles.layerControls}>
+                        <div className={styles.layerControlRow}>
+                          <label
+                            className={styles.layerControlLabel}
+                            htmlFor={`name-${layer.id}`}
+                          >
+                            Name
+                          </label>
+                          <input
+                            id={`name-${layer.id}`}
+                            className={styles.layerNameInput}
+                            value={layer.name}
+                            onChange={(event) =>
+                              handleLayerUpdate(layer.id, {
+                                name: event.target.value,
+                              })
+                            }
+                          />
+                        </div>
 
-                      <div className={styles.layerControlRow}>
-                        <label className={styles.layerControlLabel}>
-                          Opacity
+                        <label className={styles.toggle}>
+                          <input
+                            type="checkbox"
+                            checked={layer.visible}
+                            onChange={(event) =>
+                              handleLayerUpdate(layer.id, {
+                                visible: event.target.checked,
+                              })
+                            }
+                          />
+                          Visible
                         </label>
-                        <input
-                          className={styles.range}
-                          type="range"
-                          min={0}
-                          max={1}
-                          step={0.01}
-                          value={layer.opacity}
-                          onChange={(event) =>
-                            handleLayerUpdate(layer.id, {
-                              opacity: Number(event.target.value),
-                            })
-                          }
-                        />
-                      </div>
 
-                      <div className={styles.layerControlRow}>
-                        <label className={styles.layerControlLabel}>
-                          Blend mode
-                        </label>
-                        <select
-                          className={styles.select}
-                          value={layer.blendMode}
-                          onChange={(event) =>
-                            handleLayerUpdate(layer.id, {
-                              blendMode: event.target.value as BlendMode,
-                            })
-                          }
-                        >
-                          {blendModes.map((mode) => (
-                            <option key={mode} value={mode}>
-                              {mode}
-                            </option>
-                          ))}
-                        </select>
+                        <div className={styles.layerControlRow}>
+                          <label className={styles.layerControlLabel}>
+                            Opacity
+                          </label>
+                          <input
+                            className={styles.range}
+                            type="range"
+                            min={0}
+                            max={1}
+                            step={0.01}
+                            value={layer.opacity}
+                            onChange={(event) =>
+                              handleLayerUpdate(layer.id, {
+                                opacity: Number(event.target.value),
+                              })
+                            }
+                          />
+                        </div>
+
+                        <div className={styles.layerControlRow}>
+                          <label className={styles.layerControlLabel}>
+                            Blend mode
+                          </label>
+                          <select
+                            className={styles.select}
+                            value={layer.blendMode}
+                            onChange={(event) =>
+                              handleLayerUpdate(layer.id, {
+                                blendMode: event.target.value as BlendMode,
+                              })
+                            }
+                          >
+                            {blendModes.map((mode) => (
+                              <option key={mode} value={mode}>
+                                {mode}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
           )}
         </div>
@@ -848,5 +1081,44 @@ function Toggle({
       />
       {label}
     </label>
+  );
+}
+
+function LayerThumbnail({
+  layer,
+  strokeCount,
+}: {
+  layer: Layer;
+  strokeCount: number;
+}) {
+  const thumbRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const thumbCanvas = thumbRef.current;
+    if (!thumbCanvas) return;
+    const ctx = thumbCanvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, 48, 48);
+    // Draw transparent checkerboard
+    const checkerSize = 6;
+    for (let y = 0; y < 48; y += checkerSize) {
+      for (let x = 0; x < 48; x += checkerSize) {
+        ctx.fillStyle =
+          (x / checkerSize + y / checkerSize) % 2 === 0 ? "#f1f5f9" : "#ffffff";
+        ctx.fillRect(x, y, checkerSize, checkerSize);
+      }
+    }
+
+    ctx.drawImage(layer.canvas, 0, 0, 48, 48);
+  }, [layer, strokeCount]);
+
+  return (
+    <canvas
+      ref={thumbRef}
+      width={48}
+      height={48}
+      className={styles.layerThumbnail}
+    />
   );
 }

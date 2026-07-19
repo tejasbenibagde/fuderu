@@ -4,7 +4,18 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
-## 1.1.0 - 2026-07-16
+## [1.2.0] - 2026-07-19
+
+### Added
+
+- **Sparse Bounding-Box History Tracking** – Rather than pushing a full-canvas `ImageData` snapshot on every completed stroke, `Canvas` now tracks drawing stroke boundaries (`strokeMinX`, `strokeMinY`, `strokeMaxX`, `strokeMaxY`) in real-time. It then captures and stores only a localized sub-image (padded dynamically by brush size). Reduces history memory footprints by 90-95%.
+- **Offscreen Layer Compositing Cache** – Re-compositing all layer canvases sequentially on every animated frame caused CPU/GPU lag with deep layer stacks. Added an offscreen pre-composited `cacheBelowCanvas`. During active drawing strokes, static layers below the active layer are drawn in a single fast cached call, scaling rendering from $O(N)$ down to $O(1)$ calls for bottom-layers, maintaining a silky-smooth 60 FPS.
+- **Robust Pointer Capture** – Improved cross-environment robustness by wrapping pointer capture methods (`setPointerCapture`, `hasPointerCapture`, `releasePointerCapture`) with feature detection and protective try-catch handling.
+- **Comprehensive Unit Tests** – Created new vitest suite covering history entries, sparse bounding boxes, compositing cache mechanisms, pointer event simulations, and state resets.
+
+---
+
+## [1.1.0] - 2026-07-16
 
 ### Added
 

@@ -4,6 +4,7 @@ import { Canvas } from "../src/Canvas";
 const mockBrushInstance = {
   isSmooth: true,
   isSpacing: true,
+  config: { size: 10 },
   putPoint: vi.fn(),
   render: vi.fn(),
   finalizeStroke: vi.fn(),
@@ -642,5 +643,86 @@ describe("Canvas", () => {
     );
 
     expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(100, 100, 1);
+  });
+
+  it("should calculate sparse stroke bounding box and track bounds", () => {
+    const canvas = createCanvas();
+    const instance = new Canvas({
+      canvas,
+    });
+
+    mockBrushInstance.finalizeStroke.mockImplementationOnce(
+      (cb: () => void) => {
+        cb();
+      },
+    );
+
+    // Start a stroke
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        clientX: 50,
+        clientY: 60,
+        pointerType: "mouse",
+      }),
+    );
+
+    // Drag pointer
+    canvas.dispatchEvent(
+      new PointerEvent("pointermove", {
+        clientX: 150,
+        clientY: 180,
+        pointerType: "mouse",
+      }),
+    );
+
+    // End stroke
+    window.dispatchEvent(new PointerEvent("pointerup"));
+
+    const internal = instance as unknown as {
+      strokeMinX: number;
+      strokeMinY: number;
+      strokeMaxX: number;
+      strokeMaxY: number;
+    };
+    expect(internal.strokeMinX).toBe(50);
+    expect(internal.strokeMinY).toBe(60);
+    expect(internal.strokeMaxX).toBe(150);
+    expect(internal.strokeMaxY).toBe(180);
+  });
+
+  it("should pre-composite and leverage cacheBelowCanvas during active stroke drawing", () => {
+    const canvas = createCanvas();
+    const instance = new Canvas({
+      canvas,
+    });
+
+    // Create layers and set layer2 as active
+    instance.createLayer({ name: "Layer 2" });
+
+    // Start drawing
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        clientX: 50,
+        clientY: 50,
+        pointerType: "mouse",
+      }),
+    );
+
+    const internal = instance as unknown as {
+      isDrawing: boolean;
+      cacheBelowCanvas: HTMLCanvasElement;
+      cacheBelowValid: boolean;
+    };
+    expect(internal.isDrawing).toBe(true);
+    expect(internal.cacheBelowCanvas).toBeDefined();
+
+    // Trigger render layers which populates the cache
+    instance.renderLayers();
+    expect(internal.cacheBelowValid).toBe(true);
+
+    // End drawing which resets the cache validity
+    window.dispatchEvent(new PointerEvent("pointerup"));
+    expect(internal.isDrawing).toBe(false);
+    expect(internal.cacheBelowValid).toBe(false);
   });
 });

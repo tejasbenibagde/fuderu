@@ -42,8 +42,15 @@ export class Canvas implements HistoryContext {
   public history: HistoryManager;
 
   private isDrawing = false;
-  private currentStrokeBeforeData: ImageData | null = null;
+  private currentStrokeBeforeCanvas: HTMLCanvasElement | null = null;
   private currentStrokeLayerId: string | null = null;
+  private strokeMinX = Infinity;
+  private strokeMinY = Infinity;
+  private strokeMaxX = -Infinity;
+  private strokeMaxY = -Infinity;
+
+  private cacheBelowCanvas: HTMLCanvasElement | null = null;
+  private cacheBelowValid = false;
 
   /** The logical drawing resolution width (internal pixel buffer) */
   public documentWidth: number;
@@ -104,23 +111,84 @@ export class Canvas implements HistoryContext {
 
   public renderLayers(): void {
     const ctx = this.canvas.getContext("2d");
-
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    if (this.isDrawing) {
+      if (!this.cacheBelowCanvas) {
+        this.cacheBelowCanvas = document.createElement("canvas");
+      }
+      if (
+        this.cacheBelowCanvas.width !== this.canvas.width ||
+        this.cacheBelowCanvas.height !== this.canvas.height
+      ) {
+        this.cacheBelowCanvas.width = this.canvas.width;
+        this.cacheBelowCanvas.height = this.canvas.height;
+        this.cacheBelowValid = false;
+      }
 
-    for (const layer of this.layers.getAll()) {
-      if (!layer.visible) continue;
+      const allLayers = this.layers.getAll();
+      const activeLayer = this.layers.getActive();
+      const activeIndex = allLayers.indexOf(activeLayer);
 
-      ctx.globalAlpha = layer.opacity;
+      if (!this.cacheBelowValid) {
+        const bCtx = this.cacheBelowCanvas.getContext("2d");
+        if (bCtx) {
+          bCtx.clearRect(
+            0,
+            0,
+            this.cacheBelowCanvas.width,
+            this.cacheBelowCanvas.height,
+          );
+          for (let i = 0; i < activeIndex; i++) {
+            const layer = allLayers[i];
+            if (!layer.visible) continue;
+            bCtx.globalAlpha = layer.opacity;
+            bCtx.globalCompositeOperation = layer.blendMode;
+            bCtx.drawImage(layer.canvas, 0, 0);
+          }
+          bCtx.globalAlpha = 1;
+          bCtx.globalCompositeOperation = "source-over";
+        }
+        this.cacheBelowValid = true;
+      }
 
-      ctx.globalCompositeOperation = layer.blendMode;
+      ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-      ctx.drawImage(layer.canvas, 0, 0);
+      // 1. Draw cached below layers
+      ctx.drawImage(this.cacheBelowCanvas, 0, 0);
+
+      // 2. Draw active layer
+      if (activeLayer.visible) {
+        ctx.globalAlpha = activeLayer.opacity;
+        ctx.globalCompositeOperation = activeLayer.blendMode;
+        ctx.drawImage(activeLayer.canvas, 0, 0);
+      }
+
+      // 3. Draw above layers
+      for (let i = activeIndex + 1; i < allLayers.length; i++) {
+        const layer = allLayers[i];
+        if (!layer.visible) continue;
+        ctx.globalAlpha = layer.opacity;
+        ctx.globalCompositeOperation = layer.blendMode;
+        ctx.drawImage(layer.canvas, 0, 0);
+      }
+
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+    } else {
+      ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+      for (const layer of this.layers.getAll()) {
+        if (!layer.visible) continue;
+
+        ctx.globalAlpha = layer.opacity;
+        ctx.globalCompositeOperation = layer.blendMode;
+        ctx.drawImage(layer.canvas, 0, 0);
+      }
+
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
     }
-
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = "source-over";
   }
 
   private setupCanvas(): void {
@@ -212,29 +280,47 @@ export class Canvas implements HistoryContext {
     return { x, y, pressure };
   }
 
+  private updateStrokeBounds(x: number, y: number): void {
+    if (x < this.strokeMinX) this.strokeMinX = x;
+    if (x > this.strokeMaxX) this.strokeMaxX = x;
+    if (y < this.strokeMinY) this.strokeMinY = y;
+    if (y > this.strokeMaxY) this.strokeMaxY = y;
+  }
+
   private handlePointerDown = (e: PointerEvent) => {
     this.isDrawing = true;
+    this.cacheBelowValid = false;
     this.mousePressure.reset();
 
-    try {
-      this.canvas.setPointerCapture(e.pointerId);
-    } catch {
-      // Ignore environments where pointer capture is unavailable.
+    this.strokeMinX = Infinity;
+    this.strokeMinY = Infinity;
+    this.strokeMaxX = -Infinity;
+    this.strokeMaxY = -Infinity;
+
+    if (typeof this.canvas.setPointerCapture === "function") {
+      try {
+        this.canvas.setPointerCapture(e.pointerId);
+      } catch {
+        // Pointer capture is a progressive enhancement. If the pointer ID is invalid/inactive,
+        // or the environment (like JSDOM in tests) doesn't support it, we handle the exception gracefully.
+      }
     }
 
     const activeLayer = this.layers.getActive();
     const ctx = activeLayer.canvas.getContext("2d");
     if (ctx) {
-      this.currentStrokeBeforeData = ctx.getImageData(
-        0,
-        0,
-        activeLayer.canvas.width,
-        activeLayer.canvas.height,
-      );
+      this.currentStrokeBeforeCanvas = document.createElement("canvas");
+      this.currentStrokeBeforeCanvas.width = activeLayer.canvas.width;
+      this.currentStrokeBeforeCanvas.height = activeLayer.canvas.height;
+      const bCtx = this.currentStrokeBeforeCanvas.getContext("2d");
+      if (bCtx) {
+        bCtx.drawImage(activeLayer.canvas, 0, 0);
+      }
       this.currentStrokeLayerId = activeLayer.id;
     }
 
     const p = this.getPoint(e);
+    this.updateStrokeBounds(p.x, p.y);
     this.brush.putPoint(p.x, p.y, p.pressure);
     this.brush.render();
     this.renderLayers();
@@ -249,6 +335,7 @@ export class Canvas implements HistoryContext {
 
     for (const ce of events) {
       const p = this.getPoint(ce);
+      this.updateStrokeBounds(p.x, p.y);
       this.brush.putPoint(p.x, p.y, p.pressure);
     }
 
@@ -257,25 +344,57 @@ export class Canvas implements HistoryContext {
   };
 
   private commitStroke() {
-    const beforeData = this.currentStrokeBeforeData;
+    const beforeCanvas = this.currentStrokeBeforeCanvas;
     const layerId = this.currentStrokeLayerId;
-    this.currentStrokeBeforeData = null;
+    this.currentStrokeBeforeCanvas = null;
     this.currentStrokeLayerId = null;
 
+    const minX = this.strokeMinX;
+    const minY = this.strokeMinY;
+    const maxX = this.strokeMaxX;
+    const maxY = this.strokeMaxY;
+
     this.brush.finalizeStroke(() => {
-      if (beforeData && layerId) {
+      if (beforeCanvas && layerId) {
         const layer = this.layers.getById(layerId);
         if (layer) {
           const afterCtx = layer.canvas.getContext("2d");
-          if (afterCtx) {
-            const afterData = afterCtx.getImageData(
-              0,
-              0,
-              layer.canvas.width,
-              layer.canvas.height,
+          const beforeCtx = beforeCanvas.getContext("2d");
+          if (afterCtx && beforeCtx) {
+            const validMinX = minX === Infinity ? 0 : minX;
+            const validMinY = minY === Infinity ? 0 : minY;
+            const validMaxX = maxX === -Infinity ? this.documentWidth : maxX;
+            const validMaxY = maxY === -Infinity ? this.documentHeight : maxY;
+
+            const brushSize = this.brush.config?.size ?? 10;
+            const padding = Math.max(50, Math.ceil(brushSize * 3));
+
+            const x1 = Math.max(0, Math.floor(validMinX - padding));
+            const y1 = Math.max(0, Math.floor(validMinY - padding));
+            const x2 = Math.min(
+              this.documentWidth - 1,
+              Math.ceil(validMaxX + padding),
             );
+            const y2 = Math.min(
+              this.documentHeight - 1,
+              Math.ceil(validMaxY + padding),
+            );
+
+            const w = Math.max(1, x2 - x1 + 1);
+            const h = Math.max(1, y2 - y1 + 1);
+
+            const beforeSubData = beforeCtx.getImageData(x1, y1, w, h);
+            const afterSubData = afterCtx.getImageData(x1, y1, w, h);
+
             this.history.push(
-              new CanvasStateHistoryEntry(layerId, beforeData, afterData, this),
+              new CanvasStateHistoryEntry(
+                layerId,
+                beforeSubData,
+                afterSubData,
+                this,
+                x1,
+                y1,
+              ),
             );
           }
         }
@@ -288,15 +407,21 @@ export class Canvas implements HistoryContext {
     if (!this.isDrawing) return;
 
     this.isDrawing = false;
+    this.cacheBelowValid = false;
     this.mousePressure.reset();
 
     if (e?.pointerId != null) {
-      try {
-        if (this.canvas.hasPointerCapture(e.pointerId)) {
-          this.canvas.releasePointerCapture(e.pointerId);
+      if (
+        typeof this.canvas.hasPointerCapture === "function" &&
+        typeof this.canvas.releasePointerCapture === "function"
+      ) {
+        try {
+          if (this.canvas.hasPointerCapture(e.pointerId)) {
+            this.canvas.releasePointerCapture(e.pointerId);
+          }
+        } catch {
+          // Gracefully ignore DOMExceptions if the pointer was already released or inactive.
         }
-      } catch {
-        // Ignore environments where pointer capture is unavailable.
       }
     }
 
@@ -307,15 +432,21 @@ export class Canvas implements HistoryContext {
     if (!this.isDrawing) return;
 
     this.isDrawing = false;
+    this.cacheBelowValid = false;
     this.mousePressure.reset();
 
     if (e?.pointerId != null) {
-      try {
-        if (this.canvas.hasPointerCapture(e.pointerId)) {
-          this.canvas.releasePointerCapture(e.pointerId);
+      if (
+        typeof this.canvas.hasPointerCapture === "function" &&
+        typeof this.canvas.releasePointerCapture === "function"
+      ) {
+        try {
+          if (this.canvas.hasPointerCapture(e.pointerId)) {
+            this.canvas.releasePointerCapture(e.pointerId);
+          }
+        } catch {
+          // Gracefully ignore DOMExceptions if the pointer was already released or inactive.
         }
-      } catch {
-        // Ignore environments where pointer capture is unavailable.
       }
     }
 
@@ -326,6 +457,7 @@ export class Canvas implements HistoryContext {
 
   public setActiveLayer(layerId: string): void {
     this.layers.setActive(layerId);
+    this.cacheBelowValid = false;
 
     this.brush.loadContext(this.layers.getActive().canvas);
     this.renderLayers();
@@ -341,6 +473,7 @@ export class Canvas implements HistoryContext {
 
   public createLayer(options?: CreateLayerOptions | string): Layer {
     const layer = this.layers.createLayer(options);
+    this.cacheBelowValid = false;
 
     this.history.push(new LayerCreatedHistoryEntry(layer, this));
 
@@ -356,6 +489,7 @@ export class Canvas implements HistoryContext {
     const wasActive = this.layers.getActiveId() === layerId;
 
     this.layers.deleteLayer(layerId);
+    this.cacheBelowValid = false;
 
     this.history.push(
       new LayerDeletedHistoryEntry(layer, index, wasActive, this),
@@ -370,6 +504,7 @@ export class Canvas implements HistoryContext {
 
   public duplicateLayer(layerId: string): Layer {
     const layer = this.layers.duplicateLayer(layerId);
+    this.cacheBelowValid = false;
 
     this.history.push(new LayerCreatedHistoryEntry(layer, this));
 
@@ -383,6 +518,7 @@ export class Canvas implements HistoryContext {
     const beforeIndex = this.layers.getAll().findIndex((l) => l.id === layerId);
     this.layers.moveLayer(layerId, targetIndex);
     const afterIndex = this.layers.getAll().findIndex((l) => l.id === layerId);
+    this.cacheBelowValid = false;
 
     if (beforeIndex !== afterIndex) {
       this.history.push(
@@ -410,6 +546,7 @@ export class Canvas implements HistoryContext {
     }
 
     const updated = this.layers.updateLayer(layerId, options);
+    this.cacheBelowValid = false;
 
     for (const key of keys) {
       if (options[key] !== undefined && originalValues[key] !== options[key]) {
@@ -459,18 +596,21 @@ export class Canvas implements HistoryContext {
     } else {
       this.brush.clear();
     }
+    this.cacheBelowValid = false;
     this.renderLayers();
   }
 
   undo(): void {
     this.history.undo();
     this.brush.undo();
+    this.cacheBelowValid = false;
     this.renderLayers();
   }
 
   redo(): void {
     this.history.redo();
     this.brush.redo();
+    this.cacheBelowValid = false;
     this.renderLayers();
   }
 
@@ -493,14 +633,17 @@ export class Canvas implements HistoryContext {
     if (activeLayerId === layerId) {
       this.brush.loadContext(this.layers.getActive().canvas);
     }
+    this.cacheBelowValid = false;
   }
 
   public insertLayerOnly(layer: Layer, index: number): void {
     this.layers.addLayerAt(layer, index);
+    this.cacheBelowValid = false;
   }
 
   public moveLayerOnly(layerId: string, index: number): void {
     this.layers.moveLayer(layerId, index);
+    this.cacheBelowValid = false;
   }
 
   setSmooth(enabled: boolean): void {
@@ -552,6 +695,7 @@ export class Canvas implements HistoryContext {
 
     this.brush.loadContext(this.layers.getActive().canvas);
     this.history.clear();
+    this.cacheBelowValid = false;
     this.renderLayers();
   }
 

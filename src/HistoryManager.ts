@@ -69,6 +69,8 @@ export class CanvasStateHistoryEntry implements HistoryEntry {
     private beforeData: ImageData,
     private afterData: ImageData,
     private context: HistoryContext,
+    private x: number = 0,
+    private y: number = 0,
   ) {}
 
   undo(): void {
@@ -76,7 +78,7 @@ export class CanvasStateHistoryEntry implements HistoryEntry {
     if (!layer) return;
     const ctx = layer.canvas.getContext("2d");
     if (!ctx) return;
-    ctx.putImageData(this.beforeData, 0, 0);
+    ctx.putImageData(this.beforeData, this.x, this.y);
 
     const active = this.context.getActiveLayer();
     if (active && active.id === this.layerId) {
@@ -90,7 +92,7 @@ export class CanvasStateHistoryEntry implements HistoryEntry {
     if (!layer) return;
     const ctx = layer.canvas.getContext("2d");
     if (!ctx) return;
-    ctx.putImageData(this.afterData, 0, 0);
+    ctx.putImageData(this.afterData, this.x, this.y);
 
     const active = this.context.getActiveLayer();
     if (active && active.id === this.layerId) {

@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Stable 1.2.0 canvas drawing engine for the web.
+  Stable 1.2.1 canvas drawing engine for the web.
 </p>
 
 <p align="center">
@@ -45,6 +45,11 @@ For the first stable release, Fuderu is intentionally narrowing the scope around
 If you are evaluating Fuderu for production, start with those primitives and treat the more experimental effects as additive.
 
 ## Latest Release
+
+### 1.2.1
+
+- **Layout Thrashing Fix**: Throttles expensive DOM `getBoundingClientRect()` queries during active stylus/mouse pointer moves. Caches the dimensions/offsets per event frame and shares them across coalesced events, eliminating layout recalcs and lag on high-poll rate pointers.
+- **`setDocumentSize` Flexibility**: Added support for lossless cropping/padding vs complete clearing of layers. Now supports an optional parameter: `setDocumentSize(width, height, clearArtwork = false)` where `clearArtwork` defaults to `false` (lossless preserve layout) or `true` (clear everything).
 
 ### 1.2.0
 
@@ -221,7 +226,7 @@ brush.useModule(
 
 ## Status
 
-Fuderu 1.2.0 is now the stable baseline for the core brush, canvas, pressure, image, eraser, and module systems.
+Fuderu 1.2.1 is now the stable baseline for the core brush, canvas, pressure, image, eraser, and module systems.
 
 The library is fully verified with robust unit testing via Vitest, browser-style canvas rendering tests, and various local playground environments across multiple web frameworks.
 

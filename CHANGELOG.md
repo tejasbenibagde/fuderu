@@ -4,6 +4,15 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
+## [1.2.1] - 2026-07-21
+
+### Fixed
+
+- **Layout Thrashing Fix on Pointer Move** – Query `this.canvas.getBoundingClientRect()` exactly once per pointer event frame inside `handlePointerDown` and `handlePointerMove`. Caches and passes the `rect` down to any coalesced sub-events, entirely avoiding redundant layout queries and preventing forced synchronous layout thrashing during drawing.
+- **`setDocumentSize` UX/API Inconsistency** – Harmonized the public API by introducing an optional third parameter: `setDocumentSize(width, height, clearArtwork = false)`. Updated API comments and added test coverage. By default, it preserves existing layer artwork (lossless crop/pad) but resets the undo stack, with an option to clear all artwork.
+
+---
+
 ## [1.2.0] - 2026-07-19
 
 ### Added

@@ -257,9 +257,10 @@ export class Canvas implements HistoryContext {
     window.addEventListener("pointerup", this.handlePointerUp);
   }
 
-  private getPoint(e: PointerEvent) {
-    const rect = this.canvas.getBoundingClientRect();
-
+  private getPoint(
+    e: PointerEvent,
+    rect: DOMRect = this.canvas.getBoundingClientRect(),
+  ) {
     const scaleX = rect.width > 0 ? this.canvas.width / rect.width : 1;
     const scaleY = rect.height > 0 ? this.canvas.height / rect.height : 1;
     const x = (e.clientX - rect.left) * scaleX;
@@ -319,7 +320,8 @@ export class Canvas implements HistoryContext {
       this.currentStrokeLayerId = activeLayer.id;
     }
 
-    const p = this.getPoint(e);
+    const rect = this.canvas.getBoundingClientRect();
+    const p = this.getPoint(e, rect);
     this.updateStrokeBounds(p.x, p.y);
     this.brush.putPoint(p.x, p.y, p.pressure);
     this.brush.render();
@@ -333,8 +335,9 @@ export class Canvas implements HistoryContext {
 
     const events = coalesced && coalesced.length > 0 ? coalesced : [e];
 
+    const rect = this.canvas.getBoundingClientRect();
     for (const ce of events) {
-      const p = this.getPoint(ce);
+      const p = this.getPoint(ce, rect);
       this.updateStrokeBounds(p.x, p.y);
       this.brush.putPoint(p.x, p.y, p.pressure);
     }
@@ -667,21 +670,26 @@ export class Canvas implements HistoryContext {
   /**
    * Change the logical document size.
    *
-   * This clears all artwork and resets the undo stack.
-   * It does NOT change any CSS on the canvas element.
+   * By default, this preserves existing layer artwork (lossless crop/pad) but resets the undo stack
+   * because previous undo/redo states will no longer match the new canvas dimensions.
+   * If `clearArtwork` is set to true, it will additionally clear all artwork on the layers.
+   *
+   * It does NOT change any CSS on the canvas element;
    * sizing the element on screen is the caller's responsibility.
    *
    * @example
-   * painter.setDocumentSize(768, 1024);
-   * canvas.style.width  = "384px";   // you control display size
-   * canvas.style.height = "512px";
+   * painter.setDocumentSize(768, 1024); // crops/pads existing layers, clears undo stack
+   * painter.setDocumentSize(768, 1024, true); // clears all artwork completely, clears undo stack
    */
-  setDocumentSize(width: number, height: number): void {
+  setDocumentSize(width: number, height: number, clearArtwork = false): void {
     if (width <= 0 || height <= 0) {
       console.warn("[Canvas] setDocumentSize: width and height must be > 0");
       return;
     }
 
+    if (clearArtwork) {
+      this.layers.clear();
+    }
     this.layers.resize(width, height);
     this.documentWidth = width;
     this.documentHeight = height;

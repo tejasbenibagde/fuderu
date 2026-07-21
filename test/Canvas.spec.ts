@@ -725,4 +725,31 @@ describe("Canvas", () => {
     expect(internal.isDrawing).toBe(false);
     expect(internal.cacheBelowValid).toBe(false);
   });
+
+  it("should change document size and optionally clear artwork or crop/pad it", () => {
+    const canvas = createCanvas();
+    const instance = new Canvas({
+      canvas,
+    });
+
+    const layersSpy = vi.spyOn(instance.layers, "resize");
+    const clearSpy = vi.spyOn(instance.layers, "clear");
+
+    // Test with clearArtwork = true
+    instance.setDocumentSize(800, 600, true);
+
+    expect(clearSpy).toHaveBeenCalledTimes(1);
+    expect(layersSpy).toHaveBeenCalledWith(800, 600);
+    expect(canvas.width).toBe(800);
+    expect(canvas.height).toBe(600);
+
+    // Test with clearArtwork = false (default)
+    clearSpy.mockClear();
+    instance.setDocumentSize(400, 300);
+
+    expect(clearSpy).not.toHaveBeenCalled();
+    expect(layersSpy).toHaveBeenCalledWith(400, 300);
+    expect(canvas.width).toBe(400);
+    expect(canvas.height).toBe(300);
+  });
 });

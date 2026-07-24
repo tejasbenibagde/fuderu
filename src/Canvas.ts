@@ -476,9 +476,10 @@ export class Canvas implements HistoryContext {
 
   public createLayer(options?: CreateLayerOptions | string): Layer {
     const layer = this.layers.createLayer(options);
+    const index = this.layers.getAll().indexOf(layer);
     this.cacheBelowValid = false;
 
-    this.history.push(new LayerCreatedHistoryEntry(layer, this));
+    this.history.push(new LayerCreatedHistoryEntry(layer, this, index));
 
     this.brush.loadContext(layer.canvas);
     this.renderLayers();
@@ -507,9 +508,10 @@ export class Canvas implements HistoryContext {
 
   public duplicateLayer(layerId: string): Layer {
     const layer = this.layers.duplicateLayer(layerId);
+    const index = this.layers.getAll().indexOf(layer);
     this.cacheBelowValid = false;
 
-    this.history.push(new LayerCreatedHistoryEntry(layer, this));
+    this.history.push(new LayerCreatedHistoryEntry(layer, this, index));
 
     this.brush.loadContext(layer.canvas);
     this.renderLayers();

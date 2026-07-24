@@ -21,8 +21,13 @@ export interface UpdateLayerOptions {
 export class LayerManager {
   private layers: Layer[] = [];
   private activeLayerId: string | null = null;
+  private width: number;
+  private height: number;
 
   constructor(width: number, height: number) {
+    this.width = width;
+    this.height = height;
+
     const baseLayer = new Layer({
       name: "Background",
       width,
@@ -57,15 +62,14 @@ export class LayerManager {
   }
 
   createLayer(options: CreateLayerOptions | string = {}): Layer {
-    const reference = this.layers[0];
     const layerOptions =
       typeof options === "string" ? { name: options } : options;
 
     const layer = new Layer({
       id: layerOptions.id,
       name: layerOptions.name ?? "Layer",
-      width: reference.canvas.width,
-      height: reference.canvas.height,
+      width: this.width,
+      height: this.height,
       visible: layerOptions.visible,
       opacity: layerOptions.opacity,
       blendMode: layerOptions.blendMode,
@@ -176,6 +180,8 @@ export class LayerManager {
   }
 
   resize(width: number, height: number): void {
+    this.width = width;
+    this.height = height;
     for (const layer of this.layers) {
       layer.resize(width, height);
     }

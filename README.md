@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Stable 1.2.1 canvas drawing engine for the web.
+  Stable 1.2.2 canvas drawing engine for the web.
 </p>
 
 <p align="center">
@@ -45,6 +45,14 @@ For the first stable release, Fuderu is intentionally narrowing the scope around
 If you are evaluating Fuderu for production, start with those primitives and treat the more experimental effects as additive.
 
 ## Latest Release
+
+### 1.2.2
+
+- **Point-Drawing Optimization**: Replaced `structuredClone` with lightweight configuration cloning during stroke point rendering, removing serialization latency during fast drawing.
+- **Star Brush & Color Fixes**: Corrected double rotation on star brush tips and unified hex color string comparisons in brush shape contexts.
+- **Layer History Index Retention**: Layer creation and duplication history entries now preserve exact stack index order for precise undo/redo behavior.
+- **Hardware-Accelerated Layer Resizing**: Switched `Layer.resize()` to HTMLCanvas `drawImage` scaling, avoiding pixel-buffer transfer overhead and alpha premultiplication artifacts.
+- **Robust Layer & Pattern Resizing**: `LayerManager` now retains master document dimensions when creating new layers, and `modules/pattern.ts` auto-resizes pattern buffers when stroke dimensions change.
 
 ### 1.2.1
 
@@ -226,7 +234,7 @@ brush.useModule(
 
 ## Status
 
-Fuderu 1.2.1 is now the stable baseline for the core brush, canvas, pressure, image, eraser, and module systems.
+Fuderu 1.2.2 is now the stable baseline for the core brush, canvas, pressure, image, eraser, and module systems.
 
 The library is fully verified with robust unit testing via Vitest, browser-style canvas rendering tests, and various local playground environments across multiple web frameworks.
 

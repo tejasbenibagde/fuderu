@@ -48,17 +48,24 @@ export class Layer {
   }
 
   resize(width: number, height: number): void {
-    const imageData = this.ctx.getImageData(
-      0,
-      0,
-      this.canvas.width,
-      this.canvas.height,
-    );
+    if (this.canvas.width === width && this.canvas.height === height) {
+      return;
+    }
+
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = this.canvas.width;
+    tempCanvas.height = this.canvas.height;
+    const tempCtx = tempCanvas.getContext("2d");
+    if (tempCtx) {
+      tempCtx.drawImage(this.canvas, 0, 0);
+    }
 
     this.canvas.width = width;
     this.canvas.height = height;
 
-    this.ctx.putImageData(imageData, 0, 0);
+    if (tempCtx) {
+      this.ctx.drawImage(tempCanvas, 0, 0);
+    }
   }
 
   setOpacity(opacity: number): void {

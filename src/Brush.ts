@@ -741,6 +741,13 @@ export class Brush {
     }
   }
 
+  private cloneConfig(config: BrushBasicConfig): BrushBasicConfig {
+    return {
+      ...config,
+      rotation: config.rotation ? { ...config.rotation } : undefined,
+    };
+  }
+
   private clamp01(value: number): number {
     return Math.min(Math.max(value, 0), 1);
   }
@@ -751,7 +758,7 @@ export class Brush {
     pressure: number,
     rotation?: number,
   ): Point {
-    const cnf = structuredClone(this.config);
+    const cnf = this.cloneConfig(this.config);
 
     cnf.opacity = this.clamp01(cnf.opacity);
     cnf.roundness = this.clamp01(cnf.roundness);
@@ -765,7 +772,7 @@ export class Brush {
     }
 
     const pointOpacity = cnf.opacity;
-    const pointConfig = structuredClone(cnf);
+    const pointConfig = this.cloneConfig(cnf);
 
     pointConfig.flow = normalizeFlowForSpacing(
       pointConfig.flow,
@@ -918,11 +925,12 @@ export class Brush {
     this.strokeContext!.globalAlpha = p.config.flow;
 
     if (this.shapeCanvas && this.shapeContext) {
-      if (this.shapeContext.fillStyle !== p.config.color.toLowerCase()) {
+      const targetColor = toHashColor(p.config.color);
+      if (this.shapeContext.fillStyle !== targetColor) {
         const globalCompositeOperation =
           this.shapeContext.globalCompositeOperation;
         this.shapeContext.globalCompositeOperation = "source-atop";
-        this.shapeContext.fillStyle = toHashColor(p.config.color);
+        this.shapeContext.fillStyle = targetColor;
         this.shapeContext.beginPath();
         this.shapeContext.fillRect(
           0,
@@ -964,7 +972,7 @@ export class Brush {
         0,
         size,
         smallerRadius,
-        rotation,
+        0,
         0,
         Math.PI * 2,
         false,

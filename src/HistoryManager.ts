@@ -106,6 +106,7 @@ export class LayerCreatedHistoryEntry implements HistoryEntry {
   constructor(
     private layer: Layer,
     private context: HistoryContext,
+    private index?: number,
   ) {}
 
   undo(): void {
@@ -114,7 +115,9 @@ export class LayerCreatedHistoryEntry implements HistoryEntry {
   }
 
   redo(): void {
-    this.context.insertLayerOnly(this.layer, this.context.getLayers().length);
+    const targetIdx =
+      this.index !== undefined ? this.index : this.context.getLayers().length;
+    this.context.insertLayerOnly(this.layer, targetIdx);
     this.context.setActiveLayer(this.layer.id);
     this.context.renderLayers();
   }

@@ -4,6 +4,19 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
+## [1.2.2] - 2026-07-24
+
+### Fixed
+
+- **`structuredClone` Drawing Overhead** – Replaced expensive native `structuredClone` calls during point rendering in `Brush.ts` with a lightweight config clone helper, avoiding structured serialization latency and web worker compatibility bottlenecks.
+- **Star Brush Rotation & Color Normalization** – Fixed double rotation bug on star brush tips by separating canvas rotation from context ellipse angle. Resolved color matching issues when comparing raw vs normalized hex color strings.
+- **Layer History Reinsertion Index** – `LayerCreatedHistoryEntry` now records the exact index position of new/duplicated layers, ensuring undo and redo preserve the precise layer stack order.
+- **Layer Resizing Performance & Fidelity** – Switched `Layer.resize()` from pixel-buffer `getImageData`/`putImageData` transfers to hardware-accelerated canvas `drawImage` resizing. Eliminates alpha premultiplication artifacts and out-of-bounds clipping errors.
+- **Document Dimension Sync in LayerManager** – Fixed `LayerManager.createLayer` to use tracked manager width/height instead of reading from `layers[0]`, preventing incorrect layer dimensions when resizing or clearing layers.
+- **Pattern Canvas Auto-Resizing** – Automatically resizes pattern and blend contexts in `modules/pattern.ts` whenever the stroke canvas dimensions change, avoiding pattern misalignment or scaling artifacts.
+
+---
+
 ## [1.2.1] - 2026-07-21
 
 ### Fixed

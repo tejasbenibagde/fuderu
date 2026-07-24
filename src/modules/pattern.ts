@@ -161,6 +161,30 @@ export class PatternModule {
       return [strokeCanvas, strokeContext];
     }
 
+    if (
+      this.patternCanvas.width !== strokeCanvas.width ||
+      this.patternCanvas.height !== strokeCanvas.height
+    ) {
+      this.patternCanvas.width = strokeCanvas.width;
+      this.patternCanvas.height = strokeCanvas.height;
+      this.blendCanvas.width = strokeCanvas.width;
+      this.blendCanvas.height = strokeCanvas.height;
+
+      this.patternContext.clearRect(
+        0,
+        0,
+        strokeCanvas.width,
+        strokeCanvas.height,
+      );
+      this.patternContext.fillStyle = this.pattern;
+      this.patternContext.fillRect(
+        0,
+        0,
+        strokeCanvas.width,
+        strokeCanvas.height,
+      );
+    }
+
     this.blendContext.clearRect(
       0,
       0,

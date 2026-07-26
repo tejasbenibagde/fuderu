@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Stable 1.2.2 canvas drawing engine for the web.
+  Stable 1.3.0 canvas drawing engine for the web.
 </p>
 
 <p align="center">
@@ -23,6 +23,7 @@
 
 ## Features
 
+- **Document Persistence API** – Export and import complete canvas state as versioned JSON with layer metadata and serialized bitmaps (`exportDocument`, `importDocument`, `exportPNG`).
 - **Layer System** – A focused layer stack with visibility, opacity, and 16 blend modes.
 - **Canvas API** – A dependable `Canvas` wrapper for pointer drawing and layer-based composition.
 - **Standalone Brush** – `Brush` engine for custom integrations and advanced render pipelines.
@@ -39,12 +40,20 @@ For the first stable release, Fuderu is intentionally narrowing the scope around
 
 - reliable brush rendering
 - layer-based compositing with blend modes
+- document import/export and image persistence
 - undo/redo and a clear canvas wrapper
 - optional advanced modules without overcomplicating the API
 
 If you are evaluating Fuderu for production, start with those primitives and treat the more experimental effects as additive.
 
 ## Latest Release
+
+### 1.3.0
+
+- **First-Class Document Persistence API**: Native `exportDocument()` and `importDocument()` with typed, versioned document data (`width`, `height`, `layers`, `activeLayerId`, and serialized bitmaps).
+- **Asynchronous Layer Bitmap Loading**: `importDocument()` recreates layer structures and asynchronously restores layer bitmaps.
+- **Flattened Image Export**: Added `exportPNG()` helper with optional solid background compositing (`includeBackground: true`).
+- **Atomic Layer Replacement**: Introduced `LayerManager.replaceAllLayers()` for seamless document loading.
 
 ### 1.2.2
 

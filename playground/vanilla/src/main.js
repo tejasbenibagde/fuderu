@@ -496,6 +496,103 @@ document.querySelectorAll("[data-size]").forEach((button) => {
   });
 });
 
+// ── Persistence API (v1.3.0) ───────────────────────────────────
+$("exportDocBtn").addEventListener("click", async () => {
+  try {
+    status.textContent = "Exporting...";
+    const doc = await painter.exportDocument();
+    const jsonStr = JSON.stringify(doc, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `fuderu-artwork-${doc.width}x${doc.height}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    status.textContent = "Document exported";
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Export failed";
+  }
+});
+
+$("importDocBtn").addEventListener("click", () => {
+  $("docFileInput").click();
+});
+
+$("docFileInput").addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    status.textContent = "Importing...";
+    const text = await file.text();
+    const doc = JSON.parse(text);
+    await painter.importDocument(doc);
+    state.width = doc.width;
+    state.height = doc.height;
+    setCanvasAspect(doc.width, doc.height);
+    $("docWidth").value = String(doc.width);
+    $("docHeight").value = String(doc.height);
+    syncLayers();
+    status.textContent = "Document imported";
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Import failed";
+  } finally {
+    e.target.value = "";
+  }
+});
+
+$("exportPngBtn").addEventListener("click", async () => {
+  try {
+    status.textContent = "Exporting PNG...";
+    const pngUrl = await painter.exportPNG({ includeBackground: true });
+    const a = document.createElement("a");
+    a.href = pngUrl;
+    a.download = "fuderu-artwork.png";
+    a.click();
+    status.textContent = "PNG exported";
+  } catch (err) {
+    console.error(err);
+    status.textContent = "PNG export failed";
+  }
+});
+
+$("saveLocalBtn").addEventListener("click", async () => {
+  try {
+    status.textContent = "Saving local...";
+    const doc = await painter.exportDocument();
+    localStorage.setItem("fuderu_playground_doc", JSON.stringify(doc));
+    status.textContent = "Saved to localStorage";
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Save failed";
+  }
+});
+
+$("loadLocalBtn").addEventListener("click", async () => {
+  try {
+    const raw = localStorage.getItem("fuderu_playground_doc");
+    if (!raw) {
+      status.textContent = "No saved local doc";
+      return;
+    }
+    status.textContent = "Loading local...";
+    const doc = JSON.parse(raw);
+    await painter.importDocument(doc);
+    state.width = doc.width;
+    state.height = doc.height;
+    setCanvasAspect(doc.width, doc.height);
+    $("docWidth").value = String(doc.width);
+    $("docHeight").value = String(doc.height);
+    syncLayers();
+    status.textContent = "Loaded from localStorage";
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Load failed";
+  }
+});
+
 $("imageInput").addEventListener("change", async (event) => {
   const file = event.target.files?.[0];
   if (!file) return;

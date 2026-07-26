@@ -177,6 +177,31 @@
         </section>
 
         <section class="panel">
+          <h2>Persistence (v1.3.0)</h2>
+          <div class="preset-grid">
+            <button id="exportDocBtn" type="button">Export JSON</button>
+            <button id="importDocBtn" type="button">Import JSON</button>
+          </div>
+          <input
+            id="docFileInput"
+            type="file"
+            accept=".json,application/json"
+            style="display: none"
+          />
+          <div class="preset-grid">
+            <button id="exportPngBtn" type="button">Export PNG</button>
+            <button id="saveLocalBtn" type="button">Save Local</button>
+          </div>
+          <button
+            id="loadLocalBtn"
+            type="button"
+            style="width: 100%; margin-top: 6px"
+          >
+            Load Local Storage
+          </button>
+        </section>
+
+        <section class="panel">
           <h2>Image Brush</h2>
           <input id="imageInput" type="file" accept="image/*" />
           <button id="removeImageBtn" type="button">Remove Image</button>

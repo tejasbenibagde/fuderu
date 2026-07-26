@@ -196,4 +196,16 @@ export class LayerManager {
   clearActiveLayer(): void {
     this.getActive().clear();
   }
+
+  replaceAllLayers(layers: Layer[], activeLayerId?: string): void {
+    if (layers.length === 0) {
+      throw new Error("Cannot replace with empty layers array");
+    }
+    this.layers = layers;
+    const targetActive =
+      activeLayerId && layers.some((l) => l.id === activeLayerId)
+        ? activeLayerId
+        : layers[0].id;
+    this.activeLayerId = targetActive;
+  }
 }

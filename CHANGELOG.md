@@ -4,6 +4,18 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
+## [1.3.0] - 2026-07-26
+
+### Added
+
+- **First-Class Document Persistence API**
+  - **`canvas.exportDocument(options?: { bitmap?: 'png' | 'jpeg' | 'webp', quality?: number })`**: Export full document state into a versioned, typed JSON payload including canvas dimensions, layer metadata (id, name, order, opacity, blendMode, visibility), active layer ID, and serialized layer bitmaps.
+  - **`canvas.importDocument(document: FuderuDocument)`**: Atomically load saved documents, recreating layers, loading bitmap graphics asynchronously, preserving active layer state, and re-initializing brush and history stacks.
+  - **`canvas.exportPNG(options?: { includeBackground?: boolean, quality?: number })`**: High-level helper for exporting a flattened composite PNG image of the artwork with optional solid background compositing.
+- **LayerManager Batch Layer Replacement** – Added `LayerManager.replaceAllLayers(layers, activeLayerId)` for atomic layer state swaps during document loading.
+
+---
+
 ## [1.2.2] - 2026-07-24
 
 ### Fixed

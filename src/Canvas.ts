@@ -8,7 +8,13 @@ import {
   type CreateLayerOptions,
   type UpdateLayerOptions,
 } from "./LayerManager";
-import type { Layer } from "./Layer";
+import { Layer } from "./Layer";
+import type {
+  FuderuDocument,
+  SerializedLayer,
+  ExportDocumentOptions,
+  ExportPNGOptions,
+} from "./types/document";
 import {
   HistoryManager,
   CanvasStateHistoryEntry,
@@ -707,6 +713,132 @@ export class Canvas implements HistoryContext {
     this.history.clear();
     this.cacheBelowValid = false;
     this.renderLayers();
+  }
+
+  /**
+   * Export the complete canvas document state including width, height,
+   * layer metadata, and serialized layer bitmaps.
+   */
+  public async exportDocument(
+    options?: ExportDocumentOptions,
+  ): Promise<FuderuDocument> {
+    const format = options?.bitmap ?? "png";
+    const mimeType = `image/${format}`;
+    const quality = options?.quality;
+
+    const serializedLayers: SerializedLayer[] = this.layers
+      .getAll()
+      .map((layer) => ({
+        id: layer.id,
+        name: layer.name,
+        visible: layer.visible,
+        opacity: layer.opacity,
+        blendMode: layer.blendMode,
+        dataUrl: layer.canvas.toDataURL(mimeType, quality),
+      }));
+
+    return {
+      version: 1,
+      width: this.documentWidth,
+      height: this.documentHeight,
+      layers: serializedLayers,
+      activeLayerId: this.layers.getActiveId() ?? undefined,
+    };
+  }
+
+  /**
+   * Import and atomically load a complete canvas document.
+   * Recreates all layers, loads bitmap graphics asynchronously, and sets active layer.
+   */
+  public async importDocument(document: FuderuDocument): Promise<void> {
+    if (
+      !document ||
+      typeof document !== "object" ||
+      typeof document.width !== "number" ||
+      typeof document.height !== "number" ||
+      document.width <= 0 ||
+      document.height <= 0 ||
+      !Array.isArray(document.layers)
+    ) {
+      throw new Error("Invalid FuderuDocument payload");
+    }
+
+    const loadedLayers: Layer[] = [];
+
+    for (const sLayer of document.layers) {
+      const layer = new Layer({
+        id: sLayer.id,
+        name: sLayer.name,
+        width: document.width,
+        height: document.height,
+        visible: sLayer.visible,
+        opacity: sLayer.opacity,
+        blendMode: sLayer.blendMode,
+      });
+
+      if (sLayer.dataUrl) {
+        await new Promise<void>((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => {
+            layer.ctx.drawImage(img, 0, 0);
+            resolve();
+          };
+          img.onerror = (err) => {
+            reject(
+              new Error(
+                `Failed to load image for layer "${sLayer.name || sLayer.id}": ${err}`,
+              ),
+            );
+          };
+          img.src = sLayer.dataUrl;
+        });
+      }
+
+      loadedLayers.push(layer);
+    }
+
+    this.documentWidth = document.width;
+    this.documentHeight = document.height;
+
+    this.canvas.width = document.width;
+    this.canvas.height = document.height;
+
+    const ctx = this.canvas.getContext("2d");
+    if (ctx) ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    this.layers.replaceAllLayers(loadedLayers, document.activeLayerId);
+    this.brush.loadContext(this.layers.getActive().canvas);
+    this.history.clear();
+    this.cacheBelowValid = false;
+    this.renderLayers();
+  }
+
+  /**
+   * Export a flattened composite PNG image of the artwork.
+   */
+  public async exportPNG(options?: ExportPNGOptions): Promise<string> {
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = this.documentWidth;
+    exportCanvas.height = this.documentHeight;
+    const ctx = exportCanvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Could not create 2D context for PNG export");
+    }
+
+    if (options?.includeBackground) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+    }
+
+    for (const layer of this.layers.getAll()) {
+      if (!layer.visible) continue;
+      ctx.globalAlpha = layer.opacity;
+      ctx.globalCompositeOperation = layer.blendMode;
+      ctx.drawImage(layer.canvas, 0, 0);
+    }
+
+    return exportCanvas.toDataURL("image/png", options?.quality);
   }
 
   destroy(): void {

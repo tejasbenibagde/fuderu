@@ -101,6 +101,123 @@ describe("HistoryManager & HistoryEntries", () => {
       manager.undo(); // nothing left (entry1 was shifted out)
       expect(entry1.undo).not.toHaveBeenCalled();
     });
+
+    it("should return history summaries via getEntries()", () => {
+      const { context, layers } = createMockContext();
+      const mockLayer = createMockLayer("layer-1", "Layer 1");
+      layers.push(mockLayer);
+
+      const manager = new HistoryManager(10, context);
+      const entry1 = new CanvasStateHistoryEntry(
+        "layer-1",
+        { width: 50, height: 50 } as ImageData,
+        { width: 50, height: 50 } as ImageData,
+        context,
+        0,
+        0,
+        "Initial stroke",
+        "stroke",
+      );
+      const entry2 = new LayerCreatedHistoryEntry(
+        mockLayer,
+        context,
+        0,
+        "Created test layer",
+      );
+
+      manager.push(entry1);
+      manager.push(entry2);
+
+      const entries = manager.getEntries();
+      expect(entries.length).toBe(2);
+      expect(entries[0].type).toBe("stroke");
+      expect(entries[0].description).toBe("Initial stroke");
+      expect(entries[1].type).toBe("layer-create");
+      expect(entries[1].description).toBe("Created test layer");
+
+      manager.undo(); // undo entry2
+      const entriesAfterUndo = manager.getEntries();
+      expect(entriesAfterUndo.length).toBe(2);
+      expect(entriesAfterUndo[1].type).toBe("layer-create");
+    });
+
+    it("should navigate history timeline using goTo(index)", () => {
+      const manager = new HistoryManager(10);
+      const e1 = { undo: vi.fn(), redo: vi.fn() };
+      const e2 = { undo: vi.fn(), redo: vi.fn() };
+      const e3 = { undo: vi.fn(), redo: vi.fn() };
+
+      manager.push(e1);
+      manager.push(e2);
+      manager.push(e3);
+
+      expect(manager.getHistoryState().index).toBe(3);
+
+      // Jump to index 1 (undo e3, undo e2)
+      manager.goTo(1);
+      expect(e3.undo).toHaveBeenCalledTimes(1);
+      expect(e2.undo).toHaveBeenCalledTimes(1);
+      expect(manager.getHistoryState().index).toBe(1);
+
+      // Jump to index 3 (redo e2, redo e3)
+      manager.goTo(3);
+      expect(e2.redo).toHaveBeenCalledTimes(1);
+      expect(e3.redo).toHaveBeenCalledTimes(1);
+      expect(manager.getHistoryState().index).toBe(3);
+
+      // Jump to index 0 (undo e3, e2, e1)
+      manager.goTo(0);
+      expect(manager.getHistoryState().index).toBe(0);
+
+      // Jump out of bounds should clamp safely
+      manager.goTo(-5);
+      expect(manager.getHistoryState().index).toBe(0);
+
+      manager.goTo(100);
+      expect(manager.getHistoryState().index).toBe(3);
+    });
+
+    it("should support pushPatch with options object and positional arguments", () => {
+      const { context, layers } = createMockContext();
+      const mockLayer = createMockLayer("layer-1", "Layer 1");
+      layers.push(mockLayer);
+
+      const manager = new HistoryManager(10, context);
+      const onHistoryChange = vi.fn();
+      manager.onHistoryChange = onHistoryChange;
+
+      const beforeImg = { width: 100, height: 100 } as ImageData;
+      const afterImg = { width: 100, height: 100 } as ImageData;
+
+      // Object format
+      manager.pushPatch({
+        layerId: "layer-1",
+        beforeData: beforeImg,
+        afterData: afterImg,
+        x: 10,
+        y: 20,
+        description: "Text Tool Patch",
+      });
+
+      expect(manager.canUndo()).toBe(true);
+      expect(onHistoryChange).toHaveBeenCalled();
+
+      let entries = manager.getEntries();
+      expect(entries[0].description).toBe("Text Tool Patch");
+      expect(entries[0].type).toBe("patch");
+      expect(entries[0].bounds).toEqual({
+        x: 10,
+        y: 20,
+        width: 100,
+        height: 100,
+      });
+
+      // Positional format
+      manager.pushPatch(beforeImg, afterImg, 5, 5, "layer-1", "Filter Patch");
+      entries = manager.getEntries();
+      expect(entries[1].description).toBe("Filter Patch");
+      expect(entries[1].type).toBe("patch");
+    });
   });
 
   describe("CanvasStateHistoryEntry", () => {

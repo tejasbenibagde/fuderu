@@ -13,8 +13,19 @@ All notable changes to the **fuderu** drawing library will be documented in this
   - **`canvas.importDocument(document: FuderuDocument)`**: Atomically load saved documents, recreating layers, loading bitmap graphics asynchronously, preserving active layer state, and re-initializing brush and history stacks.
   - **`canvas.exportPNG(options?: { includeBackground?: boolean, quality?: number })`**: High-level helper for exporting a flattened composite PNG image of the artwork with optional solid background compositing.
 - **LayerManager Batch Layer Replacement** – Added `LayerManager.replaceAllLayers(layers, activeLayerId)` for atomic layer state swaps during document loading.
-
 - **Observable State Model & Change Event System**
+  - **`canvas.on(event, listener)` / `canvas.off(event, listener)`**: Typed event subscription mechanism. `on()` returns an unsubscribe callback.
+  - **`canvas.getSnapshot()`**: Synchronous snapshot of the current canvas state (`documentWidth`, `documentHeight`, `layers`, `activeLayerId`, `history`) for UI bindings like `useSyncExternalStore`.
+  - **`change` Event**: Emits a `CanvasSnapshot` whenever canvas layers, selection, history, document dimensions, or artwork content change.
+  - **`stroke:start` & `stroke:end` Events**: Emits stroke lifecycle details (`layerId`, `point`, `bounds`, array of recorded `points`).
+  - **`history:change` Event**: Emits history stack metrics (`canUndo`, `canRedo`, `index`, `length`).
+  - **`layer:change` Event**: Emits updated layer lists and active layer ID.
+- **Public & Extended History API**
+  - **`canvas.history.getEntries()`**: Returns readonly summaries (`HistoryEntrySummary[]`) of all undo/redo history steps in the current timeline.
+  - **`canvas.history.goTo(index: number)`**: Enables jumping directly to any point in the history timeline by auto-calculating required undo/redo operations.
+  - **`canvas.history.pushPatch(...)`**: Allows external raster operations (text tools, filters, vector shapes, bucket fill) to register undoable patches using Fuderu's sparse bounding-box optimization. Supports both options objects (`PushPatchOptions`) and positional arguments.
+  - **Automatic Event Integration**: History state navigation and patch registration trigger `history:change` and `change` events.
+
   - **`canvas.on(event, listener)` / `canvas.off(event, listener)`**: Typed event subscription mechanism. `on()` returns an unsubscribe callback.
   - **`canvas.getSnapshot()`**: Synchronous snapshot of the current canvas state (`documentWidth`, `documentHeight`, `layers`, `activeLayerId`, `history`) for UI bindings like `useSyncExternalStore`.
   - **`change` Event**: Emits a `CanvasSnapshot` whenever canvas layers, selection, history, document dimensions, or artwork content change.

@@ -116,7 +116,13 @@ export class Canvas implements HistoryContext {
 
     this.setupCanvas();
     this.brush = new Brush(this.layers.getActive().canvas, options.brush);
-    this.history = new HistoryManager(30);
+    this.history = new HistoryManager(30, this);
+    this.history.onHistoryChange = () => {
+      this.cacheBelowValid = false;
+      this.renderLayers();
+      this.emitHistoryChange();
+      this.emitStateChange();
+    };
     this.brush.onRender = () => this.renderLayers();
     this.bindEvents();
     this.renderLayers();
@@ -599,12 +605,8 @@ export class Canvas implements HistoryContext {
     const index = this.layers.getAll().indexOf(layer);
     this.cacheBelowValid = false;
 
-    this.history.push(new LayerCreatedHistoryEntry(layer, this, index));
-
     this.brush.loadContext(layer.canvas);
-    this.renderLayers();
-    this.emitHistoryChange();
-    this.emitStateChange();
+    this.history.push(new LayerCreatedHistoryEntry(layer, this, index));
 
     return layer;
   }
@@ -615,32 +617,23 @@ export class Canvas implements HistoryContext {
     const wasActive = this.layers.getActiveId() === layerId;
 
     this.layers.deleteLayer(layerId);
+    if (wasActive) {
+      this.brush.loadContext(this.layers.getActive().canvas);
+    }
     this.cacheBelowValid = false;
 
     this.history.push(
       new LayerDeletedHistoryEntry(layer, index, wasActive, this),
     );
-
-    if (wasActive) {
-      this.brush.loadContext(this.layers.getActive().canvas);
-    }
-
-    this.renderLayers();
-    this.emitHistoryChange();
-    this.emitStateChange();
   }
 
   public duplicateLayer(layerId: string): Layer {
     const layer = this.layers.duplicateLayer(layerId);
     const index = this.layers.getAll().indexOf(layer);
+    this.brush.loadContext(layer.canvas);
     this.cacheBelowValid = false;
 
     this.history.push(new LayerCreatedHistoryEntry(layer, this, index));
-
-    this.brush.loadContext(layer.canvas);
-    this.renderLayers();
-    this.emitHistoryChange();
-    this.emitStateChange();
 
     return layer;
   }
@@ -655,11 +648,10 @@ export class Canvas implements HistoryContext {
       this.history.push(
         new MoveLayerHistoryEntry(layerId, beforeIndex, afterIndex, this),
       );
+    } else {
+      this.renderLayers();
+      this.emitStateChange();
     }
-
-    this.renderLayers();
-    this.emitHistoryChange();
-    this.emitStateChange();
   }
 
   public updateLayer(layerId: string, options: UpdateLayerOptions): Layer {
@@ -681,8 +673,10 @@ export class Canvas implements HistoryContext {
     const updated = this.layers.updateLayer(layerId, options);
     this.cacheBelowValid = false;
 
+    let pushed = false;
     for (const key of keys) {
       if (options[key] !== undefined && originalValues[key] !== options[key]) {
+        pushed = true;
         this.history.push(
           new LayerPropertyHistoryEntry(
             layerId,
@@ -695,9 +689,10 @@ export class Canvas implements HistoryContext {
       }
     }
 
-    this.renderLayers();
-    this.emitHistoryChange();
-    this.emitStateChange();
+    if (!pushed) {
+      this.renderLayers();
+      this.emitStateChange();
+    }
     return updated;
   }
 
@@ -730,29 +725,20 @@ export class Canvas implements HistoryContext {
       );
     } else {
       this.brush.clear();
+      this.cacheBelowValid = false;
+      this.renderLayers();
+      this.emitStateChange();
     }
-    this.cacheBelowValid = false;
-    this.renderLayers();
-    this.emitHistoryChange();
-    this.emitStateChange();
   }
 
   undo(): void {
     this.history.undo();
     this.brush.undo();
-    this.cacheBelowValid = false;
-    this.renderLayers();
-    this.emitHistoryChange();
-    this.emitStateChange();
   }
 
   redo(): void {
     this.history.redo();
     this.brush.redo();
-    this.cacheBelowValid = false;
-    this.renderLayers();
-    this.emitHistoryChange();
-    this.emitStateChange();
   }
 
   // HistoryContext implementation

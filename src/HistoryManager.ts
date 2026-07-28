@@ -1,4 +1,5 @@
 import { HistoryEntry } from "./types/history";
+import type { HistoryState } from "./types/events";
 import type { Layer } from "./Layer";
 import type { Brush } from "./Brush";
 import type { BlendMode } from "./types/layers";
@@ -60,6 +61,15 @@ export class HistoryManager {
 
   public canRedo(): boolean {
     return this.redoStack.length > 0;
+  }
+
+  public getHistoryState(): HistoryState {
+    return {
+      canUndo: this.canUndo(),
+      canRedo: this.canRedo(),
+      index: this.undoStack.length,
+      length: this.undoStack.length + this.redoStack.length,
+    };
   }
 }
 

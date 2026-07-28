@@ -10,3 +10,12 @@ export type {
   ExportDocumentOptions,
   ExportPNGOptions,
 } from "./document";
+export type {
+  StrokeBounds,
+  StrokePoint,
+  StrokeStartEvent,
+  StrokeEndEvent,
+  HistoryState,
+  CanvasSnapshot,
+  CanvasEventMap,
+} from "./events";

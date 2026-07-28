@@ -75,6 +75,19 @@ painter.brush.useModule(dynamicShape);
 painter.brush.useModule(dynamicTransparency);
 painter.brush.useModule(spread);
 
+// Observable State & Event System (v1.4.0)
+painter.on("change", (snapshot) => {
+  const { history } = snapshot;
+  const undoBtn = $("undoBtn");
+  const redoBtn = $("redoBtn");
+  if (undoBtn) undoBtn.disabled = !history.canUndo;
+  if (redoBtn) redoBtn.disabled = !history.canRedo;
+});
+
+painter.on("stroke:end", ({ bounds, points }) => {
+  status.textContent = `Stroke ended (${points.length} pts, ${Math.round(bounds.width)}x${Math.round(bounds.height)}px)`;
+});
+
 function getActiveLayer() {
   return painter.getActiveLayer();
 }

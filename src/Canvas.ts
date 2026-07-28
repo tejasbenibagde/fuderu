@@ -15,6 +15,12 @@ import type {
   ExportDocumentOptions,
   ExportPNGOptions,
 } from "./types/document";
+import type {
+  CanvasEventMap,
+  CanvasSnapshot,
+  StrokeBounds,
+  StrokePoint,
+} from "./types/events";
 import {
   HistoryManager,
   CanvasStateHistoryEntry,
@@ -57,6 +63,9 @@ export class Canvas implements HistoryContext {
 
   private cacheBelowCanvas: HTMLCanvasElement | null = null;
   private cacheBelowValid = false;
+
+  private listeners: Map<keyof CanvasEventMap, Set<unknown>> = new Map();
+  private currentStrokePoints: StrokePoint[] = [];
 
   /** The logical drawing resolution width (internal pixel buffer) */
   public documentWidth: number;
@@ -250,6 +259,81 @@ export class Canvas implements HistoryContext {
     // Reload brush context to reinitialise internal canvases
     this.brush.loadContext(this.layers.getActive().canvas);
     this.renderLayers();
+    this.emitStateChange();
+  }
+
+  /**
+   * Subscribe to canvas events (change, stroke:start, stroke:end, history:change, layer:change).
+   * Returns an unsubscribe callback for easy cleanup.
+   */
+  public on<K extends keyof CanvasEventMap>(
+    event: K,
+    listener: CanvasEventMap[K],
+  ): () => void {
+    let set = this.listeners.get(event);
+    if (!set) {
+      set = new Set();
+      this.listeners.set(event, set);
+    }
+    set.add(listener);
+
+    return () => this.off(event, listener);
+  }
+
+  /**
+   * Unsubscribe a listener from canvas events.
+   */
+  public off<K extends keyof CanvasEventMap>(
+    event: K,
+    listener: CanvasEventMap[K],
+  ): void {
+    const set = this.listeners.get(event);
+    if (set) {
+      set.delete(listener);
+    }
+  }
+
+  private emit<K extends keyof CanvasEventMap>(
+    event: K,
+    ...args: Parameters<CanvasEventMap[K]>
+  ): void {
+    const set = this.listeners.get(event);
+    if (set) {
+      for (const listener of Array.from(set)) {
+        try {
+          (listener as (...args: unknown[]) => void)(...args);
+        } catch (err) {
+          console.error(`[Canvas] Error in "${event}" event listener:`, err);
+        }
+      }
+    }
+  }
+
+  /**
+   * Returns a synchronous snapshot of the current canvas state suitable for
+   * reactive bindings like useSyncExternalStore.
+   */
+  public getSnapshot(): CanvasSnapshot {
+    return {
+      documentWidth: this.documentWidth,
+      documentHeight: this.documentHeight,
+      layers: this.layers.getAll(),
+      activeLayerId: this.layers.getActiveId() ?? "",
+      history: this.history.getHistoryState(),
+    };
+  }
+
+  private emitHistoryChange(): void {
+    this.emit("history:change", this.history.getHistoryState());
+  }
+
+  private emitStateChange(): void {
+    this.emit("change", this.getSnapshot());
+    this.emit(
+      "layer:change",
+      this.layers.getAll(),
+      this.layers.getActiveId() ?? "",
+    );
   }
 
   private bindEvents(): void {
@@ -329,6 +413,14 @@ export class Canvas implements HistoryContext {
     const rect = this.canvas.getBoundingClientRect();
     const p = this.getPoint(e, rect);
     this.updateStrokeBounds(p.x, p.y);
+    const point: StrokePoint = { x: p.x, y: p.y, pressure: p.pressure };
+    this.currentStrokePoints = [point];
+    if (activeLayer) {
+      this.emit("stroke:start", {
+        layerId: activeLayer.id,
+        point,
+      });
+    }
     this.brush.putPoint(p.x, p.y, p.pressure);
     this.brush.render();
     this.renderLayers();
@@ -345,6 +437,7 @@ export class Canvas implements HistoryContext {
     for (const ce of events) {
       const p = this.getPoint(ce, rect);
       this.updateStrokeBounds(p.x, p.y);
+      this.currentStrokePoints.push({ x: p.x, y: p.y, pressure: p.pressure });
       this.brush.putPoint(p.x, p.y, p.pressure);
     }
 
@@ -363,6 +456,21 @@ export class Canvas implements HistoryContext {
     const maxX = this.strokeMaxX;
     const maxY = this.strokeMaxY;
 
+    const points = [...this.currentStrokePoints];
+    this.currentStrokePoints = [];
+
+    const validMinX = minX === Infinity ? 0 : minX;
+    const validMinY = minY === Infinity ? 0 : minY;
+    const validMaxX = maxX === -Infinity ? this.documentWidth : maxX;
+    const validMaxY = maxY === -Infinity ? this.documentHeight : maxY;
+
+    const strokeBounds: StrokeBounds = {
+      x: validMinX,
+      y: validMinY,
+      width: Math.max(0, validMaxX - validMinX),
+      height: Math.max(0, validMaxY - validMinY),
+    };
+
     this.brush.finalizeStroke(() => {
       if (beforeCanvas && layerId) {
         const layer = this.layers.getById(layerId);
@@ -370,11 +478,6 @@ export class Canvas implements HistoryContext {
           const afterCtx = layer.canvas.getContext("2d");
           const beforeCtx = beforeCanvas.getContext("2d");
           if (afterCtx && beforeCtx) {
-            const validMinX = minX === Infinity ? 0 : minX;
-            const validMinY = minY === Infinity ? 0 : minY;
-            const validMaxX = maxX === -Infinity ? this.documentWidth : maxX;
-            const validMaxY = maxY === -Infinity ? this.documentHeight : maxY;
-
             const brushSize = this.brush.config?.size ?? 10;
             const padding = Math.max(50, Math.ceil(brushSize * 3));
 
@@ -409,6 +512,16 @@ export class Canvas implements HistoryContext {
         }
       }
       this.renderLayers();
+
+      if (layerId) {
+        this.emit("stroke:end", {
+          layerId,
+          bounds: strokeBounds,
+          points,
+        });
+      }
+      this.emitHistoryChange();
+      this.emitStateChange();
     });
   }
 
@@ -470,6 +583,7 @@ export class Canvas implements HistoryContext {
 
     this.brush.loadContext(this.layers.getActive().canvas);
     this.renderLayers();
+    this.emitStateChange();
   }
 
   public getLayers(): readonly Layer[] {
@@ -489,6 +603,8 @@ export class Canvas implements HistoryContext {
 
     this.brush.loadContext(layer.canvas);
     this.renderLayers();
+    this.emitHistoryChange();
+    this.emitStateChange();
 
     return layer;
   }
@@ -510,6 +626,8 @@ export class Canvas implements HistoryContext {
     }
 
     this.renderLayers();
+    this.emitHistoryChange();
+    this.emitStateChange();
   }
 
   public duplicateLayer(layerId: string): Layer {
@@ -521,6 +639,8 @@ export class Canvas implements HistoryContext {
 
     this.brush.loadContext(layer.canvas);
     this.renderLayers();
+    this.emitHistoryChange();
+    this.emitStateChange();
 
     return layer;
   }
@@ -538,6 +658,8 @@ export class Canvas implements HistoryContext {
     }
 
     this.renderLayers();
+    this.emitHistoryChange();
+    this.emitStateChange();
   }
 
   public updateLayer(layerId: string, options: UpdateLayerOptions): Layer {
@@ -574,6 +696,8 @@ export class Canvas implements HistoryContext {
     }
 
     this.renderLayers();
+    this.emitHistoryChange();
+    this.emitStateChange();
     return updated;
   }
 
@@ -609,6 +733,8 @@ export class Canvas implements HistoryContext {
     }
     this.cacheBelowValid = false;
     this.renderLayers();
+    this.emitHistoryChange();
+    this.emitStateChange();
   }
 
   undo(): void {
@@ -616,6 +742,8 @@ export class Canvas implements HistoryContext {
     this.brush.undo();
     this.cacheBelowValid = false;
     this.renderLayers();
+    this.emitHistoryChange();
+    this.emitStateChange();
   }
 
   redo(): void {
@@ -623,6 +751,8 @@ export class Canvas implements HistoryContext {
     this.brush.redo();
     this.cacheBelowValid = false;
     this.renderLayers();
+    this.emitHistoryChange();
+    this.emitStateChange();
   }
 
   // HistoryContext implementation
@@ -713,6 +843,8 @@ export class Canvas implements HistoryContext {
     this.history.clear();
     this.cacheBelowValid = false;
     this.renderLayers();
+    this.emitHistoryChange();
+    this.emitStateChange();
   }
 
   /**
@@ -812,6 +944,8 @@ export class Canvas implements HistoryContext {
     this.history.clear();
     this.cacheBelowValid = false;
     this.renderLayers();
+    this.emitHistoryChange();
+    this.emitStateChange();
   }
 
   /**

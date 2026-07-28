@@ -130,6 +130,32 @@ export class Brush {
   }
 
   /**
+   * Syncs oriCanvas with current source canvas state.
+   * Call this whenever the underlying source canvas pixels have been modified directly.
+   */
+  syncOriCanvas() {
+    if (!this.canvas) return;
+    if (!this.oriCanvas || !this.oriContext) {
+      this.initOriCanvas(this.canvas);
+      return;
+    }
+    if (
+      this.oriCanvas.width !== this.canvas.width ||
+      this.oriCanvas.height !== this.canvas.height
+    ) {
+      this.oriCanvas.width = this.canvas.width;
+      this.oriCanvas.height = this.canvas.height;
+    }
+    this.oriContext.clearRect(
+      0,
+      0,
+      this.oriCanvas.width,
+      this.oriCanvas.height,
+    );
+    this.oriContext.drawImage(this.canvas, 0, 0);
+  }
+
+  /**
    * Load/Modify Brush Configuration
    *
    * This function only exists in the config field.

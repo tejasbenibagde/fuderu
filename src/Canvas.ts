@@ -413,6 +413,7 @@ export class Canvas implements HistoryContext {
       return;
     }
     this.brush.isAlphaLocked = activeLayer.alphaLock;
+    this.brush.syncOriCanvas();
 
     this.isDrawing = true;
     this.cacheBelowValid = false;
@@ -1045,6 +1046,7 @@ export class Canvas implements HistoryContext {
     });
 
     this.cacheBelowValid = false;
+    this.brush.syncOriCanvas();
     this.renderLayers();
     this.emitStateChange();
   }
@@ -1218,6 +1220,7 @@ export class Canvas implements HistoryContext {
     });
 
     this.cacheBelowValid = false;
+    this.brush.syncOriCanvas();
     this.renderLayers();
     this.emitStateChange();
   }
@@ -1296,6 +1299,7 @@ export class Canvas implements HistoryContext {
     });
 
     this.cacheBelowValid = false;
+    this.brush.syncOriCanvas();
     this.renderLayers();
     this.emitStateChange();
   }
@@ -1361,6 +1365,7 @@ export class Canvas implements HistoryContext {
     });
 
     this.cacheBelowValid = false;
+    this.brush.syncOriCanvas();
     this.renderLayers();
     this.emitStateChange();
   }
@@ -1425,6 +1430,7 @@ export class Canvas implements HistoryContext {
     });
 
     this.cacheBelowValid = false;
+    this.brush.syncOriCanvas();
     this.renderLayers();
     this.emitStateChange();
   }
@@ -1505,6 +1511,7 @@ export class Canvas implements HistoryContext {
     });
 
     this.cacheBelowValid = false;
+    this.brush.syncOriCanvas();
     this.renderLayers();
     this.emitStateChange();
   }

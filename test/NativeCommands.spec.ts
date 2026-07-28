@@ -224,6 +224,24 @@ describe("Native Commands for Raster Operations", () => {
     expect(sample.hex).toBe("#ff0000");
   });
 
+  it("should preserve flood fill state when drawing brush strokes afterwards", () => {
+    canvas.fillActiveLayer("#ff0000");
+    let sample = canvas.getColorAt(20, 20, "activeLayer");
+    expect(sample.hex).toBe("#ff0000");
+
+    // Simulate pointer down and brush rendering
+    const pointerEvent = new PointerEvent("pointerdown", {
+      clientX: 50,
+      clientY: 50,
+      pointerId: 1,
+    });
+    canvasEl.dispatchEvent(pointerEvent);
+
+    // Verify the filled color was NOT erased by brush stroke initialization
+    sample = canvas.getColorAt(20, 20, "activeLayer");
+    expect(sample.hex).toBe("#ff0000");
+  });
+
   it("should draw rectangle with drawRectangle(options)", () => {
     canvas.drawRectangle({
       x: 5,

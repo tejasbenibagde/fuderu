@@ -8,17 +8,19 @@ import {
 const state = {
   width: 1920,
   height: 1080,
-  eraser: false,
+  activeTool: "brush", // "brush" | "eraser" | "bucket" | "rectangle" | "ellipse" | "line" | "text" | "eyedropper"
 };
 
 const $ = (id) => document.getElementById(id);
 
 const canvasEl = $("canvas");
+const overlayCanvas = $("overlayCanvas");
 const status = $("status");
 const documentLabel = $("documentLabel");
 const cursorLabel = $("cursorLabel");
 const layerList = $("layerList");
 const layerCount = $("layerCount");
+const activeToolName = $("activeToolName");
 
 const controls = {
   color: $("colorPicker"),
@@ -86,10 +88,18 @@ painter.on("change", (snapshot) => {
 
 painter.on("stroke:end", ({ bounds, points }) => {
   status.textContent = `Stroke ended (${points.length} pts, ${Math.round(bounds.width)}x${Math.round(bounds.height)}px)`;
+  refreshLayerPreviews();
 });
 
 function getActiveLayer() {
   return painter.getActiveLayer();
+}
+
+function syncOverlayCanvasSize() {
+  if (!overlayCanvas) return;
+  overlayCanvas.width = state.width;
+  overlayCanvas.height = state.height;
+  overlayCanvas.style.aspectRatio = `${state.width} / ${state.height}`;
 }
 
 function drawLayerPreview(layer, preview) {
@@ -131,14 +141,6 @@ const BLEND_MODES = [
 
 // ───────────────────────────────────────────────────────────
 // Layer list rendering
-//
-// IMPORTANT: this list is rebuilt only when layers are added,
-// removed, reordered, or the active layer changes — never on
-// every keystroke/drag of an interactive control inside a row.
-// Each row's own controls update via small targeted handlers,
-// not via a full replaceChildren(). This is what prevents the
-// "select/name closes immediately" bug: the DOM node the user
-// is actively interacting with is never destroyed mid-interaction.
 // ───────────────────────────────────────────────────────────
 
 function buildLayerRow(layer, index, totalLayers, activeLayerId) {
@@ -146,12 +148,6 @@ function buildLayerRow(layer, index, totalLayers, activeLayerId) {
   row.className = `layer-card${layer.id === activeLayerId ? " active" : ""}`;
   row.dataset.layerId = layer.id;
 
-  // Selecting a layer happens by clicking the row background,
-  // the preview thumbnail, or the drag handle — never by clicking
-  // through an interactive control. Each interactive control below
-  // stops propagation on both pointerdown and click so the click
-  // never reaches the row, regardless of browser quirks around
-  // native <select> / <input> click timing.
   const selectLayer = () => {
     if (layer.id === activeLayerId) return;
     painter.setActiveLayer(layer.id);
@@ -182,8 +178,6 @@ function buildLayerRow(layer, index, totalLayers, activeLayerId) {
   name.addEventListener("click", (e) => e.stopPropagation());
   name.addEventListener("change", () => {
     painter.updateLayer(layer.id, { name: name.value || "Layer" });
-    // No full re-render needed — the input already shows the
-    // value the user typed. Only the status line updates.
     status.textContent = "Renamed";
   });
   name.addEventListener("keydown", (e) => {
@@ -213,6 +207,40 @@ function buildLayerRow(layer, index, totalLayers, activeLayerId) {
   });
 
   header.append(name, visibility);
+
+  // ── Locks row: Alpha Lock + Layer Lock (v1.3.0 / v1.4.0) ────────
+  const locks = document.createElement("div");
+  locks.className = "layer-card-locks";
+
+  const alphaLockBtn = document.createElement("button");
+  alphaLockBtn.type = "button";
+  alphaLockBtn.className = `lock-toggle-btn${layer.alphaLock ? " active" : ""}`;
+  alphaLockBtn.innerHTML = `<span>α</span> Alpha Lock`;
+  alphaLockBtn.title = "Restricts edits to existing opaque pixels";
+  alphaLockBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
+  alphaLockBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const nextAlpha = !layer.alphaLock;
+    painter.updateLayer(layer.id, { alphaLock: nextAlpha });
+    alphaLockBtn.classList.toggle("active", nextAlpha);
+    status.textContent = nextAlpha ? "Alpha Lock ON" : "Alpha Lock OFF";
+  });
+
+  const layerLockBtn = document.createElement("button");
+  layerLockBtn.type = "button";
+  layerLockBtn.className = `lock-toggle-btn${layer.locked ? " active" : ""}`;
+  layerLockBtn.innerHTML = `<span>🔒</span> Lock`;
+  layerLockBtn.title = "Locks layer from drawing or deletion";
+  layerLockBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
+  layerLockBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const nextLock = !layer.locked;
+    painter.updateLayer(layer.id, { locked: nextLock });
+    layerLockBtn.classList.toggle("active", nextLock);
+    status.textContent = nextLock ? "Layer Locked" : "Layer Unlocked";
+  });
+
+  locks.append(alphaLockBtn, layerLockBtn);
 
   // ── Meta row: opacity slider + blend mode select ────────
   const meta = document.createElement("div");
@@ -320,10 +348,14 @@ function buildLayerRow(layer, index, totalLayers, activeLayerId) {
   remove.className = "icon-btn danger";
   remove.innerHTML = TRASH_ICON;
   remove.title = "Delete layer";
-  remove.disabled = totalLayers === 1;
+  remove.disabled = totalLayers === 1 || layer.locked;
   remove.addEventListener("pointerdown", (e) => e.stopPropagation());
   remove.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (layer.locked) {
+      status.textContent = "Cannot delete locked layer";
+      return;
+    }
     painter.deleteLayer(layer.id);
     renderLayerList();
     status.textContent = "Layer deleted";
@@ -333,7 +365,7 @@ function buildLayerRow(layer, index, totalLayers, activeLayerId) {
 
   preview.addEventListener("click", selectLayer);
 
-  body.append(header, meta, moveControls);
+  body.append(header, locks, meta, moveControls);
   row.append(preview, body);
 
   if (!layer.visible) row.classList.add("dimmed");
@@ -365,6 +397,7 @@ function syncLayers() {
 function setCanvasAspect(width, height) {
   canvasEl.style.aspectRatio = `${width} / ${height}`;
   documentLabel.textContent = `${width} × ${height}`;
+  syncOverlayCanvasSize();
 }
 
 function degreesToTurns(value) {
@@ -386,6 +419,15 @@ function syncLabels() {
   outputs.sizeJitter.textContent = Number(controls.sizeJitter.value).toFixed(2);
   outputs.flowJitter.textContent = Number(controls.flowJitter.value).toFixed(2);
   outputs.spread.textContent = Number(controls.spread.value).toFixed(2);
+
+  if ($("toleranceValue"))
+    $("toleranceValue").textContent = $("toleranceSlider").value;
+  if ($("strokeWidthValue"))
+    $("strokeWidthValue").textContent = `${$("strokeWidthSlider").value}px`;
+  if ($("cornerRadiusValue"))
+    $("cornerRadiusValue").textContent = `${$("cornerRadiusSlider").value}px`;
+  if ($("fontSizeValue"))
+    $("fontSizeValue").textContent = `${$("fontSizeSlider").value}px`;
 }
 
 function syncBrush() {
@@ -413,7 +455,7 @@ function syncBrush() {
   } else {
     painter.mousePressure.close();
   }
-  painter.setEraser(controls.eraser.checked);
+  painter.setEraser(state.activeTool === "eraser" || controls.eraser.checked);
 
   dynamicShape.bindConfig({
     sizeJitter: Number(controls.sizeJitter.value),
@@ -442,8 +484,315 @@ function syncBrush() {
     countJitter: 0,
     countJitterTrigger: "none",
   });
+}
 
-  status.textContent = controls.eraser.checked ? "Eraser" : "Brush";
+function setTool(tool) {
+  state.activeTool = tool;
+
+  document.querySelectorAll(".tool-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tool === tool);
+  });
+
+  const toolLabels = {
+    brush: "Brush",
+    eraser: "Eraser",
+    bucket: "Bucket Fill",
+    rectangle: "Rectangle",
+    ellipse: "Ellipse",
+    line: "Line",
+    text: "Text",
+    eyedropper: "Eyedropper",
+  };
+
+  if (activeToolName) activeToolName.textContent = toolLabels[tool] || tool;
+
+  $("brushOptions").style.display =
+    tool === "brush" || tool === "eraser" ? "block" : "none";
+  $("bucketOptions").style.display = tool === "bucket" ? "block" : "none";
+  $("shapeOptions").style.display =
+    tool === "rectangle" || tool === "ellipse" || tool === "line"
+      ? "block"
+      : "none";
+  $("cornerRadiusField").style.display = tool === "rectangle" ? "grid" : "none";
+  $("textOptions").style.display = tool === "text" ? "block" : "none";
+  $("eyedropperOptions").style.display =
+    tool === "eyedropper" ? "block" : "none";
+
+  if (controls.eraser) {
+    controls.eraser.checked = tool === "eraser";
+  }
+
+  syncBrush();
+  status.textContent = `Tool: ${toolLabels[tool] || tool}`;
+}
+
+document.querySelectorAll(".tool-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    setTool(btn.dataset.tool);
+  });
+});
+
+function getCanvasCoords(event) {
+  const rect = canvasEl.getBoundingClientRect();
+  const scaleX = rect.width > 0 ? canvasEl.width / rect.width : 1;
+  const scaleY = rect.height > 0 ? canvasEl.height / rect.height : 1;
+  return {
+    x: (event.clientX - rect.left) * scaleX,
+    y: (event.clientY - rect.top) * scaleY,
+  };
+}
+
+// ───────────────────────────────────────────────────────────
+// Custom Tools Pointer Handling (Capture Phase)
+// ───────────────────────────────────────────────────────────
+
+let isDrawingShape = false;
+let shapeStartCoords = null;
+
+function clearOverlay() {
+  if (!overlayCanvas) return;
+  const ctx = overlayCanvas.getContext("2d");
+  if (ctx) ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+}
+
+function drawOverlayPreview(endCoords) {
+  if (!overlayCanvas || !shapeStartCoords) return;
+  const ctx = overlayCanvas.getContext("2d");
+  if (!ctx) return;
+
+  ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+  ctx.save();
+  ctx.strokeStyle = controls.color.value;
+  ctx.fillStyle = controls.color.value + "44";
+  ctx.lineWidth = Number($("strokeWidthSlider").value);
+  ctx.setLineDash([6, 6]);
+
+  const x1 = shapeStartCoords.x;
+  const y1 = shapeStartCoords.y;
+  const x2 = endCoords.x;
+  const y2 = endCoords.y;
+
+  if (state.activeTool === "rectangle") {
+    const minX = Math.min(x1, x2);
+    const minY = Math.min(y1, y2);
+    const w = Math.abs(x2 - x1);
+    const h = Math.abs(y2 - y1);
+    ctx.strokeRect(minX, minY, w, h);
+    if ($("shapeFillToggle").checked) ctx.fillRect(minX, minY, w, h);
+  } else if (state.activeTool === "ellipse") {
+    const minX = Math.min(x1, x2);
+    const minY = Math.min(y1, y2);
+    const w = Math.abs(x2 - x1);
+    const h = Math.abs(y2 - y1);
+    const cx = minX + w / 2;
+    const cy = minY + h / 2;
+    ctx.beginPath();
+    ctx.ellipse(
+      cx,
+      cy,
+      Math.max(0.1, w / 2),
+      Math.max(0.1, h / 2),
+      0,
+      0,
+      Math.PI * 2,
+    );
+    ctx.stroke();
+    if ($("shapeFillToggle").checked) ctx.fill();
+  } else if (state.activeTool === "line") {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+canvasEl.addEventListener(
+  "pointerdown",
+  (e) => {
+    const activeLayer = getActiveLayer();
+
+    if (activeLayer.locked) {
+      status.textContent = "Layer is locked!";
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      return;
+    }
+
+    // Brush and Eraser use Fuderu's native drawing engine
+    if (state.activeTool === "brush" || state.activeTool === "eraser") {
+      return;
+    }
+
+    // Intercept all other custom tools
+    e.stopImmediatePropagation();
+    e.preventDefault();
+
+    const coords = getCanvasCoords(e);
+
+    if (state.activeTool === "bucket") {
+      try {
+        const tolerance = Number($("toleranceSlider").value);
+        painter.floodFill(
+          Math.round(coords.x),
+          Math.round(coords.y),
+          controls.color.value,
+          tolerance,
+        );
+        refreshLayerPreviews();
+        status.textContent = "Bucket fill completed";
+      } catch (err) {
+        console.error(err);
+        status.textContent =
+          err instanceof Error ? err.message : "Bucket fill failed";
+      }
+    } else if (state.activeTool === "eyedropper") {
+      try {
+        const sampled = painter.getColorAt(
+          Math.round(coords.x),
+          Math.round(coords.y),
+          "composite",
+        );
+        controls.color.value = sampled.hex;
+        if ($("sampledColorSwatch"))
+          $("sampledColorSwatch").style.background = sampled.hex;
+        if ($("sampledColorLabel"))
+          $("sampledColorLabel").textContent =
+            `${sampled.hex} (a: ${sampled.a})`;
+        syncBrush();
+        status.textContent = `Sampled color: ${sampled.hex}`;
+      } catch (err) {
+        console.error(err);
+        status.textContent = "Color sampling failed";
+      }
+    } else if (state.activeTool === "text") {
+      try {
+        const text = $("textInput").value || "Text";
+        const fontSize = Number($("fontSizeSlider").value);
+        const fontFamily = $("fontFamilySelect").value;
+        const isBold = $("textBoldToggle").checked;
+        painter.drawText(text, coords.x, coords.y, {
+          fontSize,
+          fontFamily,
+          fontWeight: isBold ? "bold" : "normal",
+          color: controls.color.value,
+        });
+        refreshLayerPreviews();
+        status.textContent = "Text drawn";
+      } catch (err) {
+        console.error(err);
+        status.textContent = err instanceof Error ? err.message : "Text failed";
+      }
+    } else if (
+      state.activeTool === "rectangle" ||
+      state.activeTool === "ellipse" ||
+      state.activeTool === "line"
+    ) {
+      isDrawingShape = true;
+      shapeStartCoords = coords;
+
+      const onPointerMove = (moveEv) => {
+        if (!isDrawingShape) return;
+        const currentCoords = getCanvasCoords(moveEv);
+        drawOverlayPreview(currentCoords);
+      };
+
+      const onPointerUp = (upEv) => {
+        if (!isDrawingShape) return;
+        isDrawingShape = false;
+        clearOverlay();
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", onPointerUp);
+
+        const endCoords = getCanvasCoords(upEv);
+
+        try {
+          const fill = $("shapeFillToggle").checked;
+          const stroke = $("shapeStrokeToggle").checked;
+          const strokeWidth = Number($("strokeWidthSlider").value);
+
+          if (state.activeTool === "rectangle") {
+            const minX = Math.min(shapeStartCoords.x, endCoords.x);
+            const minY = Math.min(shapeStartCoords.y, endCoords.y);
+            const w = Math.abs(endCoords.x - shapeStartCoords.x);
+            const h = Math.abs(endCoords.y - shapeStartCoords.y);
+            const radius = Number($("cornerRadiusSlider").value);
+            if (w > 1 && h > 1) {
+              painter.drawRectangle({
+                x: minX,
+                y: minY,
+                width: w,
+                height: h,
+                fillColor: controls.color.value,
+                strokeColor: controls.color.value,
+                strokeWidth,
+                rx: radius,
+                ry: radius,
+                fill,
+                stroke,
+              });
+              status.textContent = "Rectangle drawn";
+            }
+          } else if (state.activeTool === "ellipse") {
+            const minX = Math.min(shapeStartCoords.x, endCoords.x);
+            const minY = Math.min(shapeStartCoords.y, endCoords.y);
+            const w = Math.abs(endCoords.x - shapeStartCoords.x);
+            const h = Math.abs(endCoords.y - shapeStartCoords.y);
+            if (w > 1 && h > 1) {
+              painter.drawEllipse({
+                x: minX + w / 2,
+                y: minY + h / 2,
+                radiusX: w / 2,
+                radiusY: h / 2,
+                fillColor: controls.color.value,
+                strokeColor: controls.color.value,
+                strokeWidth,
+                fill,
+                stroke,
+              });
+              status.textContent = "Ellipse drawn";
+            }
+          } else if (state.activeTool === "line") {
+            painter.drawLine({
+              x1: shapeStartCoords.x,
+              y1: shapeStartCoords.y,
+              x2: endCoords.x,
+              y2: endCoords.y,
+              strokeColor: controls.color.value,
+              strokeWidth,
+              lineCap: "round",
+            });
+            status.textContent = "Line drawn";
+          }
+          refreshLayerPreviews();
+        } catch (err) {
+          console.error(err);
+          status.textContent =
+            err instanceof Error ? err.message : "Shape drawing failed";
+        }
+      };
+
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", onPointerUp);
+    }
+  },
+  true,
+);
+
+// Direct Layer Actions (v1.3.0 / v1.4.0)
+if ($("fillActiveLayerBtn")) {
+  $("fillActiveLayerBtn").addEventListener("click", () => {
+    try {
+      painter.fillActiveLayer(controls.color.value);
+      refreshLayerPreviews();
+      status.textContent = "Layer filled";
+    } catch (err) {
+      console.error(err);
+      status.textContent =
+        err instanceof Error ? err.message : "Fill layer failed";
+    }
+  });
 }
 
 function applyDocumentSize(width, height) {
@@ -460,24 +809,46 @@ function applyDocumentSize(width, height) {
 }
 
 function updateCursorLabel(event) {
-  const rect = canvasEl.getBoundingClientRect();
-  const scaleX = rect.width > 0 ? canvasEl.width / rect.width : 1;
-  const scaleY = rect.height > 0 ? canvasEl.height / rect.height : 1;
-  const x = Math.round((event.clientX - rect.left) * scaleX);
-  const y = Math.round((event.clientY - rect.top) * scaleY);
-  cursorLabel.textContent = `${x}, ${y} · p ${painter.lastPressure.toFixed(2)}`;
+  const coords = getCanvasCoords(event);
+  cursorLabel.textContent = `${Math.round(coords.x)}, ${Math.round(coords.y)} · p ${painter.lastPressure.toFixed(2)}`;
 }
 
 Object.values(controls).forEach((control) => {
-  control.addEventListener("input", () => {
-    syncBrush();
-    syncLabels();
-  });
+  if (control) {
+    control.addEventListener("input", () => {
+      syncBrush();
+      syncLabels();
+    });
+  }
+});
+
+[
+  "toleranceSlider",
+  "strokeWidthSlider",
+  "cornerRadiusSlider",
+  "fontSizeSlider",
+  "textInput",
+  "fontFamilySelect",
+  "shapeFillToggle",
+  "shapeStrokeToggle",
+  "textBoldToggle",
+].forEach((id) => {
+  const el = $(id);
+  if (el) {
+    el.addEventListener("input", syncLabels);
+    el.addEventListener("change", syncLabels);
+  }
 });
 
 $("clearBtn").addEventListener("click", () => {
-  painter.clear();
-  status.textContent = "Layer cleared";
+  try {
+    painter.clearActiveLayer();
+    refreshLayerPreviews();
+    status.textContent = "Active layer cleared";
+  } catch (err) {
+    console.error(err);
+    status.textContent = err instanceof Error ? err.message : "Clear failed";
+  }
 });
 
 $("undoBtn").addEventListener("click", () => {
@@ -648,18 +1019,39 @@ canvasEl.addEventListener("pointerleave", () => {
 });
 
 window.addEventListener("keydown", (event) => {
+  if (
+    event.target instanceof HTMLInputElement ||
+    event.target instanceof HTMLSelectElement
+  ) {
+    return;
+  }
   const key = event.key.toLowerCase();
   if ((event.ctrlKey || event.metaKey) && key === "z") {
     painter.undo();
     renderLayerList();
-  }
-  if ((event.ctrlKey || event.metaKey) && key === "y") {
+  } else if ((event.ctrlKey || event.metaKey) && key === "y") {
     painter.redo();
     renderLayerList();
+  } else if (key === "b") {
+    setTool("brush");
+  } else if (key === "e") {
+    setTool("eraser");
+  } else if (key === "f") {
+    setTool("bucket");
+  } else if (key === "r") {
+    setTool("rectangle");
+  } else if (key === "c") {
+    setTool("ellipse");
+  } else if (key === "l") {
+    setTool("line");
+  } else if (key === "t") {
+    setTool("text");
+  } else if (key === "i") {
+    setTool("eyedropper");
   }
 });
 
-// ── Inline icon set (stroke-based, currentColor) ────────────
+// Inline icons
 const EYE_OPEN_ICON = `<svg viewBox="0 0 20 20" fill="none"><path d="M1.5 10S4.5 4 10 4s8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.4" stroke="currentColor" stroke-width="1.4"/></svg>`;
 const EYE_CLOSED_ICON = `<svg viewBox="0 0 20 20" fill="none"><path d="M2.5 2.5l15 15M8.3 8.4a2.4 2.4 0 0 0 3.3 3.3M5.6 5.7C3.4 7 1.5 10 1.5 10s3 6 8.5 6c1.5 0 2.8-.4 3.9-1M16 14.3c1.6-1.4 2.5-3.5 2.5-4.3 0 0-1.3-2.6-3.9-4.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const CHEVRON_UP_ICON = `<svg viewBox="0 0 16 16" fill="none"><path d="M4 10l4-4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -671,3 +1063,4 @@ setCanvasAspect(state.width, state.height);
 syncBrush();
 syncLabels();
 syncLayers();
+setTool("brush");

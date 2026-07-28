@@ -15,6 +15,7 @@ const mockBrushInstance = {
   loadConfig: vi.fn(),
   loadImageAsync: vi.fn(),
   loadContext: vi.fn(),
+  syncOriCanvas: vi.fn(),
 };
 
 vi.mock("../src/Brush", () => {

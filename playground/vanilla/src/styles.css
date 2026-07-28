@@ -664,7 +664,89 @@ select {
   border-color: #ff5d5d44;
 }
 
+.status-badge {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  background: var(--bg-control);
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.tool-btn:hover {
+  background: var(--bg-control-hover);
+  color: var(--ink);
+  border-color: #3a3e46;
+}
+
+.tool-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.layer-card-locks {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.lock-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 10.5px;
+  font-weight: 500;
+  border-radius: 4px;
+  background: var(--bg-control);
+  border: 1px solid var(--line-soft);
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.lock-toggle-btn:hover {
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.lock-toggle-btn.active {
+  background: rgba(255, 122, 69, 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .canvas-stage {
+  position: relative;
   display: grid;
   place-items: center;
   min-height: 0;
@@ -677,20 +759,30 @@ select {
   padding: 32px;
 }
 
-#canvas {
+#canvas,
+#overlayCanvas {
   display: block;
   width: min(100%, 1400px);
   max-height: calc(100vh - 110px);
   height: auto;
   aspect-ratio: 16 / 9;
   border-radius: 3px;
+  touch-action: none;
+}
+
+#canvas {
   background: #ffffff;
   box-shadow:
     0 0 0 1px #000,
     0 24px 60px -12px rgba(0, 0, 0, 0.6),
     0 4px 16px rgba(0, 0, 0, 0.35);
   cursor: crosshair;
-  touch-action: none;
+}
+
+#overlayCanvas {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
 }
 
 /* ── Responsive ───────────────────────────────────────── */

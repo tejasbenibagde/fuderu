@@ -22,7 +22,6 @@ All notable changes to the **fuderu** drawing library will be documented in this
   - **`history:change` Event**: Emits history stack metrics (`canUndo`, `canRedo`, `index`, `length`).
   - **`layer:change` Event**: Emits updated layer lists and active layer ID.
 
-
 ---
 
 ## [1.2.2] - 2026-07-24

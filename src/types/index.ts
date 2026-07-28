@@ -23,3 +23,10 @@ export type {
   CanvasSnapshot,
   CanvasEventMap,
 } from "./events";
+export type {
+  DrawRectangleOptions,
+  DrawEllipseOptions,
+  DrawLineOptions,
+  TextStyleOptions,
+  ColorSample,
+} from "./commands";

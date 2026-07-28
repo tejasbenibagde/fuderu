@@ -9,6 +9,8 @@ export interface CreateLayerOptions {
   visible?: boolean;
   opacity?: number;
   blendMode?: BlendMode;
+  alphaLock?: boolean;
+  locked?: boolean;
 }
 
 export interface UpdateLayerOptions {
@@ -16,6 +18,8 @@ export interface UpdateLayerOptions {
   visible?: boolean;
   opacity?: number;
   blendMode?: BlendMode;
+  alphaLock?: boolean;
+  locked?: boolean;
 }
 
 export class LayerManager {
@@ -73,6 +77,8 @@ export class LayerManager {
       visible: layerOptions.visible,
       opacity: layerOptions.opacity,
       blendMode: layerOptions.blendMode,
+      alphaLock: layerOptions.alphaLock,
+      locked: layerOptions.locked,
     });
 
     this.layers.push(layer);
@@ -90,6 +96,10 @@ export class LayerManager {
 
     if (layerIndex === -1) {
       throw new Error("Layer not found");
+    }
+
+    if (this.layers[layerIndex].locked) {
+      throw new Error("Cannot delete locked layer");
     }
 
     this.layers.splice(layerIndex, 1);
@@ -133,6 +143,8 @@ export class LayerManager {
     duplicate.opacity = source.opacity;
     duplicate.visible = source.visible;
     duplicate.blendMode = source.blendMode;
+    duplicate.alphaLock = source.alphaLock;
+    duplicate.locked = source.locked;
 
     const sourceIndex = this.layers.indexOf(source);
     this.layers.splice(sourceIndex + 1, 0, duplicate);
@@ -158,6 +170,25 @@ export class LayerManager {
     this.layers.splice(boundedTargetIndex, 0, layer);
   }
 
+  reorderLayers(ids: string[]): void {
+    const currentLayers = [...this.layers];
+    const map = new Map(currentLayers.map((l) => [l.id, l]));
+    const newLayers: Layer[] = [];
+    for (const id of ids) {
+      const layer = map.get(id);
+      if (layer) {
+        newLayers.push(layer);
+        map.delete(id);
+      }
+    }
+    for (const layer of map.values()) {
+      newLayers.push(layer);
+    }
+    if (newLayers.length > 0) {
+      this.layers = newLayers;
+    }
+  }
+
   updateLayer(layerId: string, options: UpdateLayerOptions): Layer {
     const layer = this.getById(layerId);
 
@@ -165,6 +196,8 @@ export class LayerManager {
     if (options.visible !== undefined) layer.visible = options.visible;
     if (options.opacity !== undefined) layer.setOpacity(options.opacity);
     if (options.blendMode !== undefined) layer.blendMode = options.blendMode;
+    if (options.alphaLock !== undefined) layer.alphaLock = options.alphaLock;
+    if (options.locked !== undefined) layer.locked = options.locked;
 
     return layer;
   }

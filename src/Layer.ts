@@ -10,6 +10,8 @@ export interface LayerOptions {
   visible?: boolean;
   opacity?: number;
   blendMode?: BlendMode;
+  alphaLock?: boolean;
+  locked?: boolean;
 }
 
 export class Layer {
@@ -22,6 +24,8 @@ export class Layer {
   public visible: boolean;
   public opacity: number;
   public blendMode: BlendMode;
+  public alphaLock: boolean;
+  public locked: boolean;
 
   constructor(options: LayerOptions) {
     this.id = options.id ?? generateUUID();
@@ -29,6 +33,8 @@ export class Layer {
     this.visible = options.visible ?? true;
     this.opacity = clampOpacity(options.opacity ?? 1);
     this.blendMode = options.blendMode ?? "source-over";
+    this.alphaLock = options.alphaLock ?? false;
+    this.locked = options.locked ?? false;
 
     this.canvas = document.createElement("canvas");
     this.canvas.width = options.width;

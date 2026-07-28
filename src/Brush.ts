@@ -68,6 +68,7 @@ export class Brush {
   private strokeHistory: Point[] = [];
   private _strokeOpacity: number = 1;
   isEraser: boolean = false;
+  isAlphaLocked: boolean = false;
 
   private points: Point[] = [];
   private drawCount: number = 0;
@@ -840,7 +841,9 @@ export class Brush {
     const savedGco = this.context!.globalCompositeOperation;
     const savedFilter = this.context!.filter;
 
-    this.context!.globalCompositeOperation = this.getCompositeOperation();
+    this.context!.globalCompositeOperation = this.isAlphaLocked
+      ? "source-atop"
+      : this.getCompositeOperation();
     this.context!.filter = this.filter;
     this.context!.drawImage(this.transferCanvas!, 0, 0);
 
@@ -868,11 +871,11 @@ export class Brush {
       this.oriContext!.globalCompositeOperation;
     if (this.isEraser) {
       this.oriContext!.globalCompositeOperation = "destination-out";
+    } else if (this.isAlphaLocked) {
+      this.oriContext!.globalCompositeOperation = "source-atop";
     }
     this.oriContext!.drawImage(this.transferCanvas!, 0, 0);
-    if (this.isEraser) {
-      this.oriContext!.globalCompositeOperation = oriGlobalCompositeOperation;
-    }
+    this.oriContext!.globalCompositeOperation = oriGlobalCompositeOperation;
 
     this.strokeContext!.clearRect(
       0,

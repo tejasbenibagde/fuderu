@@ -21,6 +21,13 @@ import type {
   StrokeBounds,
   StrokePoint,
 } from "./types/events";
+import type {
+  DrawRectangleOptions,
+  DrawEllipseOptions,
+  DrawLineOptions,
+  TextStyleOptions,
+  ColorSample,
+} from "./types/commands";
 import {
   HistoryManager,
   CanvasStateHistoryEntry,
@@ -30,6 +37,22 @@ import {
   MoveLayerHistoryEntry,
   type HistoryContext,
 } from "./HistoryManager";
+
+function parseCssColor(colorStr: string): [number, number, number, number] {
+  if (typeof document === "undefined") {
+    return [0, 0, 0, 255];
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = 1;
+  canvas.height = 1;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return [0, 0, 0, 255];
+  ctx.clearRect(0, 0, 1, 1);
+  ctx.fillStyle = colorStr;
+  ctx.fillRect(0, 0, 1, 1);
+  const data = ctx.getImageData(0, 0, 1, 1).data;
+  return [data[0], data[1], data[2], data[3]];
+}
 
 export interface CanvasOptions {
   canvas: HTMLCanvasElement | string;
@@ -385,6 +408,12 @@ export class Canvas implements HistoryContext {
   }
 
   private handlePointerDown = (e: PointerEvent) => {
+    const activeLayer = this.layers.getActive();
+    if (activeLayer.locked) {
+      return;
+    }
+    this.brush.isAlphaLocked = activeLayer.alphaLock;
+
     this.isDrawing = true;
     this.cacheBelowValid = false;
     this.mousePressure.reset();
@@ -403,7 +432,6 @@ export class Canvas implements HistoryContext {
       }
     }
 
-    const activeLayer = this.layers.getActive();
     const ctx = activeLayer.canvas.getContext("2d");
     if (ctx) {
       this.currentStrokeBeforeCanvas = document.createElement("canvas");
@@ -600,6 +628,17 @@ export class Canvas implements HistoryContext {
     return this.layers.getActive();
   }
 
+  public getLayerById(id: string): Layer | undefined {
+    return this.layers.getAll().find((l) => l.id === id);
+  }
+
+  public reorderLayers(ids: string[]): void {
+    this.layers.reorderLayers(ids);
+    this.cacheBelowValid = false;
+    this.renderLayers();
+    this.emitStateChange();
+  }
+
   public createLayer(options?: CreateLayerOptions | string): Layer {
     const layer = this.layers.createLayer(options);
     const index = this.layers.getAll().indexOf(layer);
@@ -658,12 +697,14 @@ export class Canvas implements HistoryContext {
     const layer = this.layers.getById(layerId);
 
     const originalValues: Record<string, string | number | boolean> = {};
-    const keys: ("name" | "visible" | "opacity" | "blendMode")[] = [
-      "name",
-      "visible",
-      "opacity",
-      "blendMode",
-    ];
+    const keys: (
+      | "name"
+      | "visible"
+      | "opacity"
+      | "blendMode"
+      | "alphaLock"
+      | "locked"
+    )[] = ["name", "visible", "opacity", "blendMode", "alphaLock", "locked"];
     for (const key of keys) {
       if (options[key] !== undefined) {
         originalValues[key] = layer[key];
@@ -698,6 +739,9 @@ export class Canvas implements HistoryContext {
 
   clear(): void {
     const activeLayer = this.layers.getActive();
+    if (activeLayer.locked) {
+      throw new Error("Active layer is locked");
+    }
     const ctx = activeLayer.canvas.getContext("2d");
     if (ctx) {
       const beforeData = ctx.getImageData(
@@ -959,6 +1003,510 @@ export class Canvas implements HistoryContext {
     }
 
     return exportCanvas.toDataURL("image/png", options?.quality);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                      Native Commands for Raster Operations                 */
+  /* -------------------------------------------------------------------------- */
+
+  public clearActiveLayer(): void {
+    this.clear();
+  }
+
+  public fillActiveLayer(color: string): void {
+    const activeLayer = this.layers.getActive();
+    if (activeLayer.locked) {
+      throw new Error("Active layer is locked");
+    }
+    const ctx = activeLayer.canvas.getContext("2d");
+    if (!ctx) return;
+
+    const w = activeLayer.canvas.width;
+    const h = activeLayer.canvas.height;
+    const beforeData = ctx.getImageData(0, 0, w, h);
+
+    ctx.save();
+    if (activeLayer.alphaLock) {
+      ctx.globalCompositeOperation = "source-atop";
+    }
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+
+    const afterData = ctx.getImageData(0, 0, w, h);
+
+    this.history.pushPatch({
+      layerId: activeLayer.id,
+      beforeData,
+      afterData,
+      x: 0,
+      y: 0,
+      description: `Fill layer with ${color}`,
+    });
+
+    this.cacheBelowValid = false;
+    this.renderLayers();
+    this.emitStateChange();
+  }
+
+  public getColorAt(
+    x: number,
+    y: number,
+    scope: "activeLayer" | "composite" = "composite",
+  ): ColorSample {
+    const px = Math.floor(x);
+    const py = Math.floor(y);
+
+    const ctx =
+      scope === "activeLayer"
+        ? this.layers.getActive().canvas.getContext("2d")
+        : this.canvas.getContext("2d");
+
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    let a = 0;
+
+    if (
+      ctx &&
+      px >= 0 &&
+      py >= 0 &&
+      px < this.documentWidth &&
+      py < this.documentHeight
+    ) {
+      const imgData = ctx.getImageData(px, py, 1, 1);
+      r = imgData.data[0];
+      g = imgData.data[1];
+      b = imgData.data[2];
+      a = imgData.data[3];
+    }
+
+    const hex = `#${r.toString(16).padStart(2, "0")}${g
+      .toString(16)
+      .padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+    const alphaNormalized = (a / 255).toFixed(2).replace(/\.?0+$/, "");
+    const rgba = `rgba(${r}, ${g}, ${b}, ${alphaNormalized})`;
+
+    return {
+      r,
+      g,
+      b,
+      a,
+      hex,
+      rgba,
+    };
+  }
+
+  public floodFill(
+    x: number,
+    y: number,
+    color: string,
+    tolerance: number = 0,
+  ): void {
+    const activeLayer = this.layers.getActive();
+    if (activeLayer.locked) {
+      throw new Error("Active layer is locked");
+    }
+    const ctx = activeLayer.canvas.getContext("2d");
+    if (!ctx) return;
+
+    const width = activeLayer.canvas.width;
+    const height = activeLayer.canvas.height;
+    const startX = Math.floor(x);
+    const startY = Math.floor(y);
+
+    if (startX < 0 || startX >= width || startY < 0 || startY >= height) {
+      return;
+    }
+
+    const imgData = ctx.getImageData(0, 0, width, height);
+    const data = imgData.data;
+
+    const [fillR, fillG, fillB, fillA] = parseCssColor(color);
+
+    const startIdx = (startY * width + startX) * 4;
+    const targetR = data[startIdx];
+    const targetG = data[startIdx + 1];
+    const targetB = data[startIdx + 2];
+    const targetA = data[startIdx + 3];
+
+    if (activeLayer.alphaLock && targetA === 0) {
+      return;
+    }
+
+    if (
+      Math.abs(fillR - targetR) <= tolerance &&
+      Math.abs(fillG - targetG) <= tolerance &&
+      Math.abs(fillB - targetB) <= tolerance &&
+      Math.abs(fillA - targetA) <= tolerance
+    ) {
+      return;
+    }
+
+    const visited = new Uint8Array(width * height);
+    const stack: number[] = [startX, startY];
+
+    let minX = startX;
+    let maxX = startX;
+    let minY = startY;
+    let maxY = startY;
+
+    while (stack.length > 0) {
+      const cy = stack.pop()!;
+      const cx = stack.pop()!;
+      const idx = cy * width + cx;
+
+      if (visited[idx]) continue;
+      visited[idx] = 1;
+
+      const pIdx = idx * 4;
+      const r = data[pIdx];
+      const g = data[pIdx + 1];
+      const b = data[pIdx + 2];
+      const a = data[pIdx + 3];
+
+      if (activeLayer.alphaLock && a === 0) {
+        continue;
+      }
+
+      if (
+        Math.abs(r - targetR) <= tolerance &&
+        Math.abs(g - targetG) <= tolerance &&
+        Math.abs(b - targetB) <= tolerance &&
+        Math.abs(a - targetA) <= tolerance
+      ) {
+        data[pIdx] = fillR;
+        data[pIdx + 1] = fillG;
+        data[pIdx + 2] = fillB;
+        data[pIdx + 3] = fillA;
+
+        if (cx < minX) minX = cx;
+        if (cx > maxX) maxX = cx;
+        if (cy < minY) minY = cy;
+        if (cy > maxY) maxY = cy;
+
+        if (cx > 0 && !visited[idx - 1]) {
+          stack.push(cx - 1, cy);
+        }
+        if (cx < width - 1 && !visited[idx + 1]) {
+          stack.push(cx + 1, cy);
+        }
+        if (cy > 0 && !visited[idx - width]) {
+          stack.push(cx, cy - 1);
+        }
+        if (cy < height - 1 && !visited[idx + width]) {
+          stack.push(cx, cy + 1);
+        }
+      }
+    }
+
+    const patchW = maxX - minX + 1;
+    const patchH = maxY - minY + 1;
+    const beforeData = ctx.getImageData(minX, minY, patchW, patchH);
+
+    ctx.putImageData(imgData, 0, 0);
+
+    const afterData = ctx.getImageData(minX, minY, patchW, patchH);
+
+    this.history.pushPatch({
+      layerId: activeLayer.id,
+      beforeData,
+      afterData,
+      x: minX,
+      y: minY,
+      description: "Flood fill",
+    });
+
+    this.cacheBelowValid = false;
+    this.renderLayers();
+    this.emitStateChange();
+  }
+
+  public drawRectangle(options: DrawRectangleOptions): void {
+    const activeLayer = this.layers.getActive();
+    if (activeLayer.locked) {
+      throw new Error("Active layer is locked");
+    }
+    const ctx = activeLayer.canvas.getContext("2d");
+    if (!ctx) return;
+
+    const {
+      x,
+      y,
+      width,
+      height,
+      fillColor = "#000000",
+      strokeColor,
+      strokeWidth = 1,
+      fill = true,
+      stroke = strokeColor !== undefined,
+      cornerRadius = 0,
+    } = options;
+
+    const sw = stroke ? strokeWidth : 0;
+    const minX = Math.max(0, Math.floor(Math.min(x, x + width) - sw - 2));
+    const minY = Math.max(0, Math.floor(Math.min(y, y + height) - sw - 2));
+    const maxX = Math.min(
+      this.documentWidth,
+      Math.ceil(Math.max(x, x + width) + sw + 2),
+    );
+    const maxY = Math.min(
+      this.documentHeight,
+      Math.ceil(Math.max(y, y + height) + sw + 2),
+    );
+    const bboxW = Math.max(1, maxX - minX);
+    const bboxH = Math.max(1, maxY - minY);
+
+    const beforeData = ctx.getImageData(minX, minY, bboxW, bboxH);
+
+    ctx.save();
+    if (activeLayer.alphaLock) {
+      ctx.globalCompositeOperation = "source-atop";
+    }
+    if (fill) ctx.fillStyle = fillColor;
+    if (stroke) {
+      ctx.strokeStyle = strokeColor ?? fillColor;
+      ctx.lineWidth = strokeWidth;
+    }
+
+    if (cornerRadius > 0 && typeof ctx.roundRect === "function") {
+      ctx.beginPath();
+      ctx.roundRect(x, y, width, height, cornerRadius);
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    } else {
+      if (fill) ctx.fillRect(x, y, width, height);
+      if (stroke) {
+        ctx.beginPath();
+        ctx.rect(x, y, width, height);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+
+    const afterData = ctx.getImageData(minX, minY, bboxW, bboxH);
+
+    this.history.pushPatch({
+      layerId: activeLayer.id,
+      beforeData,
+      afterData,
+      x: minX,
+      y: minY,
+      description: "Draw rectangle",
+    });
+
+    this.cacheBelowValid = false;
+    this.renderLayers();
+    this.emitStateChange();
+  }
+
+  public drawEllipse(options: DrawEllipseOptions): void {
+    const activeLayer = this.layers.getActive();
+    if (activeLayer.locked) {
+      throw new Error("Active layer is locked");
+    }
+    const ctx = activeLayer.canvas.getContext("2d");
+    if (!ctx) return;
+
+    const {
+      x,
+      y,
+      radiusX,
+      radiusY,
+      rotation = 0,
+      fillColor = "#000000",
+      strokeColor,
+      strokeWidth = 1,
+      fill = true,
+      stroke = strokeColor !== undefined,
+    } = options;
+
+    const maxR = Math.max(radiusX, radiusY);
+    const sw = stroke ? strokeWidth : 0;
+    const minX = Math.max(0, Math.floor(x - maxR - sw - 2));
+    const minY = Math.max(0, Math.floor(y - maxR - sw - 2));
+    const maxX = Math.min(this.documentWidth, Math.ceil(x + maxR + sw + 2));
+    const maxY = Math.min(this.documentHeight, Math.ceil(y + maxR + sw + 2));
+    const bboxW = Math.max(1, maxX - minX);
+    const bboxH = Math.max(1, maxY - minY);
+
+    const beforeData = ctx.getImageData(minX, minY, bboxW, bboxH);
+
+    ctx.save();
+    if (activeLayer.alphaLock) {
+      ctx.globalCompositeOperation = "source-atop";
+    }
+    if (fill) ctx.fillStyle = fillColor;
+    if (stroke) {
+      ctx.strokeStyle = strokeColor ?? fillColor;
+      ctx.lineWidth = strokeWidth;
+    }
+
+    ctx.beginPath();
+    ctx.ellipse(x, y, radiusX, radiusY, rotation, 0, Math.PI * 2);
+
+    if (fill) ctx.fill();
+    if (stroke) ctx.stroke();
+    ctx.restore();
+
+    const afterData = ctx.getImageData(minX, minY, bboxW, bboxH);
+
+    this.history.pushPatch({
+      layerId: activeLayer.id,
+      beforeData,
+      afterData,
+      x: minX,
+      y: minY,
+      description: "Draw ellipse",
+    });
+
+    this.cacheBelowValid = false;
+    this.renderLayers();
+    this.emitStateChange();
+  }
+
+  public drawLine(options: DrawLineOptions): void {
+    const activeLayer = this.layers.getActive();
+    if (activeLayer.locked) {
+      throw new Error("Active layer is locked");
+    }
+    const ctx = activeLayer.canvas.getContext("2d");
+    if (!ctx) return;
+
+    const {
+      x1,
+      y1,
+      x2,
+      y2,
+      strokeColor = "#000000",
+      strokeWidth = 1,
+      lineCap = "round",
+    } = options;
+
+    const sw = strokeWidth;
+    const minX = Math.max(0, Math.floor(Math.min(x1, x2) - sw - 2));
+    const minY = Math.max(0, Math.floor(Math.min(y1, y2) - sw - 2));
+    const maxX = Math.min(
+      this.documentWidth,
+      Math.ceil(Math.max(x1, x2) + sw + 2),
+    );
+    const maxY = Math.min(
+      this.documentHeight,
+      Math.ceil(Math.max(y1, y2) + sw + 2),
+    );
+    const bboxW = Math.max(1, maxX - minX);
+    const bboxH = Math.max(1, maxY - minY);
+
+    const beforeData = ctx.getImageData(minX, minY, bboxW, bboxH);
+
+    ctx.save();
+    if (activeLayer.alphaLock) {
+      ctx.globalCompositeOperation = "source-atop";
+    }
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = strokeWidth;
+    ctx.lineCap = lineCap;
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.restore();
+
+    const afterData = ctx.getImageData(minX, minY, bboxW, bboxH);
+
+    this.history.pushPatch({
+      layerId: activeLayer.id,
+      beforeData,
+      afterData,
+      x: minX,
+      y: minY,
+      description: "Draw line",
+    });
+
+    this.cacheBelowValid = false;
+    this.renderLayers();
+    this.emitStateChange();
+  }
+
+  public drawText(
+    text: string,
+    x: number,
+    y: number,
+    style?: TextStyleOptions,
+  ): void {
+    const activeLayer = this.layers.getActive();
+    if (activeLayer.locked) {
+      throw new Error("Active layer is locked");
+    }
+    const ctx = activeLayer.canvas.getContext("2d");
+    if (!ctx || !text) return;
+
+    const {
+      fontSize = 24,
+      fontFamily = "sans-serif",
+      fontWeight = "normal",
+      fontStyle = "normal",
+      color = "#000000",
+      align = "left",
+      baseline = "top",
+      maxWidth,
+    } = style ?? {};
+
+    ctx.save();
+    if (activeLayer.alphaLock) {
+      ctx.globalCompositeOperation = "source-atop";
+    }
+    ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.textBaseline = baseline;
+
+    const metrics = ctx.measureText(text);
+    const textWidth = maxWidth
+      ? Math.min(metrics.width, maxWidth)
+      : metrics.width;
+    const fontHeight = fontSize * 1.5;
+
+    let left = x;
+    if (align === "center") left = x - textWidth / 2;
+    else if (align === "right" || align === "end") left = x - textWidth;
+
+    let top = y;
+    if (baseline === "middle") top = y - fontHeight / 2;
+    else if (baseline === "bottom" || baseline === "alphabetic")
+      top = y - fontHeight;
+
+    const minX = Math.max(0, Math.floor(left - 5));
+    const minY = Math.max(0, Math.floor(top - 5));
+    const maxX = Math.min(this.documentWidth, Math.ceil(left + textWidth + 5));
+    const maxY = Math.min(this.documentHeight, Math.ceil(top + fontHeight + 5));
+    const bboxW = Math.max(1, maxX - minX);
+    const bboxH = Math.max(1, maxY - minY);
+
+    const beforeData = ctx.getImageData(minX, minY, bboxW, bboxH);
+
+    if (maxWidth !== undefined) {
+      ctx.fillText(text, x, y, maxWidth);
+    } else {
+      ctx.fillText(text, x, y);
+    }
+    ctx.restore();
+
+    const afterData = ctx.getImageData(minX, minY, bboxW, bboxH);
+
+    this.history.pushPatch({
+      layerId: activeLayer.id,
+      beforeData,
+      afterData,
+      x: minX,
+      y: minY,
+      description: `Draw text "${text}"`,
+    });
+
+    this.cacheBelowValid = false;
+    this.renderLayers();
+    this.emitStateChange();
   }
 
   destroy(): void {

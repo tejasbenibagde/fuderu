@@ -351,7 +351,13 @@ export class LayerPropertyHistoryEntry implements HistoryEntry {
 
   constructor(
     private layerId: string,
-    private propertyName: "name" | "visible" | "opacity" | "blendMode",
+    private propertyName:
+      | "name"
+      | "visible"
+      | "opacity"
+      | "blendMode"
+      | "alphaLock"
+      | "locked",
     private beforeValue: string | number | boolean,
     private afterValue: string | number | boolean,
     private context: HistoryContext,
@@ -384,6 +390,10 @@ export class LayerPropertyHistoryEntry implements HistoryEntry {
       layer.visible = this.beforeValue as boolean;
     } else if (this.propertyName === "blendMode") {
       layer.blendMode = this.beforeValue as BlendMode;
+    } else if (this.propertyName === "alphaLock") {
+      layer.alphaLock = this.beforeValue as boolean;
+    } else if (this.propertyName === "locked") {
+      layer.locked = this.beforeValue as boolean;
     }
     this.context.renderLayers();
   }
@@ -399,6 +409,10 @@ export class LayerPropertyHistoryEntry implements HistoryEntry {
       layer.visible = this.afterValue as boolean;
     } else if (this.propertyName === "blendMode") {
       layer.blendMode = this.afterValue as BlendMode;
+    } else if (this.propertyName === "alphaLock") {
+      layer.alphaLock = this.afterValue as boolean;
+    } else if (this.propertyName === "locked") {
+      layer.locked = this.afterValue as boolean;
     }
     this.context.renderLayers();
   }

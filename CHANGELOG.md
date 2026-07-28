@@ -4,9 +4,7 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
-## [1.3.0] - 2026-07-26
-
-### Added
+## [1.3.0] - 2026-07-28
 
 - **First-Class Document Persistence API**
   - **`canvas.exportDocument(options?: { bitmap?: 'png' | 'jpeg' | 'webp', quality?: number })`**: Export full document state into a versioned, typed JSON payload including canvas dimensions, layer metadata (id, name, order, opacity, blendMode, visibility), active layer ID, and serialized layer bitmaps.
@@ -25,13 +23,17 @@ All notable changes to the **fuderu** drawing library will be documented in this
   - **`canvas.history.goTo(index: number)`**: Enables jumping directly to any point in the history timeline by auto-calculating required undo/redo operations.
   - **`canvas.history.pushPatch(...)`**: Allows external raster operations (text tools, filters, vector shapes, bucket fill) to register undoable patches using Fuderu's sparse bounding-box optimization. Supports both options objects (`PushPatchOptions`) and positional arguments.
   - **Automatic Event Integration**: History state navigation and patch registration trigger `history:change` and `change` events.
-
-  - **`canvas.on(event, listener)` / `canvas.off(event, listener)`**: Typed event subscription mechanism. `on()` returns an unsubscribe callback.
-  - **`canvas.getSnapshot()`**: Synchronous snapshot of the current canvas state (`documentWidth`, `documentHeight`, `layers`, `activeLayerId`, `history`) for UI bindings like `useSyncExternalStore`.
-  - **`change` Event**: Emits a `CanvasSnapshot` whenever canvas layers, selection, history, document dimensions, or artwork content change.
-  - **`stroke:start` & `stroke:end` Events**: Emits stroke lifecycle details (`layerId`, `point`, `bounds`, array of recorded `points`).
-  - **`history:change` Event**: Emits history stack metrics (`canUndo`, `canRedo`, `index`, `length`).
-  - **`layer:change` Event**: Emits updated layer lists and active layer ID.
+- **Native Commands for Common Raster Operations**
+  - **Flood Fill / Bucket**: `canvas.floodFill(x, y, color, tolerance)` – Scanline flood fill algorithm on active layer with customizable color matching tolerance, producing optimized sparse history patches.
+  - **Vector Primitives**: `canvas.drawRectangle(...)`, `canvas.drawEllipse(...)`, `canvas.drawLine(...)` – Built-in vector drawing primitives supporting fill, stroke, stroke width, corner radius, and rotation.
+  - **Text Rasterization**: `canvas.drawText(text, x, y, style)` – Direct text rendering onto active layer with custom font size, family, weight, style, color, alignment, baseline, and optional maximum width.
+  - **Eyedropper / Color Sampler**: `canvas.getColorAt(x, y, scope: 'activeLayer' | 'composite')` – Pixel color sampling returning RGBA channels, normalized hex, and CSS color strings.
+  - **Layer Utility Actions**: `canvas.clearActiveLayer()`, `canvas.fillActiveLayer(color)` – High-level layer clearing and bucket filling commands with automatic undo history tracking.
+- **Advanced Layer Controls**
+  - **Alpha Lock**: `layer.alphaLock = true` (and `options.alphaLock`) – Restricts brush strokes, vector primitive drawing (`drawRectangle`, `drawEllipse`, `drawLine`, `drawText`), `fillActiveLayer`, and `floodFill` strictly to existing non-transparent pixels on the layer using `source-atop` compositing.
+  - **Layer Lock**: `layer.locked = true` (and `options.locked`) – Protects layers from accidental modification or deletion. Blocks pointer stroke initiation, active layer clearing, bucket fills, flood fills, vector drawing, and layer deletion attempts (`deleteLayer`).
+  - **Direct Layer Methods on Canvas**: Added `canvas.getLayers()`, `canvas.getLayerById(id)`, and `canvas.reorderLayers(ids)` to provide clean, typed access for reading, finding, and reordering document layers without relying on direct `canvas.layers` access.
+  - **History & State Event Integration**: Property updates for `alphaLock` and `locked` support full undo/redo state tracking via `LayerPropertyHistoryEntry` and automatically emit `layer:change` and `change` state updates.
 
 ---
 

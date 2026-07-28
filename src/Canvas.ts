@@ -616,7 +616,9 @@ export class Canvas implements HistoryContext {
     this.layers.setActive(layerId);
     this.cacheBelowValid = false;
 
-    this.brush.loadContext(this.layers.getActive().canvas);
+    const active = this.layers.getActive();
+    this.brush.loadContext(active.canvas);
+    this.brush.isAlphaLocked = active.alphaLock;
     this.renderLayers();
     this.emitStateChange();
   }
@@ -646,6 +648,7 @@ export class Canvas implements HistoryContext {
     this.cacheBelowValid = false;
 
     this.brush.loadContext(layer.canvas);
+    this.brush.isAlphaLocked = layer.alphaLock;
     this.history.push(new LayerCreatedHistoryEntry(layer, this, index));
 
     return layer;
@@ -658,7 +661,9 @@ export class Canvas implements HistoryContext {
 
     this.layers.deleteLayer(layerId);
     if (wasActive) {
-      this.brush.loadContext(this.layers.getActive().canvas);
+      const active = this.layers.getActive();
+      this.brush.loadContext(active.canvas);
+      this.brush.isAlphaLocked = active.alphaLock;
     }
     this.cacheBelowValid = false;
 
@@ -671,6 +676,7 @@ export class Canvas implements HistoryContext {
     const layer = this.layers.duplicateLayer(layerId);
     const index = this.layers.getAll().indexOf(layer);
     this.brush.loadContext(layer.canvas);
+    this.brush.isAlphaLocked = layer.alphaLock;
     this.cacheBelowValid = false;
 
     this.history.push(new LayerCreatedHistoryEntry(layer, this, index));
@@ -713,6 +719,9 @@ export class Canvas implements HistoryContext {
     }
 
     const updated = this.layers.updateLayer(layerId, options);
+    if (layerId === this.layers.getActiveId()) {
+      this.brush.isAlphaLocked = updated.alphaLock;
+    }
     this.cacheBelowValid = false;
 
     let pushed = false;
@@ -803,7 +812,9 @@ export class Canvas implements HistoryContext {
     const activeLayerId = this.layers.getActiveId();
     this.layers.removeLayerOnly(layerId);
     if (activeLayerId === layerId) {
-      this.brush.loadContext(this.layers.getActive().canvas);
+      const active = this.layers.getActive();
+      this.brush.loadContext(active.canvas);
+      this.brush.isAlphaLocked = active.alphaLock;
     }
     this.cacheBelowValid = false;
   }

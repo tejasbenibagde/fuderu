@@ -392,6 +392,9 @@ export class LayerPropertyHistoryEntry implements HistoryEntry {
       layer.blendMode = this.beforeValue as BlendMode;
     } else if (this.propertyName === "alphaLock") {
       layer.alphaLock = this.beforeValue as boolean;
+      if (layer.id === this.context.getActiveLayer().id) {
+        this.context.getBrush().isAlphaLocked = layer.alphaLock;
+      }
     } else if (this.propertyName === "locked") {
       layer.locked = this.beforeValue as boolean;
     }
@@ -411,6 +414,9 @@ export class LayerPropertyHistoryEntry implements HistoryEntry {
       layer.blendMode = this.afterValue as BlendMode;
     } else if (this.propertyName === "alphaLock") {
       layer.alphaLock = this.afterValue as boolean;
+      if (layer.id === this.context.getActiveLayer().id) {
+        this.context.getBrush().isAlphaLocked = layer.alphaLock;
+      }
     } else if (this.propertyName === "locked") {
       layer.locked = this.afterValue as boolean;
     }

@@ -224,6 +224,17 @@ describe("Native Commands for Raster Operations", () => {
     expect(sample.hex).toBe("#ff0000");
   });
 
+  it("should sync brush isAlphaLocked when updateLayer or setActiveLayer is called", () => {
+    const active = canvas.getActiveLayer();
+    expect(canvas.getBrush().isAlphaLocked).toBe(false);
+
+    canvas.updateLayer(active.id, { alphaLock: true });
+    expect(canvas.getBrush().isAlphaLocked).toBe(true);
+
+    canvas.updateLayer(active.id, { alphaLock: false });
+    expect(canvas.getBrush().isAlphaLocked).toBe(false);
+  });
+
   it("should preserve flood fill state when drawing brush strokes afterwards", () => {
     canvas.fillActiveLayer("#ff0000");
     let sample = canvas.getColorAt(20, 20, "activeLayer");

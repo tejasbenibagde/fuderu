@@ -220,9 +220,12 @@ function buildLayerRow(layer, index, totalLayers, activeLayerId) {
   alphaLockBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
   alphaLockBtn.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (layer.id !== painter.getActiveLayer().id) {
+      painter.setActiveLayer(layer.id);
+    }
     const nextAlpha = !layer.alphaLock;
     painter.updateLayer(layer.id, { alphaLock: nextAlpha });
-    alphaLockBtn.classList.toggle("active", nextAlpha);
+    renderLayerList();
     status.textContent = nextAlpha ? "Alpha Lock ON" : "Alpha Lock OFF";
   });
 
@@ -234,9 +237,12 @@ function buildLayerRow(layer, index, totalLayers, activeLayerId) {
   layerLockBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
   layerLockBtn.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (layer.id !== painter.getActiveLayer().id) {
+      painter.setActiveLayer(layer.id);
+    }
     const nextLock = !layer.locked;
     painter.updateLayer(layer.id, { locked: nextLock });
-    layerLockBtn.classList.toggle("active", nextLock);
+    renderLayerList();
     status.textContent = nextLock ? "Layer Locked" : "Layer Unlocked";
   });
 

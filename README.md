@@ -24,69 +24,35 @@
 ## Features
 
 - **Document Persistence API** – Export and import complete canvas state as versioned JSON with layer metadata and serialized bitmaps (`exportDocument`, `importDocument`, `exportPNG`).
-- **Layer System** – A focused layer stack with visibility, opacity, and 16 blend modes.
-- **Canvas API** – A dependable `Canvas` wrapper for pointer drawing and layer-based composition.
-- **Standalone Brush** – `Brush` engine for custom integrations and advanced render pipelines.
-- **Smooth Interpolation** – Adaptive brush spacing and Bezier smoothing for natural stroke flow.
-- **Pressure Support** – Real pen pressure with optional mouse/touch simulation.
-- **Runtime Configuration** – Update brush properties on the fly.
-- **Undo/Redo** – A practical history stack for iterative drawing workflows.
-- **Module System** – Extensible brush behavior with built-in modules for dynamics and patterns.
+- **Advanced Layer Controls** – Full layer stack with visibility, opacity, 16 blend modes, **Alpha Lock** (clip strokes to opaque pixels), and **Layer Lock** (protect layers from modifications).
+- **Native Commands & Raster Operations** – Fast scanline flood fill (`floodFill`), vector shape primitives (`drawRectangle`, `drawEllipse`, `drawLine`), text rendering (`drawText`), and color sampling (`getColorAt`).
+- **Observable State & Event System** – Reactive canvas event subscriptions (`change`, `stroke:start`, `stroke:end`, `layer:change`, `history:change`) and state snapshotting (`getSnapshot`).
+- **Public History Navigation API** – Direct history timeline jumping (`goTo`), step summaries, and sparse bounding-box patch registration (`pushPatch`).
+- **Canvas API & Direct Layer Methods** – Direct layer stack helpers (`getLayers`, `getLayerById`, `reorderLayers`) and pointer gesture handling.
+- **Standalone Brush Engine** – Smooth Bezier interpolation, adaptive spacing, real pressure sensitivity, custom image brushes, and extensible dynamic modules.
 - **TypeScript-First** – Full type safety with a framework-agnostic design.
 
 ## Release Focus
 
-For the first stable release, Fuderu is intentionally narrowing the scope around a cohesive core:
+For Fuderu 1.3.0, the engine expands beyond basic brush rendering to provide a complete, production-ready canvas architecture:
 
-- reliable brush rendering
-- layer-based compositing with blend modes
-- document import/export and image persistence
-- undo/redo and a clear canvas wrapper
-- optional advanced modules without overcomplicating the API
-
-If you are evaluating Fuderu for production, start with those primitives and treat the more experimental effects as additive.
+- first-class document persistence and flattened image exporting
+- advanced layer management including Alpha Lock, Layer Lock, and direct stack methods
+- native raster utilities for flood fill, shapes, text, and color sampling
+- reactive event-driven state snapshots for seamless UI integrations (e.g., React `useSyncExternalStore`)
+- deep timeline history controls and sparse memory optimizations
 
 ## Latest Release
 
 ### 1.3.0
 
-- **First-Class Document Persistence API**: Native `exportDocument()` and `importDocument()` with typed, versioned document data (`width`, `height`, `layers`, `activeLayerId`, and serialized bitmaps).
-- **Asynchronous Layer Bitmap Loading**: `importDocument()` recreates layer structures and asynchronously restores layer bitmaps.
-- **Flattened Image Export**: Added `exportPNG()` helper with optional solid background compositing (`includeBackground: true`).
-- **Atomic Layer Replacement**: Introduced `LayerManager.replaceAllLayers()` for seamless document loading.
+- **First-Class Document Persistence API**: Native `exportDocument()` and `importDocument()` with typed, versioned document data (`width`, `height`, `layers`, `activeLayerId`, and serialized bitmaps), plus `exportPNG()` for flattened composite output.
+- **Advanced Layer Controls**: Added `alphaLock` (restricts editing to existing non-transparent pixels) and `locked` (protects layers from edits/deletion), plus direct `Canvas` methods (`getLayers()`, `getLayerById()`, `reorderLayers()`).
+- **Native Raster Commands**: Built-in scanline `floodFill()`, vector shape primitives (`drawRectangle`, `drawEllipse`, `drawLine`), raster text (`drawText`), and pixel color sampling (`getColorAt`).
+- **Observable State & Event Model**: Typed event subscriptions (`on`/`off`) for `change`, `stroke:start`, `stroke:end`, `layer:change`, and `history:change`, alongside `getSnapshot()`.
+- **Public History Navigation & Patching**: Jump to any point in history with `canvas.history.goTo(index)` and push custom raster tool undo patches via `canvas.history.pushPatch()`.
 
-### 1.2.2
-
-- **Point-Drawing Optimization**: Replaced `structuredClone` with lightweight configuration cloning during stroke point rendering, removing serialization latency during fast drawing.
-- **Star Brush & Color Fixes**: Corrected double rotation on star brush tips and unified hex color string comparisons in brush shape contexts.
-- **Layer History Index Retention**: Layer creation and duplication history entries now preserve exact stack index order for precise undo/redo behavior.
-- **Hardware-Accelerated Layer Resizing**: Switched `Layer.resize()` to HTMLCanvas `drawImage` scaling, avoiding pixel-buffer transfer overhead and alpha premultiplication artifacts.
-- **Robust Layer & Pattern Resizing**: `LayerManager` now retains master document dimensions when creating new layers, and `modules/pattern.ts` auto-resizes pattern buffers when stroke dimensions change.
-
-### 1.2.1
-
-- **Layout Thrashing Fix**: Throttles expensive DOM `getBoundingClientRect()` queries during active stylus/mouse pointer moves. Caches the dimensions/offsets per event frame and shares them across coalesced events, eliminating layout recalcs and lag on high-poll rate pointers.
-- **`setDocumentSize` Flexibility**: Added support for lossless cropping/padding vs complete clearing of layers. Now supports an optional parameter: `setDocumentSize(width, height, clearArtwork = false)` where `clearArtwork` defaults to `false` (lossless preserve layout) or `true` (clear everything).
-
-### 1.2.0
-
-- **Sparse Bounding-Box History Tracking**: Upgraded undo/redo mechanics. Tracks exact pixel-changed bounds instead of taking full-canvas snapshots. Cuts undo memory usage by 90-95% on large and high-DPI canvases.
-- **Offscreen Layer Compositing Cache**: Drastically speeds up multi-layer blending. Static layers below the active drawing layer are pre-composited, reducing draw calls from $O(N)$ to $O(1)$ and ensuring smooth 60 FPS drawing on deep stacks.
-- **Robust Pointer Capture**: Highly robust, fallback-safe wrapper around `setPointerCapture` and `releasePointerCapture` with feature detection.
-- **Hardened Test Coverage**: Extended comprehensive unit test coverage with Vitest.
-
-### 1.1.0
-
-- Modular, low-overhead undo/redo engine (`HistoryManager` with `HistoryEntry` interfaces).
-- Layer property changes (opacity, name, visibility, blending) fully undoable.
-- Dynamic bounding-box calculation setup for optimized undo states.
-
-### 1.0.0
-
-- Stable 1.0.0 baseline for the core canvas, brush, layer, and undo/redo APIs.
-- Hardened pointer lifecycle handling for cancelled or interrupted input gestures.
-- Improved stroke reset behavior after clearing or reloading the drawing context.
-- A focused public API around reliable brush rendering, layer-based compositing, and extensible modules.
+> _For details on earlier releases (v1.0.0 – v1.2.2), please refer to the [CHANGELOG.md](./CHANGELOG.md)._
 
 ## Installation
 
@@ -243,7 +209,7 @@ brush.useModule(
 
 ## Status
 
-Fuderu 1.2.2 is now the stable baseline for the core brush, canvas, pressure, image, eraser, and module systems.
+Fuderu 1.3.0 is the current stable release, providing a complete canvas engine with layer controls (including Alpha Lock and Layer Lock), native raster commands (flood fill, shapes, text, color sampling), state events, document persistence, pressure sensitivity, and extensible brush modules.
 
 The library is fully verified with robust unit testing via Vitest, browser-style canvas rendering tests, and various local playground environments across multiple web frameworks.
 

@@ -11,12 +11,15 @@ import FuderuDemo from "@site/src/components/FuderuDemo";
 
 <div className="hero-section">
   <div className="hero-content">
-    <p class="hero-tagline">A stable 1.0.0 canvas drawing engine for the web</p>
+    <p className="hero-tagline">
+      Stable 1.3.0 canvas drawing engine for the web
+    </p>
     <div className="hero-badges">
       <span className="badge">Framework-Agnostic</span>
       <span className="badge">TypeScript-First</span>
-      <span className="badge">Professional Brush Engine</span>
-      <span className="badge">Layer System</span>
+      <span className="badge">Brush Engine</span>
+      <span className="badge">Layer System & Alpha Lock</span>
+      <span className="badge">Document Persistence API</span>
     </div>
   </div>
   <div className="hero-illustration">
@@ -33,11 +36,27 @@ import FuderuDemo from "@site/src/components/FuderuDemo";
 
 Fuderu is designed for developers who want to build beautiful drawing experiences without the complexity of heavy graphics libraries. Whether you're building a simple sketch pad, a professional annotation tool, or a creative art application, Fuderu gives you the building blocks you need.
 
-Fuderu 1.0.0 is the stable baseline for the library’s core workflow: dependable brush rendering, a layer-based compositing model, and a focused API that is ready for real projects.
+Fuderu 1.3.0 expands beyond brush rendering into a complete, production-ready canvas architecture: featuring first-class document persistence, layer-level Alpha Lock and Layer Lock, native scanline flood fill, shape primitives, raster text, and typed state event subscriptions.
 
-### 🎨 Focused on Drawing Excellence
+### 🎨 Key Capabilities
 
-Unlike general-purpose canvas libraries, Fuderu specializes in **brush stroke rendering** with sophisticated features like:
+Unlike general-purpose canvas libraries, Fuderu combines a **standalone brush engine** with a **full layer compositing stack** and **document state system**:
+
+#### 📄 Document Persistence API
+
+Export and import complete canvas state as versioned JSON containing dimensions, layer metadata, active selections, and serialized image data (`exportDocument`, `importDocument`), or export flattened PNG composition renders (`exportPNG`).
+
+#### 🔒 Advanced Layer Stack & Alpha Lock
+
+16 blend modes, opacity, visibility, layer reordering, **Alpha Lock** (restricting drawing/filling to existing non-transparent pixels), and **Layer Lock** (protecting layers against accidental edits or deletions).
+
+#### 🪣 Native Raster Operations & Shapes
+
+Built-in scanline **flood fill** (`floodFill`), vector shape primitives (`drawRectangle`, `drawEllipse`, `drawLine`), raster text rendering (`drawText`), and pixel color sampling (`getColorAt`).
+
+#### ⚡ Reactive Event System & Timeline History
+
+Subscribe to typed state events (`change`, `stroke:start`, `stroke:end`, `layer:change`, `history:change`) with `getSnapshot()`, and navigate history timeline directly with `canvas.history.goTo(index)` or sparse memory patches.
 
 #### ✨ Smooth Interpolation
 

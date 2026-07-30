@@ -21,15 +21,17 @@ new Layer(options: LayerOptions);
 
 ### `LayerOptions`
 
-| Property     | Type        | Description                                        |
-| ------------ | ----------- | -------------------------------------------------- |
-| `id?`        | `string`    | Unique ID; if omitted a UUID is generated.         |
-| `name?`      | `string`    | Layer name (defaults to `"Layer"`).                |
-| `width`      | `number`    | Canvas width in pixels.                            |
-| `height`     | `number`    | Canvas height in pixels.                           |
-| `visible?`   | `boolean`   | Whether the layer is visible (defaults to `true`). |
-| `opacity?`   | `number`    | Opacity `0‑1` (defaults to `1`).                   |
-| `blendMode?` | `BlendMode` | Composite operation (defaults to `"source-over"`). |
+| Property     | Type        | Description                                                 |
+| ------------ | ----------- | ----------------------------------------------------------- |
+| `id?`        | `string`    | Unique ID; if omitted a UUID is generated.                  |
+| `name?`      | `string`    | Layer name (defaults to `"Layer"`).                         |
+| `width`      | `number`    | Canvas width in pixels.                                     |
+| `height`     | `number`    | Canvas height in pixels.                                    |
+| `visible?`   | `boolean`   | Whether the layer is visible (defaults to `true`).          |
+| `opacity?`   | `number`    | Opacity `0‑1` (defaults to `1`).                            |
+| `blendMode?` | `BlendMode` | Composite operation (defaults to `"source-over"`).          |
+| `alphaLock?` | `boolean`   | Clip edits to non-transparent pixels (defaults to `false`). |
+| `locked?`    | `boolean`   | Protect layer from modifications (defaults to `false`).     |
 
 ## Properties
 
@@ -42,6 +44,8 @@ new Layer(options: LayerOptions);
 | `visible`   | `boolean`                             | Toggles layer visibility during composition.                           |
 | `opacity`   | `number` (0‑1)                        | Opacity applied when the layer is composited.                          |
 | `blendMode` | `BlendMode`                           | Composite operation used when drawing the layer onto the canvas below. |
+| `alphaLock` | `boolean`                             | When `true`, drawing/filling is clipped to opaque pixels.              |
+| `locked`    | `boolean`                             | When `true`, prevents edits, clearing, or deletion of the layer.       |
 
 ## Methods
 

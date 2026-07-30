@@ -276,3 +276,149 @@ Load an image for use as an image brush.
 ### `destroy()`
 
 Clean up event listeners and references.
+
+## Document Persistence API
+
+Fuderu 1.3.0 introduces native document persistence for saving and restoring complete canvas compositions.
+
+### `exportDocument(): DocumentData`
+
+Serializes the entire canvas document state—including dimensions, version, active layer ID, and pixel data for every layer (as PNG data URLs)—into a structured JSON object:
+
+```ts
+const docData = painter.exportDocument();
+// Save docData as JSON string to localStorage, server, or file
+```
+
+### `importDocument(data: DocumentData): void`
+
+Restores the complete canvas state from a serialized `DocumentData` object:
+
+```ts
+painter.importDocument(docData);
+```
+
+### `exportPNG(options?: { includeBackground?: boolean; backgroundColor?: string }): string`
+
+Renders a flattened composite image of all visible layers and returns a PNG Data URL:
+
+```ts
+// Export transparent PNG composite
+const pngDataUrl = painter.exportPNG();
+
+// Export with opaque background
+const solidPng = painter.exportPNG({
+  includeBackground: true,
+  backgroundColor: "#ffffff",
+});
+```
+
+## Native Raster Commands
+
+Fuderu provides built-in utilities for shape primitives, flood fill, text, and color sampling:
+
+### `floodFill(x: number, y: number, color: string, tolerance?: number): void`
+
+Performs a fast scanline flood fill on the active layer starting at `(x, y)`:
+
+```ts
+// Fill bounded region with blue (0-255 tolerance)
+painter.floodFill(150, 200, "#2563eb", 10);
+```
+
+### `drawRectangle(x, y, width, height, options?): void`
+
+Draws a vector rectangle primitive onto the active layer:
+
+```ts
+painter.drawRectangle(50, 50, 200, 150, {
+  strokeColor: "#000000",
+  strokeWidth: 4,
+  fillColor: "#3b82f6",
+  filled: true,
+});
+```
+
+### `drawEllipse(cx, cy, rx, ry, options?): void`
+
+Draws a vector ellipse primitive onto the active layer:
+
+```ts
+painter.drawEllipse(150, 150, 80, 50, {
+  strokeColor: "#ef4444",
+  strokeWidth: 2,
+});
+```
+
+### `drawLine(x1, y1, x2, y2, options?): void`
+
+Draws a straight line onto the active layer:
+
+```ts
+painter.drawLine(0, 0, 400, 300, {
+  strokeColor: "#10b981",
+  strokeWidth: 6,
+  lineCap: "round",
+});
+```
+
+### `drawText(text, x, y, options?): void`
+
+Renders text onto the active layer:
+
+```ts
+painter.drawText("Hello Fuderu!", 100, 100, {
+  fontSize: 32,
+  fontFamily: "Inter, sans-serif",
+  color: "#1e293b",
+});
+```
+
+### `getColorAt(x: number, y: number, source?: "active" | "composite"): { r, g, b, a, hex }`
+
+Samples pixel color at document coordinate `(x, y)`:
+
+```ts
+const sample = painter.getColorAt(200, 150, "composite");
+console.log(sample.hex); // "#2563eb"
+```
+
+## Event System & State Snapshots
+
+Fuderu features a reactive event model for seamless state management and UI syncing:
+
+### `on(event, handler)` / `off(event, handler)`
+
+Subscribe to typed canvas events (`change`, `stroke:start`, `stroke:end`, `layer:change`, `history:change`):
+
+```ts
+const unsubscribe = painter.on("change", () => {
+  console.log("Canvas state changed!");
+});
+```
+
+### `getSnapshot(): CanvasSnapshot`
+
+Returns an immutable snapshot of canvas state suitable for React's `useSyncExternalStore`:
+
+```ts
+const snapshot = painter.getSnapshot();
+console.log(snapshot.layerCount, snapshot.activeLayerId, snapshot.canUndo);
+```
+
+## History Navigation API
+
+Navigate history timelines directly or inject custom undo patches:
+
+### `history.goTo(index: number): void`
+
+Jump directly to any point in the history timeline:
+
+```ts
+// Jump to step 3 in undo history
+painter.history.goTo(3);
+```
+
+### `history.getStepSummaries(): HistoryStepSummary[]`
+
+Retrieve human-readable step summaries for building history timeline UI panels.

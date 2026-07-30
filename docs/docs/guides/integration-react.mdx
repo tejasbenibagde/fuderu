@@ -376,7 +376,7 @@ function LayerPanel({
                   value={layer.blendMode}
                   onChange={(e) => {
                     onUpdateLayer(layer.id, {
-                      blendMode: e.target.value as ImportMeta["BlendMode"],
+                      blendMode: e.target.value as BlendMode,
                     });
                   }}
                 >

@@ -431,6 +431,12 @@
   margin-top: 0.7rem;
 }
 
+.layerLocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .layerControlRow {
   display: grid;
   gap: 0.25rem;

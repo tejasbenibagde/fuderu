@@ -62,7 +62,7 @@ export default function EditorPage() {
                 width={224}
                 height={76}
               />
-              <span className={styles.badge}>Fuderu 1.1.0 Editor</span>
+              <span className={styles.badge}>Fuderu 1.3.0 Editor</span>
               <h1>Create a drawing project</h1>
               <p>
                 Start with a document size and build a layered composition. The
@@ -476,14 +476,49 @@ function Editor({
     }
   };
 
-  const handleExport = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const url = canvas.toDataURL("image/png");
+  const handleExportPNG = () => {
+    const painter = painterRef.current;
+    if (!painter) return;
+    painter.exportPNG({ includeBackground: false }).then((dataUrl) => {
+      const link = document.createElement("a");
+      link.download = `${project.name}.png`;
+      link.href = dataUrl;
+      link.click();
+    });
+  };
+
+  const handleExportJSON = () => {
+    const painter = painterRef.current;
+    if (!painter) return;
+    const doc = painter.exportDocument();
+    const blob = new Blob([JSON.stringify(doc, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.download = `${project.name}.png`;
+    link.download = `${project.name.toLowerCase().replace(/\s+/g, "_")}.fuderu.json`;
     link.href = url;
     link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !painterRef.current) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const doc = JSON.parse(event.target?.result as string);
+        painterRef.current?.importDocument(doc);
+        refreshLayers();
+      } catch {
+        alert("Invalid Fuderu document JSON file");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
   };
 
   useEffect(() => {
@@ -793,10 +828,65 @@ function Editor({
           </div>
 
           <div className={styles.topbarRight}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              style={{ display: "none" }}
+              onChange={handleImportJSON}
+            />
+            <button
+              className={styles.actionButton}
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              title="Import Fuderu document JSON"
+            >
+              <svg
+                className={styles.icon}
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Import JSON
+            </button>
+            <button
+              className={styles.actionButton}
+              type="button"
+              onClick={handleExportJSON}
+              title="Export complete document state as JSON"
+            >
+              <svg
+                className={styles.icon}
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+              Export JSON
+            </button>
             <button
               className={`${styles.toolButton} ${styles.exportButton}`}
               type="button"
-              onClick={handleExport}
+              onClick={handleExportPNG}
               title="Export composition as PNG image"
             >
               <svg

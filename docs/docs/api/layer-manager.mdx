@@ -55,13 +55,15 @@ Creates a new layer, adds it to the top of the stack, and sets it as active.
 
 #### Options
 
-| Property     | Type        | Description                                        |
-| ------------ | ----------- | -------------------------------------------------- |
-| `id?`        | `string`    | Unique ID; if omitted a UUID is generated.         |
-| `name?`      | `string`    | Layer name (defaults to `"Layer"`).                |
-| `visible?`   | `boolean`   | Visibility (defaults to `true`).                   |
-| `opacity?`   | `number`    | Opacity `0‑1` (defaults to `1`).                   |
-| `blendMode?` | `BlendMode` | Composite operation (defaults to `"source-over"`). |
+| Property     | Type        | Description                                             |
+| ------------ | ----------- | ------------------------------------------------------- |
+| `id?`        | `string`    | Unique ID; if omitted a UUID is generated.              |
+| `name?`      | `string`    | Layer name (defaults to `"Layer"`).                     |
+| `visible?`   | `boolean`   | Visibility (defaults to `true`).                        |
+| `opacity?`   | `number`    | Opacity `0‑1` (defaults to `1`).                        |
+| `blendMode?` | `BlendMode` | Composite operation (defaults to `"source-over"`).      |
+| `alphaLock?` | `boolean`   | Clip edits to opaque pixels (defaults to `false`).      |
+| `locked?`    | `boolean`   | Protect layer from modifications (defaults to `false`). |
 
 You can also pass a string directly to create a layer with just a name:
 
@@ -93,6 +95,8 @@ Updates the layer’s properties and returns the layer instance.
 | `visible?`   | `boolean`   | New visibility.          |
 | `opacity?`   | `number`    | New opacity `0‑1`.       |
 | `blendMode?` | `BlendMode` | New composite operation. |
+| `alphaLock?` | `boolean`   | Toggle Alpha Lock.       |
+| `locked?`    | `boolean`   | Toggle Layer Lock.       |
 
 ### `getById(layerId: string): Layer`
 

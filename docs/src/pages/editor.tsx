@@ -62,7 +62,7 @@ export default function EditorPage() {
                 width={224}
                 height={76}
               />
-              <span className={styles.badge}>Fuderu 1.3.0 Editor</span>
+              <span className={styles.badge}>Fuderu 1.3.1 Editor</span>
               <h1>Create a drawing project</h1>
               <p>
                 Start with a document size and build a layered composition. The
@@ -479,12 +479,11 @@ function Editor({
   const handleExportPNG = () => {
     const painter = painterRef.current;
     if (!painter) return;
-    painter.exportPNG({ includeBackground: false }).then((dataUrl) => {
-      const link = document.createElement("a");
-      link.download = `${project.name}.png`;
-      link.href = dataUrl;
-      link.click();
-    });
+    const dataUrl = painter.exportPNG({ includeBackground: false });
+    const link = document.createElement("a");
+    link.download = `${project.name}.png`;
+    link.href = dataUrl;
+    link.click();
   };
 
   const handleExportJSON = () => {
@@ -1055,18 +1054,50 @@ function Editor({
                           />
                         </div>
 
-                        <label className={styles.toggle}>
-                          <input
-                            type="checkbox"
-                            checked={layer.visible}
-                            onChange={(event) =>
-                              handleLayerUpdate(layer.id, {
-                                visible: event.target.checked,
-                              })
-                            }
-                          />
-                          Visible
-                        </label>
+                        <div className={styles.layerLocks}>
+                          <label className={styles.toggle}>
+                            <input
+                              type="checkbox"
+                              checked={layer.visible}
+                              onChange={(event) =>
+                                handleLayerUpdate(layer.id, {
+                                  visible: event.target.checked,
+                                })
+                              }
+                            />
+                            Visible
+                          </label>
+                          <label
+                            className={styles.toggle}
+                            title="Restrict editing to non-transparent pixels"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={layer.alphaLock ?? false}
+                              onChange={(event) =>
+                                handleLayerUpdate(layer.id, {
+                                  alphaLock: event.target.checked,
+                                })
+                              }
+                            />
+                            Alpha Lock
+                          </label>
+                          <label
+                            className={styles.toggle}
+                            title="Protect layer from edits and modifications"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={layer.locked ?? false}
+                              onChange={(event) =>
+                                handleLayerUpdate(layer.id, {
+                                  locked: event.target.checked,
+                                })
+                              }
+                            />
+                            Lock Layer
+                          </label>
+                        </div>
 
                         <div className={styles.layerControlRow}>
                           <label className={styles.layerControlLabel}>

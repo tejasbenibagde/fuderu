@@ -379,6 +379,45 @@ describe("Canvas", () => {
     expect(mockBrushInstance.finalizeStroke).toHaveBeenCalledTimes(1);
   });
 
+  it("should only process events from the pointer that started the stroke", () => {
+    const canvas = createCanvas();
+    new Canvas({ canvas });
+
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        clientX: 10,
+        clientY: 10,
+        pointerId: 1,
+        bubbles: true,
+      }),
+    );
+    canvas.dispatchEvent(
+      new PointerEvent("pointermove", {
+        clientX: 20,
+        clientY: 20,
+        pointerId: 2,
+        bubbles: true,
+      }),
+    );
+    window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 2 }));
+
+    expect(mockBrushInstance.putPoint).toHaveBeenCalledTimes(1);
+    expect(mockBrushInstance.finalizeStroke).not.toHaveBeenCalled();
+
+    canvas.dispatchEvent(
+      new PointerEvent("pointermove", {
+        clientX: 20,
+        clientY: 20,
+        pointerId: 1,
+        bubbles: true,
+      }),
+    );
+    window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1 }));
+
+    expect(mockBrushInstance.putPoint).toHaveBeenCalledTimes(2);
+    expect(mockBrushInstance.finalizeStroke).toHaveBeenCalledTimes(1);
+  });
+
   it("should scale pointer coordinates to the canvas document buffer", () => {
     const canvas = createCanvas();
     vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({

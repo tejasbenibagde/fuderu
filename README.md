@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Stable 1.3.0 canvas drawing engine for the web.
+  Stable 1.3.1 canvas drawing engine for the web.
 </p>
 
 <p align="center">
@@ -34,15 +34,15 @@
 
 ## Release Focus
 
-For Fuderu 1.3.0, the engine expands beyond basic brush rendering to provide a complete, production-ready canvas architecture:
-
-- first-class document persistence and flattened image exporting
-- advanced layer management including Alpha Lock, Layer Lock, and direct stack methods
-- native raster utilities for flood fill, shapes, text, and color sampling
-- reactive event-driven state snapshots for seamless UI integrations (e.g., React `useSyncExternalStore`)
-- deep timeline history controls and sparse memory optimizations
+For Fuderu 1.3.1, the engine refines multi-touch gesture safety, vector command bounds clipping, and rotated ellipse memory footprint on top of the 1.3.0 core architecture.
 
 ## Latest Release
+
+### 1.3.1
+
+- **Off-Document Command Safety**: Prevents out-of-bounds vector shapes (`drawRectangle`, `drawEllipse`, `drawLine`, `drawText`) from throwing `getImageData` exceptions or pushing empty history patches.
+- **Multi-Touch Gesture Isolation**: Pointer events track unique `pointerId` per active stroke to avoid gesture conflicts from multi-touch input.
+- **Tighter Rotated Ellipse Bounds**: Exact rotated ellipse boundary calculations minimize history patch memory consumption during `drawEllipse`.
 
 ### 1.3.0
 
@@ -209,7 +209,7 @@ brush.useModule(
 
 ## Status
 
-Fuderu 1.3.0 is the current stable release, providing a complete canvas engine with layer controls (including Alpha Lock and Layer Lock), native raster commands (flood fill, shapes, text, color sampling), state events, document persistence, pressure sensitivity, and extensible brush modules.
+Fuderu 1.3.1 is the current stable release, providing a complete canvas engine with layer controls (including Alpha Lock and Layer Lock), native raster commands, multi-pointer gesture safety, state events, document persistence, pressure sensitivity, and extensible brush modules.
 
 The library is fully verified with robust unit testing via Vitest, browser-style canvas rendering tests, and various local playground environments across multiple web frameworks.
 

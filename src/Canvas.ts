@@ -77,6 +77,7 @@ export class Canvas implements HistoryContext {
   public history: HistoryManager;
 
   private isDrawing = false;
+  private activePointerId: number | null = null;
   private currentStrokeBeforeCanvas: HTMLCanvasElement | null = null;
   private currentStrokeLayerId: string | null = null;
   private strokeMinX = Infinity;
@@ -407,7 +408,30 @@ export class Canvas implements HistoryContext {
     if (y > this.strokeMaxY) this.strokeMaxY = y;
   }
 
+  /**
+   * Returns the part of a drawing operation that intersects the document.
+   * Keeping history patches inside the canvas prevents getImageData from
+   * throwing for commands positioned completely outside the document.
+   */
+  private getPatchBounds(
+    minX: number,
+    minY: number,
+    maxX: number,
+    maxY: number,
+  ): { x: number; y: number; width: number; height: number } | null {
+    const x = Math.max(0, Math.floor(minX));
+    const y = Math.max(0, Math.floor(minY));
+    const right = Math.min(this.documentWidth, Math.ceil(maxX));
+    const bottom = Math.min(this.documentHeight, Math.ceil(maxY));
+
+    if (x >= right || y >= bottom) return null;
+
+    return { x, y, width: right - x, height: bottom - y };
+  }
+
   private handlePointerDown = (e: PointerEvent) => {
+    if (this.isDrawing) return;
+
     const activeLayer = this.layers.getActive();
     if (activeLayer.locked) {
       return;
@@ -416,6 +440,7 @@ export class Canvas implements HistoryContext {
     this.brush.syncOriCanvas();
 
     this.isDrawing = true;
+    this.activePointerId = e.pointerId;
     this.cacheBelowValid = false;
     this.mousePressure.reset();
 
@@ -462,7 +487,11 @@ export class Canvas implements HistoryContext {
   };
 
   private handlePointerMove = (e: PointerEvent) => {
-    if (!this.isDrawing) return;
+    if (
+      !this.isDrawing ||
+      (this.activePointerId !== null && e.pointerId !== this.activePointerId)
+    )
+      return;
 
     const coalesced = e.getCoalescedEvents?.();
 
@@ -561,9 +590,16 @@ export class Canvas implements HistoryContext {
   }
 
   private handlePointerUp = (e?: PointerEvent) => {
-    if (!this.isDrawing) return;
+    if (
+      !this.isDrawing ||
+      (e?.pointerId != null &&
+        this.activePointerId !== null &&
+        e.pointerId !== this.activePointerId)
+    )
+      return;
 
     this.isDrawing = false;
+    this.activePointerId = null;
     this.cacheBelowValid = false;
     this.mousePressure.reset();
 
@@ -586,9 +622,16 @@ export class Canvas implements HistoryContext {
   };
 
   private handlePointerCancel = (e?: PointerEvent) => {
-    if (!this.isDrawing) return;
+    if (
+      !this.isDrawing ||
+      (e?.pointerId != null &&
+        this.activePointerId !== null &&
+        e.pointerId !== this.activePointerId)
+    )
+      return;
 
     this.isDrawing = false;
+    this.activePointerId = null;
     this.cacheBelowValid = false;
     this.mousePressure.reset();
 
@@ -1258,20 +1301,20 @@ export class Canvas implements HistoryContext {
     } = options;
 
     const sw = stroke ? strokeWidth : 0;
-    const minX = Math.max(0, Math.floor(Math.min(x, x + width) - sw - 2));
-    const minY = Math.max(0, Math.floor(Math.min(y, y + height) - sw - 2));
-    const maxX = Math.min(
-      this.documentWidth,
-      Math.ceil(Math.max(x, x + width) + sw + 2),
+    const patch = this.getPatchBounds(
+      Math.min(x, x + width) - sw - 2,
+      Math.min(y, y + height) - sw - 2,
+      Math.max(x, x + width) + sw + 2,
+      Math.max(y, y + height) + sw + 2,
     );
-    const maxY = Math.min(
-      this.documentHeight,
-      Math.ceil(Math.max(y, y + height) + sw + 2),
-    );
-    const bboxW = Math.max(1, maxX - minX);
-    const bboxH = Math.max(1, maxY - minY);
+    if (!patch) return;
 
-    const beforeData = ctx.getImageData(minX, minY, bboxW, bboxH);
+    const beforeData = ctx.getImageData(
+      patch.x,
+      patch.y,
+      patch.width,
+      patch.height,
+    );
 
     ctx.save();
     if (activeLayer.alphaLock) {
@@ -1298,14 +1341,19 @@ export class Canvas implements HistoryContext {
     }
     ctx.restore();
 
-    const afterData = ctx.getImageData(minX, minY, bboxW, bboxH);
+    const afterData = ctx.getImageData(
+      patch.x,
+      patch.y,
+      patch.width,
+      patch.height,
+    );
 
     this.history.pushPatch({
       layerId: activeLayer.id,
       beforeData,
       afterData,
-      x: minX,
-      y: minY,
+      x: patch.x,
+      y: patch.y,
       description: "Draw rectangle",
     });
 
@@ -1336,16 +1384,25 @@ export class Canvas implements HistoryContext {
       stroke = strokeColor !== undefined,
     } = options;
 
-    const maxR = Math.max(radiusX, radiusY);
     const sw = stroke ? strokeWidth : 0;
-    const minX = Math.max(0, Math.floor(x - maxR - sw - 2));
-    const minY = Math.max(0, Math.floor(y - maxR - sw - 2));
-    const maxX = Math.min(this.documentWidth, Math.ceil(x + maxR + sw + 2));
-    const maxY = Math.min(this.documentHeight, Math.ceil(y + maxR + sw + 2));
-    const bboxW = Math.max(1, maxX - minX);
-    const bboxH = Math.max(1, maxY - minY);
+    const cos = Math.cos(rotation);
+    const sin = Math.sin(rotation);
+    const extentX = Math.hypot(radiusX * cos, radiusY * sin);
+    const extentY = Math.hypot(radiusX * sin, radiusY * cos);
+    const patch = this.getPatchBounds(
+      x - extentX - sw - 2,
+      y - extentY - sw - 2,
+      x + extentX + sw + 2,
+      y + extentY + sw + 2,
+    );
+    if (!patch) return;
 
-    const beforeData = ctx.getImageData(minX, minY, bboxW, bboxH);
+    const beforeData = ctx.getImageData(
+      patch.x,
+      patch.y,
+      patch.width,
+      patch.height,
+    );
 
     ctx.save();
     if (activeLayer.alphaLock) {
@@ -1364,14 +1421,19 @@ export class Canvas implements HistoryContext {
     if (stroke) ctx.stroke();
     ctx.restore();
 
-    const afterData = ctx.getImageData(minX, minY, bboxW, bboxH);
+    const afterData = ctx.getImageData(
+      patch.x,
+      patch.y,
+      patch.width,
+      patch.height,
+    );
 
     this.history.pushPatch({
       layerId: activeLayer.id,
       beforeData,
       afterData,
-      x: minX,
-      y: minY,
+      x: patch.x,
+      y: patch.y,
       description: "Draw ellipse",
     });
 
@@ -1400,20 +1462,20 @@ export class Canvas implements HistoryContext {
     } = options;
 
     const sw = strokeWidth;
-    const minX = Math.max(0, Math.floor(Math.min(x1, x2) - sw - 2));
-    const minY = Math.max(0, Math.floor(Math.min(y1, y2) - sw - 2));
-    const maxX = Math.min(
-      this.documentWidth,
-      Math.ceil(Math.max(x1, x2) + sw + 2),
+    const patch = this.getPatchBounds(
+      Math.min(x1, x2) - sw - 2,
+      Math.min(y1, y2) - sw - 2,
+      Math.max(x1, x2) + sw + 2,
+      Math.max(y1, y2) + sw + 2,
     );
-    const maxY = Math.min(
-      this.documentHeight,
-      Math.ceil(Math.max(y1, y2) + sw + 2),
-    );
-    const bboxW = Math.max(1, maxX - minX);
-    const bboxH = Math.max(1, maxY - minY);
+    if (!patch) return;
 
-    const beforeData = ctx.getImageData(minX, minY, bboxW, bboxH);
+    const beforeData = ctx.getImageData(
+      patch.x,
+      patch.y,
+      patch.width,
+      patch.height,
+    );
 
     ctx.save();
     if (activeLayer.alphaLock) {
@@ -1429,14 +1491,19 @@ export class Canvas implements HistoryContext {
     ctx.stroke();
     ctx.restore();
 
-    const afterData = ctx.getImageData(minX, minY, bboxW, bboxH);
+    const afterData = ctx.getImageData(
+      patch.x,
+      patch.y,
+      patch.width,
+      patch.height,
+    );
 
     this.history.pushPatch({
       layerId: activeLayer.id,
       beforeData,
       afterData,
-      x: minX,
-      y: minY,
+      x: patch.x,
+      y: patch.y,
       description: "Draw line",
     });
 
@@ -1494,14 +1561,23 @@ export class Canvas implements HistoryContext {
     else if (baseline === "bottom" || baseline === "alphabetic")
       top = y - fontHeight;
 
-    const minX = Math.max(0, Math.floor(left - 5));
-    const minY = Math.max(0, Math.floor(top - 5));
-    const maxX = Math.min(this.documentWidth, Math.ceil(left + textWidth + 5));
-    const maxY = Math.min(this.documentHeight, Math.ceil(top + fontHeight + 5));
-    const bboxW = Math.max(1, maxX - minX);
-    const bboxH = Math.max(1, maxY - minY);
+    const patch = this.getPatchBounds(
+      left - 5,
+      top - 5,
+      left + textWidth + 5,
+      top + fontHeight + 5,
+    );
+    if (!patch) {
+      ctx.restore();
+      return;
+    }
 
-    const beforeData = ctx.getImageData(minX, minY, bboxW, bboxH);
+    const beforeData = ctx.getImageData(
+      patch.x,
+      patch.y,
+      patch.width,
+      patch.height,
+    );
 
     if (maxWidth !== undefined) {
       ctx.fillText(text, x, y, maxWidth);
@@ -1510,14 +1586,19 @@ export class Canvas implements HistoryContext {
     }
     ctx.restore();
 
-    const afterData = ctx.getImageData(minX, minY, bboxW, bboxH);
+    const afterData = ctx.getImageData(
+      patch.x,
+      patch.y,
+      patch.width,
+      patch.height,
+    );
 
     this.history.pushPatch({
       layerId: activeLayer.id,
       beforeData,
       afterData,
-      x: minX,
-      y: minY,
+      x: patch.x,
+      y: patch.y,
       description: `Draw text "${text}"`,
     });
 

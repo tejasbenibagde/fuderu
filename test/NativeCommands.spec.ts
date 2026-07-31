@@ -307,4 +307,15 @@ describe("Native Commands for Raster Operations", () => {
       'Draw text "Test"',
     );
   });
+
+  it("should skip off-document commands without creating invalid history patches", () => {
+    expect(() => {
+      canvas.drawRectangle({ x: 200, y: 200, width: 10, height: 10 });
+      canvas.drawEllipse({ x: 200, y: 200, radiusX: 10, radiusY: 5 });
+      canvas.drawLine({ x1: 200, y1: 200, x2: 300, y2: 300 });
+      canvas.drawText("Outside", 200, 200);
+    }).not.toThrow();
+
+    expect(canvas.history.canUndo()).toBe(false);
+  });
 });

@@ -4,6 +4,15 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
+## [1.3.1] - 2026-07-31
+
+- **Off-Document Vector Command Safety**: Added bounds clipping (`getPatchBounds`) to `drawRectangle`, `drawEllipse`, `drawLine`, and `drawText`. Prevents out-of-bounds or zero-area commands from triggering invalid `getImageData` calls or generating empty history patches.
+- **Multi-Touch & Pointer ID Isolation**: Added active `pointerId` tracking during pointer gestures. Prevents secondary touches or concurrent pointer events from altering or prematurely terminating active drawing strokes.
+- **Tighter Rotated Ellipse Bounds**: Replaced circular bounding-box approximations in `drawEllipse` with exact rotated ellipse extents ($\sqrt{(r_x \cos\theta)^2 + (r_y \sin\theta)^2}$ and $\sqrt{(r_x \sin\theta)^2 + (r_y \cos\theta)^2}$), significantly reducing patch memory footprint.
+- **Expanded Unit Test Suite**: Added regression test coverage for multi-pointer stroke isolation in `Canvas.spec.ts` and off-document vector shape safety in `NativeCommands.spec.ts`.
+
+---
+
 ## [1.3.0] - 2026-07-28
 
 - **First-Class Document Persistence API**

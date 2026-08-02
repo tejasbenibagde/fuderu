@@ -4,6 +4,15 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
+## [1.3.2] - 2026-08-02
+
+- **Document Persistence Layer Lock Serialization**: Updated `exportDocument()` and `importDocument()` to serialize `alphaLock` and `locked` boolean flags, ensuring layer protection settings persist across JSON document export/import cycles.
+- **Color Parsing Performance Optimization**: Refactored `parseCssColor()` to reuse a shared 1x1 2D canvas context rather than instantiating a new HTMLCanvasElement DOM node on every color parsing operation.
+- **Canvas Cleanup & Listener Teardown**: Updated `canvas.destroy()` to clear event listeners (`listeners.clear()`) and reset active pointer state (`isDrawing = false`, `activePointerId = null`).
+- **Unit Test Coverage**: Added tests in `DocumentPersistence.spec.ts` for layer lock persistence and `CanvasEvents.spec.ts` for lifecycle listener teardown on destruction.
+
+---
+
 ## [1.3.1] - 2026-07-31
 
 - **Off-Document Vector Command Safety**: Added bounds clipping (`getPatchBounds`) to `drawRectangle`, `drawEllipse`, `drawLine`, and `drawText`. Prevents out-of-bounds or zero-area commands from triggering invalid `getImageData` calls or generating empty history patches.

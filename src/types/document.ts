@@ -8,6 +8,8 @@ export interface SerializedLayer {
   visible: boolean;
   opacity: number;
   blendMode: BlendMode;
+  alphaLock?: boolean;
+  locked?: boolean;
   dataUrl: string;
 }
 

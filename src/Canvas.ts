@@ -38,19 +38,24 @@ import {
   type HistoryContext,
 } from "./HistoryManager";
 
+let sharedColorCanvas: HTMLCanvasElement | null = null;
+let sharedColorCtx: CanvasRenderingContext2D | null = null;
+
 function parseCssColor(colorStr: string): [number, number, number, number] {
   if (typeof document === "undefined") {
     return [0, 0, 0, 255];
   }
-  const canvas = document.createElement("canvas");
-  canvas.width = 1;
-  canvas.height = 1;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return [0, 0, 0, 255];
-  ctx.clearRect(0, 0, 1, 1);
-  ctx.fillStyle = colorStr;
-  ctx.fillRect(0, 0, 1, 1);
-  const data = ctx.getImageData(0, 0, 1, 1).data;
+  if (!sharedColorCanvas) {
+    sharedColorCanvas = document.createElement("canvas");
+    sharedColorCanvas.width = 1;
+    sharedColorCanvas.height = 1;
+    sharedColorCtx = sharedColorCanvas.getContext("2d");
+  }
+  if (!sharedColorCtx) return [0, 0, 0, 255];
+  sharedColorCtx.clearRect(0, 0, 1, 1);
+  sharedColorCtx.fillStyle = colorStr;
+  sharedColorCtx.fillRect(0, 0, 1, 1);
+  const data = sharedColorCtx.getImageData(0, 0, 1, 1).data;
   return [data[0], data[1], data[2], data[3]];
 }
 
@@ -951,6 +956,8 @@ export class Canvas implements HistoryContext {
         visible: layer.visible,
         opacity: layer.opacity,
         blendMode: layer.blendMode,
+        alphaLock: layer.alphaLock,
+        locked: layer.locked,
         dataUrl: layer.canvas.toDataURL(mimeType, quality),
       }));
 
@@ -991,6 +998,8 @@ export class Canvas implements HistoryContext {
         visible: sLayer.visible,
         opacity: sLayer.opacity,
         blendMode: sLayer.blendMode,
+        alphaLock: sLayer.alphaLock,
+        locked: sLayer.locked,
       });
 
       if (sLayer.dataUrl) {
@@ -1617,5 +1626,8 @@ export class Canvas implements HistoryContext {
       this.handlePointerCancel,
     );
     window.removeEventListener("pointerup", this.handlePointerUp);
+    this.listeners.clear();
+    this.isDrawing = false;
+    this.activePointerId = null;
   }
 }

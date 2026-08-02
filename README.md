@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Stable 1.3.1 canvas drawing engine for the web.
+  Stable 1.3.2 canvas drawing engine for the web.
 </p>
 
 <p align="center">
@@ -34,9 +34,15 @@
 
 ## Release Focus
 
-For Fuderu 1.3.1, the engine refines multi-touch gesture safety, vector command bounds clipping, and rotated ellipse memory footprint on top of the 1.3.0 core architecture.
+For Fuderu 1.3.2, the engine introduces serialized layer lock persistence across document JSON cycles, high-performance canvas context reuse for color parsing, and complete teardown cleanup on canvas destruction.
 
 ## Latest Release
+
+### 1.3.2
+
+- **Document Persistence Layer Lock Serialization**: `exportDocument()` and `importDocument()` now preserve `alphaLock` and `locked` layer options across document saves.
+- **Optimized Color Parsing**: `parseCssColor()` reuses a shared 1x1 canvas context, eliminating DOM canvas allocation overhead on color evaluation.
+- **Canvas Lifecycle Teardown**: `destroy()` clears event listeners and resets active pointer state cleanly.
 
 ### 1.3.1
 
@@ -209,7 +215,7 @@ brush.useModule(
 
 ## Status
 
-Fuderu 1.3.1 is the current stable release, providing a complete canvas engine with layer controls (including Alpha Lock and Layer Lock), native raster commands, multi-pointer gesture safety, state events, document persistence, pressure sensitivity, and extensible brush modules.
+Fuderu 1.3.2 is the current stable release, providing a complete canvas engine with layer controls (including Alpha Lock and Layer Lock), native raster commands, multi-pointer gesture safety, state events, document persistence with lock state serialization, pressure sensitivity, and extensible brush modules.
 
 The library is fully verified with robust unit testing via Vitest, browser-style canvas rendering tests, and various local playground environments across multiple web frameworks.
 

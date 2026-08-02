@@ -223,4 +223,16 @@ describe("Observable State Model & Change Event System", () => {
       expect(listener).toHaveBeenCalledWith(painter.getLayers(), l2.id);
     });
   });
+
+  describe("destroy", () => {
+    it("clears event listeners and resets drawing state on destroy", () => {
+      const listener = vi.fn();
+      painter.on("change", listener);
+
+      painter.destroy();
+
+      painter.createLayer("Post Destroy Layer");
+      expect(listener).not.toHaveBeenCalled();
+    });
+  });
 });

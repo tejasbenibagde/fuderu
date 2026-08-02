@@ -78,7 +78,11 @@ describe("Document Persistence API", () => {
 
   describe("exportDocument", () => {
     it("should export a valid FuderuDocument payload with layers and dimensions", async () => {
-      const layer2 = painter.createLayer("Foreground");
+      const layer2 = painter.createLayer({
+        name: "Foreground",
+        alphaLock: true,
+        locked: false,
+      });
       painter.setActiveLayer(layer2.id);
 
       const doc = await painter.exportDocument();
@@ -92,6 +96,8 @@ describe("Document Persistence API", () => {
       expect(doc.layers[0].name).toBe("Background");
       expect(doc.layers[0].dataUrl).toContain("data:image/png;base64");
       expect(doc.layers[1].name).toBe("Foreground");
+      expect(doc.layers[1].alphaLock).toBe(true);
+      expect(doc.layers[1].locked).toBe(false);
     });
 
     it("should support custom bitmap format option", async () => {
@@ -153,6 +159,8 @@ describe("Document Persistence API", () => {
             visible: true,
             opacity: 0.8,
             blendMode: "multiply",
+            alphaLock: true,
+            locked: true,
             dataUrl: "data:image/png;base64,mockLayer2",
           },
         ],
@@ -171,6 +179,8 @@ describe("Document Persistence API", () => {
       expect(layers[1].name).toBe("Sketch Imported");
       expect(layers[1].blendMode).toBe("multiply");
       expect(layers[1].opacity).toBe(0.8);
+      expect(layers[1].alphaLock).toBe(true);
+      expect(layers[1].locked).toBe(true);
       expect(painter.getActiveLayer().id).toBe("layer-2");
 
       globalThis.Image = originalImage;

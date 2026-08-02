@@ -62,7 +62,7 @@ export default function EditorPage() {
                 width={224}
                 height={76}
               />
-              <span className={styles.badge}>Fuderu 1.3.1 Editor</span>
+              <span className={styles.badge}>Fuderu 1.3.2 Editor</span>
               <h1>Create a drawing project</h1>
               <p>
                 Start with a document size and build a layered composition. The
@@ -476,10 +476,11 @@ function Editor({
     }
   };
 
-  const handleExportPNG = () => {
+  const handleExportPNG = async () => {
     const painter = painterRef.current;
     if (!painter) return;
-    const dataUrl = painter.exportPNG({ includeBackground: false });
+
+    const dataUrl = await painter.exportPNG({ includeBackground: false });
     const link = document.createElement("a");
     link.download = `${project.name}.png`;
     link.href = dataUrl;

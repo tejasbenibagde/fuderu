@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Stable 1.3.2 canvas drawing engine for the web.
+  Stable 1.4.0 canvas drawing engine for the web.
 </p>
 
 <p align="center">
@@ -23,10 +23,11 @@
 
 ## Features
 
+- **Operation Log & Action Replay Engine** – Serializable stroke/action event stream (`action:record`, `stroke:record`), full log recording (`getActionLog`), and programmatic replay (`replay`, `replayAction`) with speed control and progress callbacks.
 - **Document Persistence API** – Export and import complete canvas state as versioned JSON with layer metadata and serialized bitmaps (`exportDocument`, `importDocument`, `exportPNG`).
 - **Advanced Layer Controls** – Full layer stack with visibility, opacity, 16 blend modes, **Alpha Lock** (clip strokes to opaque pixels), and **Layer Lock** (protect layers from modifications).
 - **Native Commands & Raster Operations** – Fast scanline flood fill (`floodFill`), vector shape primitives (`drawRectangle`, `drawEllipse`, `drawLine`), text rendering (`drawText`), and color sampling (`getColorAt`).
-- **Observable State & Event System** – Reactive canvas event subscriptions (`change`, `stroke:start`, `stroke:end`, `layer:change`, `history:change`) and state snapshotting (`getSnapshot`).
+- **Observable State & Event System** – Reactive canvas event subscriptions (`change`, `stroke:start`, `stroke:end`, `action:record`, `stroke:record`, `layer:change`, `history:change`) and state snapshotting (`getSnapshot`).
 - **Public History Navigation API** – Direct history timeline jumping (`goTo`), step summaries, and sparse bounding-box patch registration (`pushPatch`).
 - **Canvas API & Direct Layer Methods** – Direct layer stack helpers (`getLayers`, `getLayerById`, `reorderLayers`) and pointer gesture handling.
 - **Standalone Brush Engine** – Smooth Bezier interpolation, adaptive spacing, real pressure sensitivity, custom image brushes, and extensible dynamic modules.
@@ -34,9 +35,14 @@
 
 ## Release Focus
 
-For Fuderu 1.3.2, the engine introduces serialized layer lock persistence across document JSON cycles, high-performance canvas context reuse for color parsing, and complete teardown cleanup on canvas destruction.
+For Fuderu 1.4.0, the engine introduces a serializable Action Log and Action Replay API for real-time stroke stream capturing, audit logging, time-lapse playback, and multiplayer synchronization.
 
 ## Latest Release
+
+### 1.4.0
+
+- **Operation Log & Action Stream API**: Strong type definitions for canvas actions (`CanvasAction`, `StrokeAction`, etc.), stream events (`"action:record"`, `"stroke:record"`), and action replay engine (`recordAction()`, `getActionLog()`, `clearActionLog()`, `replayAction()`, `replay()`).
+- **Replay Execution Guard**: `isReplaying` state isolation ensures replaying action sequences never duplicates action logs or triggers recursive event loops.
 
 ### 1.3.2
 
@@ -215,7 +221,7 @@ brush.useModule(
 
 ## Status
 
-Fuderu 1.3.2 is the current stable release, providing a complete canvas engine with layer controls (including Alpha Lock and Layer Lock), native raster commands, multi-pointer gesture safety, state events, document persistence with lock state serialization, pressure sensitivity, and extensible brush modules.
+Fuderu 1.4.0 is the current stable release, providing a complete canvas engine with serializable operation logs & action replay stream API, layer controls (including Alpha Lock and Layer Lock), native raster commands, multi-pointer gesture safety, state events, document persistence with lock state serialization, pressure sensitivity, and extensible brush modules.
 
 The library is fully verified with robust unit testing via Vitest, browser-style canvas rendering tests, and various local playground environments across multiple web frameworks.
 

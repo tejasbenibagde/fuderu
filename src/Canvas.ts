@@ -22,6 +22,11 @@ import type {
   StrokePoint,
 } from "./types/events";
 import type {
+  CanvasAction,
+  StrokeAction,
+  ReplayOptions,
+} from "./types/actions";
+import type {
   DrawRectangleOptions,
   DrawEllipseOptions,
   DrawLineOptions,
@@ -121,6 +126,9 @@ export class Canvas implements HistoryContext {
    * getPressure() again, avoiding double-advancing the simulator state.
    */
   public lastPressure: number = 0.5;
+
+  private actionLog: CanvasAction[] = [];
+  private isReplaying = false;
 
   constructor(options: CanvasOptions) {
     if (typeof options.canvas === "string") {
@@ -583,6 +591,15 @@ export class Canvas implements HistoryContext {
       this.renderLayers();
 
       if (layerId) {
+        if (points.length > 0) {
+          const strokeAction: StrokeAction = {
+            type: "stroke",
+            layerId,
+            brushConfig: { ...this.brush.config },
+            points,
+          };
+          this.recordAction(strokeAction);
+        }
         this.emit("stroke:end", {
           layerId,
           bounds: strokeBounds,
@@ -699,6 +716,19 @@ export class Canvas implements HistoryContext {
     this.brush.isAlphaLocked = layer.alphaLock;
     this.history.push(new LayerCreatedHistoryEntry(layer, this, index));
 
+    this.recordAction({
+      type: "createLayer",
+      layerId: layer.id,
+      name: layer.name,
+      options: {
+        visible: layer.visible,
+        opacity: layer.opacity,
+        blendMode: layer.blendMode,
+        alphaLock: layer.alphaLock,
+        locked: layer.locked,
+      },
+    });
+
     return layer;
   }
 
@@ -718,6 +748,11 @@ export class Canvas implements HistoryContext {
     this.history.push(
       new LayerDeletedHistoryEntry(layer, index, wasActive, this),
     );
+
+    this.recordAction({
+      type: "deleteLayer",
+      layerId,
+    });
   }
 
   public duplicateLayer(layerId: string): Layer {
@@ -728,6 +763,12 @@ export class Canvas implements HistoryContext {
     this.cacheBelowValid = false;
 
     this.history.push(new LayerCreatedHistoryEntry(layer, this, index));
+
+    this.recordAction({
+      type: "duplicateLayer",
+      layerId,
+      newLayerId: layer.id,
+    });
 
     return layer;
   }
@@ -742,6 +783,11 @@ export class Canvas implements HistoryContext {
       this.history.push(
         new MoveLayerHistoryEntry(layerId, beforeIndex, afterIndex, this),
       );
+      this.recordAction({
+        type: "moveLayer",
+        layerId,
+        targetIndex,
+      });
     } else {
       this.renderLayers();
       this.emitStateChange();
@@ -788,7 +834,13 @@ export class Canvas implements HistoryContext {
       }
     }
 
-    if (!pushed) {
+    if (pushed) {
+      this.recordAction({
+        type: "setLayerProperties",
+        layerId,
+        properties: { ...options },
+      });
+    } else {
       this.renderLayers();
       this.emitStateChange();
     }
@@ -831,6 +883,11 @@ export class Canvas implements HistoryContext {
       this.renderLayers();
       this.emitStateChange();
     }
+
+    this.recordAction({
+      type: "clearLayer",
+      layerId: activeLayer.id,
+    });
   }
 
   undo(): void {
@@ -1112,6 +1169,12 @@ export class Canvas implements HistoryContext {
     this.brush.syncOriCanvas();
     this.renderLayers();
     this.emitStateChange();
+
+    this.recordAction({
+      type: "fillLayer",
+      layerId: activeLayer.id,
+      color,
+    });
   }
 
   public getColorAt(
@@ -1286,6 +1349,15 @@ export class Canvas implements HistoryContext {
     this.brush.syncOriCanvas();
     this.renderLayers();
     this.emitStateChange();
+
+    this.recordAction({
+      type: "floodFill",
+      layerId: activeLayer.id,
+      x: startX,
+      y: startY,
+      color,
+      tolerance,
+    });
   }
 
   public drawRectangle(options: DrawRectangleOptions): void {
@@ -1370,6 +1442,12 @@ export class Canvas implements HistoryContext {
     this.brush.syncOriCanvas();
     this.renderLayers();
     this.emitStateChange();
+
+    this.recordAction({
+      type: "drawRectangle",
+      layerId: activeLayer.id,
+      options: { ...options },
+    });
   }
 
   public drawEllipse(options: DrawEllipseOptions): void {
@@ -1450,6 +1528,12 @@ export class Canvas implements HistoryContext {
     this.brush.syncOriCanvas();
     this.renderLayers();
     this.emitStateChange();
+
+    this.recordAction({
+      type: "drawEllipse",
+      layerId: activeLayer.id,
+      options: { ...options },
+    });
   }
 
   public drawLine(options: DrawLineOptions): void {
@@ -1520,6 +1604,12 @@ export class Canvas implements HistoryContext {
     this.brush.syncOriCanvas();
     this.renderLayers();
     this.emitStateChange();
+
+    this.recordAction({
+      type: "drawLine",
+      layerId: activeLayer.id,
+      options: { ...options },
+    });
   }
 
   public drawText(
@@ -1615,6 +1705,215 @@ export class Canvas implements HistoryContext {
     this.brush.syncOriCanvas();
     this.renderLayers();
     this.emitStateChange();
+
+    this.recordAction({
+      type: "drawText",
+      layerId: activeLayer.id,
+      text,
+      x,
+      y,
+      options: style ? { ...style } : undefined,
+    });
+  }
+
+  /**
+   * Appends a serializable action to the canvas operation log and emits "action:record"
+   * (and "stroke:record" if the action is a stroke).
+   */
+  public recordAction(action: CanvasAction): void {
+    if (this.isReplaying) return;
+
+    if (!action.id) {
+      action.id = `act-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    }
+    if (!action.timestamp) {
+      action.timestamp = Date.now();
+    }
+
+    this.actionLog.push(action);
+    this.emit("action:record", action);
+    if (action.type === "stroke") {
+      this.emit("stroke:record", action);
+    }
+  }
+
+  /**
+   * Returns a copy of the serializable canvas action log recorded so far.
+   */
+  public getActionLog(): CanvasAction[] {
+    return [...this.actionLog];
+  }
+
+  /**
+   * Clears the internal action log.
+   */
+  public clearActionLog(): void {
+    this.actionLog = [];
+  }
+
+  /**
+   * Replays a single serializable CanvasAction onto the canvas.
+   */
+  public async replayAction(action: CanvasAction): Promise<void> {
+    const previousReplaying = this.isReplaying;
+    this.isReplaying = true;
+    try {
+      switch (action.type) {
+        case "stroke": {
+          const layer = this.getLayerById(action.layerId);
+          if (!layer || layer.locked) break;
+          this.setActiveLayer(layer.id);
+          const savedConfig = { ...this.brush.config };
+          if (action.brushConfig) {
+            this.loadConfig(action.brushConfig);
+          }
+          if (action.points && action.points.length > 0) {
+            this.brush.isAlphaLocked = layer.alphaLock;
+            this.brush.syncOriCanvas();
+
+            this.strokeMinX = Infinity;
+            this.strokeMinY = Infinity;
+            this.strokeMaxX = -Infinity;
+            this.strokeMaxY = -Infinity;
+
+            if (typeof document !== "undefined") {
+              this.currentStrokeBeforeCanvas = document.createElement("canvas");
+              this.currentStrokeBeforeCanvas.width = layer.canvas.width;
+              this.currentStrokeBeforeCanvas.height = layer.canvas.height;
+              const bCtx = this.currentStrokeBeforeCanvas.getContext("2d");
+              if (bCtx) {
+                bCtx.drawImage(layer.canvas, 0, 0);
+              }
+            }
+            this.currentStrokeLayerId = layer.id;
+            this.currentStrokePoints = [...action.points];
+
+            for (const p of action.points) {
+              this.updateStrokeBounds(p.x, p.y);
+              this.brush.putPoint(p.x, p.y, p.pressure ?? 1);
+            }
+            this.brush.render();
+            this.renderLayers();
+            this.commitStroke();
+          }
+          this.loadConfig(savedConfig);
+          break;
+        }
+        case "floodFill": {
+          const layer = this.getLayerById(action.layerId);
+          if (layer) {
+            this.setActiveLayer(layer.id);
+            this.floodFill(action.x, action.y, action.color, action.tolerance);
+          }
+          break;
+        }
+        case "drawRectangle": {
+          const layer = this.getLayerById(action.layerId);
+          if (layer) {
+            this.setActiveLayer(layer.id);
+            this.drawRectangle(action.options);
+          }
+          break;
+        }
+        case "drawEllipse": {
+          const layer = this.getLayerById(action.layerId);
+          if (layer) {
+            this.setActiveLayer(layer.id);
+            this.drawEllipse(action.options);
+          }
+          break;
+        }
+        case "drawLine": {
+          const layer = this.getLayerById(action.layerId);
+          if (layer) {
+            this.setActiveLayer(layer.id);
+            this.drawLine(action.options);
+          }
+          break;
+        }
+        case "drawText": {
+          const layer = this.getLayerById(action.layerId);
+          if (layer) {
+            this.setActiveLayer(layer.id);
+            this.drawText(action.text, action.x, action.y, action.options);
+          }
+          break;
+        }
+        case "clearLayer": {
+          const layer = this.getLayerById(action.layerId);
+          if (layer) {
+            this.setActiveLayer(layer.id);
+            this.clearActiveLayer();
+          }
+          break;
+        }
+        case "fillLayer": {
+          const layer = this.getLayerById(action.layerId);
+          if (layer) {
+            this.setActiveLayer(layer.id);
+            this.fillActiveLayer(action.color);
+          }
+          break;
+        }
+        case "createLayer": {
+          this.createLayer({
+            id: action.layerId,
+            name: action.name,
+            ...action.options,
+          });
+          break;
+        }
+        case "deleteLayer": {
+          this.deleteLayer(action.layerId);
+          break;
+        }
+        case "moveLayer": {
+          this.moveLayer(action.layerId, action.targetIndex);
+          break;
+        }
+        case "setLayerProperties": {
+          const layer = this.getLayerById(action.layerId);
+          if (layer) {
+            this.updateLayer(action.layerId, action.properties);
+          }
+          break;
+        }
+        case "duplicateLayer": {
+          this.duplicateLayer(action.layerId);
+          break;
+        }
+      }
+    } finally {
+      this.isReplaying = previousReplaying;
+    }
+  }
+
+  /**
+   * Replays an array of serializable CanvasActions onto the canvas.
+   */
+  public async replay(
+    actionLog: CanvasAction[],
+    options?: ReplayOptions,
+  ): Promise<void> {
+    const total = actionLog.length;
+    if (total === 0) return;
+
+    const speed = options?.speed ?? 0;
+    const delayMs =
+      options?.delayMs ??
+      (speed > 0 ? Math.max(10, Math.floor(100 / speed)) : 0);
+
+    for (let i = 0; i < total; i++) {
+      const action = actionLog[i];
+      options?.onAction?.(action, i, total);
+      options?.onProgress?.((i + 1) / total, i + 1, total);
+
+      await this.replayAction(action);
+
+      if (delayMs > 0 && i < total - 1) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
   }
 
   destroy(): void {

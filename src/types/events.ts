@@ -1,4 +1,5 @@
 import type { Layer } from "../Layer";
+import type { CanvasAction, StrokeAction } from "./actions";
 
 export interface StrokeBounds {
   x: number;
@@ -43,6 +44,8 @@ export interface CanvasEventMap {
   change: (snapshot: CanvasSnapshot) => void;
   "stroke:start": (event: StrokeStartEvent) => void;
   "stroke:end": (event: StrokeEndEvent) => void;
+  "stroke:record": (action: StrokeAction) => void;
+  "action:record": (action: CanvasAction) => void;
   "history:change": (history: HistoryState) => void;
   "layer:change": (layers: readonly Layer[], activeLayerId: string) => void;
 }

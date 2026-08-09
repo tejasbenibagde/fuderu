@@ -62,7 +62,7 @@ export default function EditorPage() {
                 width={224}
                 height={76}
               />
-              <span className={styles.badge}>Fuderu 1.3.2 Editor</span>
+              <span className={styles.badge}>Fuderu 1.4.0 Editor</span>
               <h1>Create a drawing project</h1>
               <p>
                 Start with a document size and build a layered composition. The

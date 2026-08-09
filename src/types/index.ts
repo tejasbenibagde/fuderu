@@ -30,3 +30,22 @@ export type {
   TextStyleOptions,
   ColorSample,
 } from "./commands";
+export type {
+  BaseAction,
+  StrokeAction,
+  FloodFillAction,
+  DrawRectangleAction,
+  DrawEllipseAction,
+  DrawLineAction,
+  DrawTextAction,
+  ClearLayerAction,
+  FillLayerAction,
+  CreateLayerAction,
+  DeleteLayerAction,
+  MoveLayerAction,
+  SetLayerPropertiesAction,
+  MergeLayerDownAction,
+  DuplicateLayerAction,
+  CanvasAction,
+  ReplayOptions,
+} from "./actions";

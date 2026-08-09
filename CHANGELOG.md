@@ -4,6 +4,17 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
+## [1.4.0] - 2026-08-09
+
+- **Operation Log & Action Stream API**:
+  - Introduced serializable action type definitions (`CanvasAction`, `StrokeAction`, `FloodFillAction`, `DrawRectangleAction`, `DrawEllipseAction`, `DrawLineAction`, `DrawTextAction`, `ClearLayerAction`, `FillLayerAction`, `CreateLayerAction`, `DeleteLayerAction`, `MoveLayerAction`, `SetLayerPropertiesAction`, `DuplicateLayerAction`).
+  - Added canvas event stream hooks `"action:record"` and `"stroke:record"` for real-time stroke/action logging, audit trails, and multiplayer state synchronization.
+  - Implemented `canvas.recordAction()`, `canvas.getActionLog()`, `canvas.clearActionLog()`, `canvas.replayAction(action)` and `canvas.replay(actionLog, options)` with custom playback speeds, delay intervals, and progress/action event callbacks.
+  - Added internal `isReplaying` state isolation guard to ensure replaying recorded actions never causes duplicate action recording or recursive event loops.
+- **Unit & Integration Test Suite**: Added `test/ActionReplay.spec.ts` testing stroke/action recording, event stream listeners, action log management, and cross-canvas action replay.
+
+---
+
 ## [1.3.2] - 2026-08-02
 
 - **Document Persistence Layer Lock Serialization**: Updated `exportDocument()` and `importDocument()` to serialize `alphaLock` and `locked` boolean flags, ensuring layer protection settings persist across JSON document export/import cycles.

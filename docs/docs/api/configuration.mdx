@@ -68,7 +68,7 @@ Pressure is also clamped to `0..1`; it scales both stamp size and flow.
 `opacity` is a stroke-level ceiling. `flow` is the rate at which paint builds up
 through the stamps that make up the stroke.
 
-Since `0.8.7`, Fuderu normalizes flow against the active brush size and spacing.
+Fuderu normalizes flow against the active brush size and spacing.
 This prevents very dense stamp overlap from making low-flow strokes immediately
 flatten into solid color. Modules still receive the pressure-adjusted flow value
 in `onChangeConfig`; the brush renderer applies the spacing-aware per-stamp

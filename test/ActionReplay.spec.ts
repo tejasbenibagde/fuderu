@@ -10,8 +10,6 @@ const mockBrushInstance = {
   render: vi.fn(),
   finalizeStroke: vi.fn((cb: () => void) => cb()),
   clear: vi.fn(),
-  undo: vi.fn(),
-  redo: vi.fn(),
   loadConfig: vi.fn(),
   loadImageAsync: vi.fn(),
   loadContext: vi.fn(),

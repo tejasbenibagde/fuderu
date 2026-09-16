@@ -104,12 +104,6 @@ export class Brush {
   /** Called after a render frame writes pixels to the target canvas. */
   onRender?: () => void;
 
-  /*********************************** Undo / Redo ***********************************/
-  /**
-   * Maximum number of undo/redo operations (0 means no limit)
-   */
-  maxUndoRedoStackSize: number = 10;
-
   constructor(canvas?: HTMLCanvasElement, config?: BrushConfig) {
     if (config) this.loadConfig(config);
     if (canvas) this.loadContext(canvas);
@@ -126,7 +120,6 @@ export class Brush {
     this.initStrokeCanvas(canvas);
     this.initTransferCanvasCanvas(canvas);
     this.resetStrokeState();
-    this.initCanvasStack();
   }
 
   /**
@@ -503,20 +496,6 @@ export class Brush {
   }
 
   /**
-   * Undo
-   */
-  undo() {
-    // Handled by Canvas.HistoryManager
-  }
-
-  /**
-   * Redo
-   */
-  redo() {
-    // Handled by Canvas.HistoryManager
-  }
-
-  /**
    * Use a module
    * @returns module unique id
    */
@@ -593,10 +572,6 @@ export class Brush {
     this._strokeOpacity = 1;
     this.drawCount = 0;
     this.isRender = false;
-  }
-
-  private initCanvasStack() {
-    // Handled by Canvas.HistoryManager
   }
 
   private imageInitColoring() {
@@ -1041,7 +1016,5 @@ export class Brush {
     this.initOriCanvas(this.canvas);
     this.initStrokeCanvas(this.canvas);
     this.initTransferCanvasCanvas(this.canvas);
-
-    this.initCanvasStack();
   }
 }

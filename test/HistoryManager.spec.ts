@@ -359,4 +359,98 @@ describe("HistoryManager & HistoryEntries", () => {
       expect(context.moveLayerOnly).toHaveBeenCalledWith("layer-1", 3);
     });
   });
+
+  describe("Multi-Layer Global History Regression Suite", () => {
+    it("should correctly route undo and redo across arbitrary active layer switches", () => {
+      const { context, layers } = createMockContext();
+      const layer1 = createMockLayer("layer-1", "Layer 1");
+      const layer2 = createMockLayer("layer-2", "Layer 2");
+      const layer3 = createMockLayer("layer-3", "Layer 3");
+      layers.push(layer1, layer2, layer3);
+
+      let currentActive = layer1;
+      (
+        context.getActiveLayer as unknown as ReturnType<typeof vi.fn>
+      ).mockImplementation(() => currentActive);
+      (
+        context.setActiveLayer as unknown as ReturnType<typeof vi.fn>
+      ).mockImplementation((id: string) => {
+        const found = layers.find((l) => l.id === id);
+        if (found) currentActive = found;
+      });
+
+      const manager = new HistoryManager(20, context);
+
+      const imgA1 = { width: 10, height: 10 } as ImageData;
+      const imgA2 = { width: 10, height: 10 } as ImageData;
+      const imgB1 = { width: 10, height: 10 } as ImageData;
+      const imgB2 = { width: 10, height: 10 } as ImageData;
+      const imgC1 = { width: 10, height: 10 } as ImageData;
+      const imgC2 = { width: 10, height: 10 } as ImageData;
+
+      // 1. Draw on Layer 1 (active is Layer 1)
+      currentActive = layer1;
+      manager.pushPatch({
+        layerId: "layer-1",
+        beforeData: imgA1,
+        afterData: imgA2,
+        x: 0,
+        y: 0,
+        description: "Stroke on Layer 1",
+      });
+
+      // 2. User switches to Layer 2, draws on Layer 2
+      currentActive = layer2;
+      manager.pushPatch({
+        layerId: "layer-2",
+        beforeData: imgB1,
+        afterData: imgB2,
+        x: 5,
+        y: 5,
+        description: "Stroke on Layer 2",
+      });
+
+      // 3. User switches to Layer 3, draws on Layer 3
+      currentActive = layer3;
+      manager.pushPatch({
+        layerId: "layer-3",
+        beforeData: imgC1,
+        afterData: imgC2,
+        x: 15,
+        y: 15,
+        description: "Stroke on Layer 3",
+      });
+
+      // 4. Now active layer is Layer 1 again
+      currentActive = layer1;
+
+      // Undo step 1: Undoes stroke on Layer 3
+      const ctxL3 = layer3.canvas.getContext("2d")!;
+      manager.undo();
+      expect(ctxL3.putImageData).toHaveBeenCalledWith(imgC1, 15, 15);
+
+      // Undo step 2: Undoes stroke on Layer 2 even though currentActive is Layer 1
+      const ctxL2 = layer2.canvas.getContext("2d")!;
+      manager.undo();
+      expect(ctxL2.putImageData).toHaveBeenCalledWith(imgB1, 5, 5);
+
+      // Switch active layer to Layer 3 and undo step 3: Undoes stroke on Layer 1
+      currentActive = layer3;
+      const ctxL1 = layer1.canvas.getContext("2d")!;
+      manager.undo();
+      expect(ctxL1.putImageData).toHaveBeenCalledWith(imgA1, 0, 0);
+
+      // Redo step 1: Redoes stroke on Layer 1
+      manager.redo();
+      expect(ctxL1.putImageData).toHaveBeenCalledWith(imgA2, 0, 0);
+
+      // Redo step 2: Redoes stroke on Layer 2
+      manager.redo();
+      expect(ctxL2.putImageData).toHaveBeenCalledWith(imgB2, 5, 5);
+
+      // Redo step 3: Redoes stroke on Layer 3
+      manager.redo();
+      expect(ctxL3.putImageData).toHaveBeenCalledWith(imgC2, 15, 15);
+    });
+  });
 });

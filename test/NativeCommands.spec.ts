@@ -81,7 +81,7 @@ function getContextMock(this: HTMLCanvasElement, contextId: string) {
         let r = 0;
         let g = 0;
         let b = 0;
-        const a = 255;
+        let a = 255;
         const fs = ctx.fillStyle as string;
         if (fs === "#ff0000" || fs === "#f00") {
           r = 255;
@@ -98,6 +98,16 @@ function getContextMock(this: HTMLCanvasElement, contextId: string) {
         } else if (fs === "#ff00ff") {
           r = 255;
           b = 255;
+        } else if (fs.startsWith("rgba(")) {
+          const parts = fs
+            .replace("rgba(", "")
+            .replace(")", "")
+            .split(",")
+            .map((p) => p.trim());
+          r = parseInt(parts[0], 10) || 0;
+          g = parseInt(parts[1], 10) || 0;
+          b = parseInt(parts[2], 10) || 0;
+          a = Math.round((parseFloat(parts[3]) || 1) * 255);
         }
 
         for (
@@ -222,6 +232,56 @@ describe("Native Commands for Raster Operations", () => {
     canvas.undo();
     sample = canvas.getColorAt(20, 20, "activeLayer");
     expect(sample.hex).toBe("#ff0000");
+  });
+
+  it("should preserve existing pixel alpha channel and leave zero-alpha transparent pixels untouched when alphaLock is true", () => {
+    // 1. Draw a semi-transparent red rectangle (alpha = 0.5 -> 128/255)
+    const active = canvas.getActiveLayer();
+    const ctx = active.canvas.getContext("2d")!;
+    ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+    ctx.fillRect(10, 10, 40, 40);
+
+    const initialRectSample = canvas.getColorAt(20, 20, "activeLayer");
+    expect(initialRectSample.r).toBe(255);
+    expect(initialRectSample.g).toBe(0);
+    expect(initialRectSample.b).toBe(0);
+    // Alpha should be approx 128 (non-zero)
+    const initialA = initialRectSample.a;
+    expect(initialA).toBeGreaterThan(0);
+    expect(initialA).toBeLessThan(255);
+
+    // 2. Enable Alpha Lock on active layer
+    canvas.updateLayer(active.id, { alphaLock: true });
+
+    // Attempting floodFill on a transparent pixel (0, 0) should do nothing
+    const transparentSampleBefore = canvas.getColorAt(0, 0, "activeLayer");
+    expect(transparentSampleBefore.a).toBe(0);
+    canvas.floodFill(0, 0, "#00ff00");
+    const transparentSampleAfter = canvas.getColorAt(0, 0, "activeLayer");
+    expect(transparentSampleAfter.a).toBe(0);
+
+    // 3. Flood fill the semi-transparent area with solid blue (#0000ff)
+    // Tolerance is 10 to match slight variations
+    canvas.floodFill(20, 20, "#0000ff", 10);
+
+    const filledSample = canvas.getColorAt(20, 20, "activeLayer");
+    expect(filledSample.hex).toBe("#0000ff");
+    expect(filledSample.r).toBe(0);
+    expect(filledSample.g).toBe(0);
+    expect(filledSample.b).toBe(255);
+    // CRITICAL: Alpha must remain exactly the original alpha, NOT mutated to 255
+    expect(filledSample.a).toBe(initialA);
+
+    // Pixels outside the rectangle must remain completely transparent (alpha = 0)
+    const outsideSample = canvas.getColorAt(5, 5, "activeLayer");
+    expect(outsideSample.a).toBe(0);
+
+    // Undo should restore original red color while retaining alpha
+    canvas.undo();
+    const undoneSample = canvas.getColorAt(20, 20, "activeLayer");
+    expect(undoneSample.r).toBe(255);
+    expect(undoneSample.b).toBe(0);
+    expect(undoneSample.a).toBe(initialA);
   });
 
   it("should sync brush isAlphaLocked when updateLayer or setActiveLayer is called", () => {

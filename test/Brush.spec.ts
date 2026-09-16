@@ -55,7 +55,6 @@ type InternalBrush = {
   points: Point[];
   prePoint?: PurePoint;
   prePrePoint?: PurePoint;
-  canvasStackIndex: number;
   lastProcessedPointForRotation?: PurePoint;
 };
 

@@ -892,12 +892,10 @@ export class Canvas implements HistoryContext {
 
   undo(): void {
     this.history.undo();
-    this.brush.undo();
   }
 
   redo(): void {
     this.history.redo();
-    this.brush.redo();
   }
 
   // HistoryContext implementation
@@ -1266,7 +1264,7 @@ export class Canvas implements HistoryContext {
       Math.abs(fillR - targetR) <= tolerance &&
       Math.abs(fillG - targetG) <= tolerance &&
       Math.abs(fillB - targetB) <= tolerance &&
-      Math.abs(fillA - targetA) <= tolerance
+      (activeLayer.alphaLock || Math.abs(fillA - targetA) <= tolerance)
     ) {
       return;
     }
@@ -1306,7 +1304,9 @@ export class Canvas implements HistoryContext {
         data[pIdx] = fillR;
         data[pIdx + 1] = fillG;
         data[pIdx + 2] = fillB;
-        data[pIdx + 3] = fillA;
+        if (!activeLayer.alphaLock) {
+          data[pIdx + 3] = fillA;
+        }
 
         if (cx < minX) minX = cx;
         if (cx > maxX) maxX = cx;

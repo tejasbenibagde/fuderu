@@ -10,8 +10,6 @@ const mockBrushInstance = {
   render: vi.fn(),
   finalizeStroke: vi.fn(),
   clear: vi.fn(),
-  undo: vi.fn(),
-  redo: vi.fn(),
   loadConfig: vi.fn(),
   loadImageAsync: vi.fn(),
   loadContext: vi.fn(),
@@ -196,6 +194,94 @@ describe("Document Persistence API", () => {
     it("should accept includeBackground option", async () => {
       const pngUrl = await painter.exportPNG({ includeBackground: true });
       expect(pngUrl).toContain("data:image/png;base64");
+    });
+  });
+
+  describe("Persistence Round-Trip Testing", () => {
+    it("should perform lossless metadata and data URL round-trip export and import", async () => {
+      // 1. Setup multi-layer document with varied attributes
+      const originalImage = globalThis.Image;
+      globalThis.Image = class MockImage {
+        public crossOrigin = "";
+        public onload: (() => void) | null = null;
+        public onerror: ((err: unknown) => void) | null = null;
+        private _src = "";
+
+        get src() {
+          return this._src;
+        }
+        set src(val: string) {
+          this._src = val;
+          setTimeout(() => {
+            if (this.onload) this.onload();
+          }, 0);
+        }
+      } as unknown as typeof Image;
+
+      const layer1 = painter.getActiveLayer();
+      painter.updateLayer(layer1.id, {
+        name: "Base Background",
+        opacity: 0.9,
+        blendMode: "source-over",
+      });
+
+      const layer2 = painter.createLayer({
+        name: "Inking Pass",
+        opacity: 0.75,
+        blendMode: "multiply",
+        alphaLock: true,
+        locked: false,
+      });
+
+      painter.createLayer({
+        name: "Highlights (Locked)",
+        opacity: 0.5,
+        blendMode: "screen",
+        alphaLock: false,
+        locked: true,
+      });
+
+      painter.setActiveLayer(layer2.id);
+
+      // 2. Export document
+      const exportedDoc = await painter.exportDocument();
+      expect(exportedDoc.version).toBe(1);
+      expect(exportedDoc.width).toBe(500);
+      expect(exportedDoc.height).toBe(400);
+      expect(exportedDoc.activeLayerId).toBe(layer2.id);
+      expect(exportedDoc.layers.length).toBe(3);
+
+      // 3. Import into a fresh Canvas instance
+      const canvasEl2 = document.createElement("canvas");
+      const painter2 = new Canvas({
+        canvas: canvasEl2,
+        document: { width: 100, height: 100 },
+      });
+
+      await painter2.importDocument(exportedDoc);
+
+      // 4. Verify round-trip fidelity
+      expect(painter2.documentWidth).toBe(exportedDoc.width);
+      expect(painter2.documentHeight).toBe(exportedDoc.height);
+      expect(painter2.getActiveLayer().id).toBe(layer2.id);
+
+      const importedLayers = painter2.getLayers();
+      expect(importedLayers.length).toBe(exportedDoc.layers.length);
+
+      for (let i = 0; i < exportedDoc.layers.length; i++) {
+        const exportedLayer = exportedDoc.layers[i];
+        const importedLayer = importedLayers[i];
+
+        expect(importedLayer.id).toBe(exportedLayer.id);
+        expect(importedLayer.name).toBe(exportedLayer.name);
+        expect(importedLayer.opacity).toBe(exportedLayer.opacity);
+        expect(importedLayer.blendMode).toBe(exportedLayer.blendMode);
+        expect(importedLayer.alphaLock).toBe(Boolean(exportedLayer.alphaLock));
+        expect(importedLayer.locked).toBe(Boolean(exportedLayer.locked));
+        expect(importedLayer.visible).toBe(exportedLayer.visible);
+      }
+
+      globalThis.Image = originalImage;
     });
   });
 });

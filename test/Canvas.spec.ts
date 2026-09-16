@@ -9,8 +9,6 @@ const mockBrushInstance = {
   render: vi.fn(),
   finalizeStroke: vi.fn(),
   clear: vi.fn(),
-  undo: vi.fn(),
-  redo: vi.fn(),
   loadConfig: vi.fn(),
   loadImageAsync: vi.fn(),
   loadContext: vi.fn(),
@@ -275,11 +273,14 @@ describe("Canvas", () => {
       canvas,
     });
 
+    const undoSpy = vi.spyOn(instance.history, "undo");
+    const redoSpy = vi.spyOn(instance.history, "redo");
+
     instance.undo();
     instance.redo();
 
-    expect(mockBrushInstance.undo).toHaveBeenCalled();
-    expect(mockBrushInstance.redo).toHaveBeenCalled();
+    expect(undoSpy).toHaveBeenCalledTimes(1);
+    expect(redoSpy).toHaveBeenCalledTimes(1);
   });
 
   it("should expose loadConfig method", () => {
@@ -791,5 +792,90 @@ describe("Canvas", () => {
     expect(layersSpy).toHaveBeenCalledWith(400, 300);
     expect(canvas.width).toBe(400);
     expect(canvas.height).toBe(300);
+  });
+
+  describe("Locked Layer Enforcement Matrix", () => {
+    it("should reject brush drawing on a locked layer", () => {
+      const canvas = createCanvas();
+      const instance = new Canvas({ canvas });
+
+      const active = instance.getActiveLayer();
+      instance.updateLayer(active.id, { locked: true });
+
+      mockBrushInstance.putPoint.mockClear();
+      mockBrushInstance.render.mockClear();
+
+      // Trigger pointerdown
+      canvas.dispatchEvent(
+        new PointerEvent("pointerdown", {
+          clientX: 50,
+          clientY: 50,
+          pointerId: 1,
+        }),
+      );
+
+      // Brush methods should NOT have been invoked
+      expect(mockBrushInstance.putPoint).not.toHaveBeenCalled();
+      expect(mockBrushInstance.render).not.toHaveBeenCalled();
+      const internal = instance as unknown as { isDrawing: boolean };
+      expect(internal.isDrawing).toBe(false);
+    });
+
+    it("should throw an error and reject raster operations on locked layers", () => {
+      const canvas = createCanvas();
+      const instance = new Canvas({ canvas });
+
+      const active = instance.getActiveLayer();
+      instance.updateLayer(active.id, { locked: true });
+
+      // 1. clear() / clearActiveLayer()
+      expect(() => instance.clear()).toThrow("Active layer is locked");
+      expect(() => instance.clearActiveLayer()).toThrow(
+        "Active layer is locked",
+      );
+
+      // 2. fillActiveLayer()
+      expect(() => instance.fillActiveLayer("#ff0000")).toThrow(
+        "Active layer is locked",
+      );
+
+      // 3. floodFill()
+      expect(() => instance.floodFill(10, 10, "#00ff00")).toThrow(
+        "Active layer is locked",
+      );
+
+      // 4. drawRectangle()
+      expect(() =>
+        instance.drawRectangle({ x: 0, y: 0, width: 20, height: 20 }),
+      ).toThrow("Active layer is locked");
+
+      // 5. drawEllipse()
+      expect(() =>
+        instance.drawEllipse({ x: 10, y: 10, radiusX: 5, radiusY: 5 }),
+      ).toThrow("Active layer is locked");
+
+      // 6. drawLine()
+      expect(() => instance.drawLine({ x1: 0, y1: 0, x2: 10, y2: 10 })).toThrow(
+        "Active layer is locked",
+      );
+
+      // 7. drawText()
+      expect(() => instance.drawText("Hello", 10, 10)).toThrow(
+        "Active layer is locked",
+      );
+    });
+
+    it("should reject deleting a locked layer", () => {
+      const canvas = createCanvas();
+      const instance = new Canvas({ canvas });
+
+      const layer2 = instance.createLayer({ name: "Second Layer" });
+      instance.updateLayer(layer2.id, { locked: true });
+
+      expect(() => instance.deleteLayer(layer2.id)).toThrow(
+        "Cannot delete locked layer",
+      );
+      expect(instance.getLayers().some((l) => l.id === layer2.id)).toBe(true);
+    });
   });
 });

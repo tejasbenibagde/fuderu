@@ -4,6 +4,22 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
+## [1.4.1] - 2026-08-16
+
+- **Alpha Lock Flood Fill Fix**:
+  - Corrected pixel-level alpha blending in `canvas.floodFill()`: when `alphaLock === true`, original pixel alpha channels are strictly preserved and zero-alpha transparent pixels are left untouched.
+  - Early-exit guard checks target alpha and avoids redundant pixel writes when colors match under alpha lock constraints.
+- **Purge Obsolete History Code from `Brush`**:
+  - Deleted legacy `maxUndoRedoStackSize`, `initCanvasStack()`, and dummy `undo()`/`redo()` stubs from `Brush.ts`, consolidating history orchestration exclusively under `HistoryManager` and `Canvas`.
+- **Layer-Switch History Regression Test Suite**:
+  - Added test coverage in `HistoryManager.spec.ts` guaranteeing that global undo/redo operates losslessly across arbitrary active-layer changes and multi-layer stacks.
+- **Locked Layer Enforcement Matrix**:
+  - Added comprehensive test suite in `Canvas.spec.ts` verifying that locked layers reject brush drawing, flood fill, clear, raster vector commands (`drawRectangle`, `drawEllipse`, `drawLine`, `drawText`), and layer deletion.
+- **Persistence Round-Trip Testing**:
+  - Added automated round-trip verification in `DocumentPersistence.spec.ts` comparing document dimensions, layer stacks, layer properties, and active layer ID before export and after import.
+
+---
+
 ## [1.4.0] - 2026-08-09
 
 - **Operation Log & Action Stream API**:

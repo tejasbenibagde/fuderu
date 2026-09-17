@@ -1,8 +1,12 @@
 {
   "name": "fuderu",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "High-performance canvas drawing library with a different approach to brush stroke rendering.",
   "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
   "files": [
     "dist"
   ],
@@ -21,24 +25,32 @@
       }
     }
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "unpkg": "./dist/fuderu.umd.cjs",
+  "jsdelivr": "./dist/fuderu.umd.cjs",
   "keywords": [
-    "brush",
-    "mouse",
     "canvas",
     "drawing",
-    "smooth",
-    "pencil",
-    "string",
-    "radius"
+    "brush",
+    "painting",
+    "digital-painting",
+    "layers",
+    "eraser",
+    "pressure",
+    "stylus",
+    "typescript",
+    "framework-agnostic"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tejasbenibagde/fuderu.git"
   },
-  "homepage": "https://fuderu.vercel.app/",
-  "directories": {
-    "lib": "lib"
+  "bugs": {
+    "url": "https://github.com/tejasbenibagde/fuderu/issues"
   },
+  "homepage": "https://fuderu.vercel.app/",
   "scripts": {
     "dev": "vite",
     "build": "vite build && tsc --emitDeclarationOnly --outDir dist",
@@ -57,7 +69,8 @@
     "lint:fix": "eslint . --fix",
     "prepare": "husky",
     "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "format:check": "prettier . --check",
+    "prepublishOnly": "npm run test:ci && npm run lint && npm run build"
   },
   "author": "Tejas Benibagde",
   "license": "MIT",
@@ -65,7 +78,6 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.6.2",
     "@vitest/coverage-v8": "^4.1.6",
-    "catenary-curve": "^2.0.0",
     "cross-env": "^10.1.0",
     "eslint": "^10.3.0",
     "globals": "^17.6.0",

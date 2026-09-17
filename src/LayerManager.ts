@@ -1,10 +1,10 @@
 // src/LayerManager.ts
 
 import { Layer } from "./Layer";
-import type { BlendMode } from "./types/layers";
+import type { BlendMode, LayerId } from "./types/layers";
 
 export interface CreateLayerOptions {
-  id?: string;
+  id?: LayerId;
   name?: string;
   visible?: boolean;
   opacity?: number;
@@ -24,7 +24,7 @@ export interface UpdateLayerOptions {
 
 export class LayerManager {
   private layers: Layer[] = [];
-  private activeLayerId: string | null = null;
+  private activeLayerId: LayerId | null = null;
   private width: number;
   private height: number;
 
@@ -56,11 +56,11 @@ export class LayerManager {
     return layer;
   }
 
-  getActiveId(): string | null {
+  getActiveId(): LayerId | null {
     return this.activeLayerId;
   }
 
-  setActive(layerId: string): void {
+  setActive(layerId: LayerId): void {
     this.getById(layerId);
     this.activeLayerId = layerId;
   }
@@ -87,7 +87,7 @@ export class LayerManager {
     return layer;
   }
 
-  deleteLayer(layerId: string): void {
+  deleteLayer(layerId: LayerId): void {
     if (this.layers.length === 1) {
       throw new Error("Cannot delete the last layer");
     }
@@ -115,7 +115,7 @@ export class LayerManager {
     this.layers.splice(boundedIndex, 0, layer);
   }
 
-  removeLayerOnly(layerId: string): void {
+  removeLayerOnly(layerId: LayerId): void {
     const layerIndex = this.layers.findIndex((layer) => layer.id === layerId);
     if (layerIndex !== -1) {
       this.layers.splice(layerIndex, 1);
@@ -125,7 +125,7 @@ export class LayerManager {
     }
   }
 
-  duplicateLayer(layerId: string): Layer {
+  duplicateLayer(layerId: LayerId): Layer {
     const source = this.layers.find((l) => l.id === layerId);
 
     if (!source) {
@@ -153,7 +153,7 @@ export class LayerManager {
     return duplicate;
   }
 
-  moveLayer(layerId: string, targetIndex: number): void {
+  moveLayer(layerId: LayerId, targetIndex: number): void {
     const currentIndex = this.layers.findIndex((l) => l.id === layerId);
 
     if (currentIndex === -1) {
@@ -170,7 +170,7 @@ export class LayerManager {
     this.layers.splice(boundedTargetIndex, 0, layer);
   }
 
-  reorderLayers(ids: string[]): void {
+  reorderLayers(ids: LayerId[]): void {
     const currentLayers = [...this.layers];
     const map = new Map(currentLayers.map((l) => [l.id, l]));
     const newLayers: Layer[] = [];
@@ -189,7 +189,7 @@ export class LayerManager {
     }
   }
 
-  updateLayer(layerId: string, options: UpdateLayerOptions): Layer {
+  updateLayer(layerId: LayerId, options: UpdateLayerOptions): Layer {
     const layer = this.getById(layerId);
 
     if (options.name !== undefined) layer.name = options.name;
@@ -202,7 +202,7 @@ export class LayerManager {
     return layer;
   }
 
-  getById(layerId: string): Layer {
+  getById(layerId: LayerId): Layer {
     const layer = this.layers.find((l) => l.id === layerId);
 
     if (!layer) {
@@ -230,7 +230,7 @@ export class LayerManager {
     this.getActive().clear();
   }
 
-  replaceAllLayers(layers: Layer[], activeLayerId?: string): void {
+  replaceAllLayers(layers: Layer[], activeLayerId?: LayerId): void {
     if (layers.length === 0) {
       throw new Error("Cannot replace with empty layers array");
     }

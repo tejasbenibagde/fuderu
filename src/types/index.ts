@@ -1,13 +1,15 @@
 export type { BrushConfig, BrushBasicConfig } from "./config";
 export type { Module } from "./modules";
 export type { PurePoint, Point } from "./point";
-export type { BlendMode } from "./layers";
+export type { BlendMode, LayerId, LayerSnapshot } from "./layers";
 export type {
   HistoryEntry,
   HistoryEntrySummary,
   PushPatchOptions,
 } from "./history";
+export { CURRENT_DOCUMENT_VERSION, migrateDocument } from "./document";
 export type {
+  DocumentId,
   BitmapFormat,
   SerializedLayer,
   FuderuDocument,
@@ -31,6 +33,7 @@ export type {
   ColorSample,
 } from "./commands";
 export type {
+  ActionId,
   BaseAction,
   StrokeAction,
   FloodFillAction,

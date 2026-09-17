@@ -773,8 +773,11 @@ describe("Canvas", () => {
       canvas,
     });
 
-    const layersSpy = vi.spyOn(instance.layers, "resize");
-    const clearSpy = vi.spyOn(instance.layers, "clear");
+    const internal = instance as unknown as {
+      layers: { resize: (w: number, h: number) => void; clear: () => void };
+    };
+    const layersSpy = vi.spyOn(internal.layers, "resize");
+    const clearSpy = vi.spyOn(internal.layers, "clear");
 
     // Test with clearArtwork = true
     instance.setDocumentSize(800, 600, true);

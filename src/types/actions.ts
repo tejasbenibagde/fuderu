@@ -1,6 +1,6 @@
 import type { BrushConfig } from "./config";
 import type { StrokePoint } from "./events";
-import type { BlendMode } from "./layers";
+import type { BlendMode, LayerId } from "./layers";
 import type {
   DrawRectangleOptions,
   DrawEllipseOptions,
@@ -8,21 +8,26 @@ import type {
   TextStyleOptions,
 } from "./commands";
 
+/**
+ * Strongly-typed identifier for recorded canvas actions.
+ */
+export type ActionId = string;
+
 export interface BaseAction {
-  id?: string;
+  id?: ActionId;
   timestamp?: number;
 }
 
 export interface StrokeAction extends BaseAction {
   type: "stroke";
-  layerId: string;
+  layerId: LayerId;
   brushConfig: Partial<BrushConfig>;
   points: StrokePoint[];
 }
 
 export interface FloodFillAction extends BaseAction {
   type: "floodFill";
-  layerId: string;
+  layerId: LayerId;
   x: number;
   y: number;
   color: string;
@@ -31,25 +36,25 @@ export interface FloodFillAction extends BaseAction {
 
 export interface DrawRectangleAction extends BaseAction {
   type: "drawRectangle";
-  layerId: string;
+  layerId: LayerId;
   options: DrawRectangleOptions;
 }
 
 export interface DrawEllipseAction extends BaseAction {
   type: "drawEllipse";
-  layerId: string;
+  layerId: LayerId;
   options: DrawEllipseOptions;
 }
 
 export interface DrawLineAction extends BaseAction {
   type: "drawLine";
-  layerId: string;
+  layerId: LayerId;
   options: DrawLineOptions;
 }
 
 export interface DrawTextAction extends BaseAction {
   type: "drawText";
-  layerId: string;
+  layerId: LayerId;
   text: string;
   x: number;
   y: number;
@@ -58,18 +63,18 @@ export interface DrawTextAction extends BaseAction {
 
 export interface ClearLayerAction extends BaseAction {
   type: "clearLayer";
-  layerId: string;
+  layerId: LayerId;
 }
 
 export interface FillLayerAction extends BaseAction {
   type: "fillLayer";
-  layerId: string;
+  layerId: LayerId;
   color: string;
 }
 
 export interface CreateLayerAction extends BaseAction {
   type: "createLayer";
-  layerId?: string;
+  layerId?: LayerId;
   name?: string;
   options?: {
     visible?: boolean;
@@ -82,18 +87,18 @@ export interface CreateLayerAction extends BaseAction {
 
 export interface DeleteLayerAction extends BaseAction {
   type: "deleteLayer";
-  layerId: string;
+  layerId: LayerId;
 }
 
 export interface MoveLayerAction extends BaseAction {
   type: "moveLayer";
-  layerId: string;
+  layerId: LayerId;
   targetIndex: number;
 }
 
 export interface SetLayerPropertiesAction extends BaseAction {
   type: "setLayerProperties";
-  layerId: string;
+  layerId: LayerId;
   properties: {
     name?: string;
     visible?: boolean;
@@ -106,13 +111,13 @@ export interface SetLayerPropertiesAction extends BaseAction {
 
 export interface MergeLayerDownAction extends BaseAction {
   type: "mergeLayerDown";
-  layerId: string;
+  layerId: LayerId;
 }
 
 export interface DuplicateLayerAction extends BaseAction {
   type: "duplicateLayer";
-  layerId: string;
-  newLayerId?: string;
+  layerId: LayerId;
+  newLayerId?: LayerId;
 }
 
 export type CanvasAction =

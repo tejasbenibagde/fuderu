@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Stable 1.4.0 canvas drawing engine for the web.
+  Stable 1.4.2 canvas drawing engine for the web.
 </p>
 
 <p align="center">
@@ -23,7 +23,8 @@
 
 ## Features
 
-- **Operation Log & Action Replay Engine** – Serializable stroke/action event stream (`action:record`, `stroke:record`), full log recording (`getActionLog`), and programmatic replay (`replay`, `replayAction`) with speed control and progress callbacks.
+- **Architecture Refinements & Safety (v1.4.2)** – Immutable `CanvasSnapshot` with frozen `LayerSnapshot` DTOs, encapsulated `LayerManager` (`canvas.layers` private), explicit type aliases (`LayerId`, `ActionId`, `DocumentId`), and schema version migration architecture (`migrateDocument`).
+- **Operation Log & Action Replay Engine (v1.4.0)** – Serializable stroke/action event stream (`action:record`, `stroke:record`), full log recording (`getActionLog`), and programmatic replay (`replay`, `replayAction`) with speed control and progress callbacks.
 - **Document Persistence API** – Export and import complete canvas state as versioned JSON with layer metadata and serialized bitmaps (`exportDocument`, `importDocument`, `exportPNG`).
 - **Advanced Layer Controls** – Full layer stack with visibility, opacity, 16 blend modes, **Alpha Lock** (clip strokes to opaque pixels), and **Layer Lock** (protect layers from modifications).
 - **Native Commands & Raster Operations** – Fast scanline flood fill (`floodFill`), vector shape primitives (`drawRectangle`, `drawEllipse`, `drawLine`), text rendering (`drawText`), and color sampling (`getColorAt`).
@@ -35,36 +36,39 @@
 
 ## Release Focus
 
-For Fuderu 1.4.0, the engine introduces a serializable Action Log and Action Replay API for real-time stroke stream capturing, audit logging, time-lapse playback, and multiplayer synchronization.
+For Fuderu 1.4.2, the engine delivers key architectural refinements: immutable `CanvasSnapshot` data transfer objects, strict encapsulation of `LayerManager` within `Canvas`, explicit type aliases for identifiers, forward-compatible document schema version migrations, real multi-component Canvas2D integration tests, and a dedicated performance benchmarking suite.
 
-## Latest Release
+## Releases
+
+### 1.4.2
+
+- **Immutable `CanvasSnapshot`**: `canvas.getSnapshot()` returns deeply frozen snapshot objects and layer DTOs (`LayerSnapshot[]`), guaranteeing that reactive consumers (such as React `useSyncExternalStore`) cannot accidentally mutate internal layer references.
+- **Encapsulate `LayerManager`**: `canvas.layers` is now strictly private, ensuring all layer creation, selection, reordering, update, and deletion operations route cleanly through public `Canvas` methods.
+- **Explicit Type Aliases for Identifiers**: Introduced distinct `LayerId`, `ActionId`, and `DocumentId` string type aliases across the engine, actions, events, and persistence layers for future-proof multiplayer collaboration.
+- **Document Version Migration Architecture**: Established `CURRENT_DOCUMENT_VERSION = 1` and a composable `migrateDocument(doc)` pipeline, validating schemas and guaranteeing forward compatibility across document schema revisions.
+- **Real Canvas2D Integration Tests**: Multi-component integration test suite verifying real raster rendering, compositing, layer reordering, and history interactions without reliance on full mock stubs.
+- **Performance Benchmarking Suite**: Automated profiling suite benchmarking high-frequency stroke event capture (>10,000 points/sec), high layer-count compositing (30 layers), and sub-millisecond snapshot generation.
+
+### 1.4.1
+
+- **Alpha Lock Flood Fill Fix**: Pixel-level alpha blending in `floodFill` strictly preserves original pixel alpha values and leaves zero-alpha transparent pixels untouched when `alphaLock === true`.
+- **Brush Engine Clean Decoupling**: Purged legacy history code (`maxUndoRedoStackSize`, `initCanvasStack()`, and dummy `undo()`/`redo()` stubs) from `Brush.ts`, standardizing on `HistoryManager` as the single source of truth for history.
+- **Layer-Switch History Hardening**: Regression test suite ensuring lossless global undo/redo across arbitrary active-layer switches.
+- **Locked Layer Enforcement**: Comprehensive test coverage verifying that locked layers reject brush drawing, flood fill, clear, raster commands, and deletion.
+- **Lossless Persistence Round-Trip**: Automated test verification validating document dimension, layer stack, and property integrity across export and import cycles.
 
 ### 1.4.0
 
 - **Operation Log & Action Stream API**: Strong type definitions for canvas actions (`CanvasAction`, `StrokeAction`, etc.), stream events (`"action:record"`, `"stroke:record"`), and action replay engine (`recordAction()`, `getActionLog()`, `clearActionLog()`, `replayAction()`, `replay()`).
 - **Replay Execution Guard**: `isReplaying` state isolation ensures replaying action sequences never duplicates action logs or triggers recursive event loops.
 
-### 1.3.2
+### Pre-1.4.0 Releases Summary
 
-- **Document Persistence Layer Lock Serialization**: `exportDocument()` and `importDocument()` now preserve `alphaLock` and `locked` layer options across document saves.
-- **Optimized Color Parsing**: `parseCssColor()` reuses a shared 1x1 canvas context, eliminating DOM canvas allocation overhead on color evaluation.
-- **Canvas Lifecycle Teardown**: `destroy()` clears event listeners and resets active pointer state cleanly.
+- **v1.3.x**: Introduced the Document Persistence API (`exportDocument`, `importDocument`, `exportPNG`), Advanced Layer Controls (`alphaLock`, `locked`), native raster commands (`floodFill`, `drawRectangle`, `drawEllipse`, `drawLine`, `drawText`, `getColorAt`), reactive state events (`change`, `stroke:start`, `stroke:end`), and public history navigation (`goTo`, `pushPatch`).
+- **v1.2.x**: Major performance and memory optimizations: sparse bounding-box history patches (90-95% memory reduction), offscreen compositing cache ($O(1)$ brush strokes), and pointer gesture isolation.
+- **v1.1.x & v1.0.x**: Decoupled global history engine across layers, undoable layer properties, and initial stable architecture.
 
-### 1.3.1
-
-- **Off-Document Command Safety**: Prevents out-of-bounds vector shapes (`drawRectangle`, `drawEllipse`, `drawLine`, `drawText`) from throwing `getImageData` exceptions or pushing empty history patches.
-- **Multi-Touch Gesture Isolation**: Pointer events track unique `pointerId` per active stroke to avoid gesture conflicts from multi-touch input.
-- **Tighter Rotated Ellipse Bounds**: Exact rotated ellipse boundary calculations minimize history patch memory consumption during `drawEllipse`.
-
-### 1.3.0
-
-- **First-Class Document Persistence API**: Native `exportDocument()` and `importDocument()` with typed, versioned document data (`width`, `height`, `layers`, `activeLayerId`, and serialized bitmaps), plus `exportPNG()` for flattened composite output.
-- **Advanced Layer Controls**: Added `alphaLock` (restricts editing to existing non-transparent pixels) and `locked` (protects layers from edits/deletion), plus direct `Canvas` methods (`getLayers()`, `getLayerById()`, `reorderLayers()`).
-- **Native Raster Commands**: Built-in scanline `floodFill()`, vector shape primitives (`drawRectangle`, `drawEllipse`, `drawLine`), raster text (`drawText`), and pixel color sampling (`getColorAt`).
-- **Observable State & Event Model**: Typed event subscriptions (`on`/`off`) for `change`, `stroke:start`, `stroke:end`, `layer:change`, and `history:change`, alongside `getSnapshot()`.
-- **Public History Navigation & Patching**: Jump to any point in history with `canvas.history.goTo(index)` and push custom raster tool undo patches via `canvas.history.pushPatch()`.
-
-> _For details on earlier releases (v1.0.0 – v1.2.2), please refer to the [CHANGELOG.md](./CHANGELOG.md)._
+> _For complete historical changelogs across all releases, see [CHANGELOG.md](./CHANGELOG.md)._
 
 ## Installation
 

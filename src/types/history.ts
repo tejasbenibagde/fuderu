@@ -1,9 +1,11 @@
+import type { LayerId } from "./layers";
+
 export interface HistoryEntrySummary {
   id: string;
   type: string;
   description: string;
   timestamp: number;
-  layerId?: string;
+  layerId?: LayerId;
   bounds?: { x: number; y: number; width: number; height: number };
 }
 
@@ -18,7 +20,7 @@ export interface HistoryEntry {
 }
 
 export interface PushPatchOptions {
-  layerId?: string;
+  layerId?: LayerId;
   beforeData: ImageData;
   afterData: ImageData;
   x?: number;

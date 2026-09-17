@@ -9,11 +9,12 @@ import {
   type UpdateLayerOptions,
 } from "./LayerManager";
 import { Layer } from "./Layer";
-import type {
-  FuderuDocument,
-  SerializedLayer,
-  ExportDocumentOptions,
-  ExportPNGOptions,
+import {
+  migrateDocument,
+  type FuderuDocument,
+  type SerializedLayer,
+  type ExportDocumentOptions,
+  type ExportPNGOptions,
 } from "./types/document";
 import type {
   CanvasEventMap,
@@ -21,6 +22,7 @@ import type {
   StrokeBounds,
   StrokePoint,
 } from "./types/events";
+import type { LayerId } from "./types/layers";
 import type {
   CanvasAction,
   StrokeAction,
@@ -83,13 +85,13 @@ export interface CanvasOptions {
 export class Canvas implements HistoryContext {
   private canvas: HTMLCanvasElement;
   public brush: Brush;
-  public layers!: LayerManager;
+  private layers!: LayerManager;
   public history: HistoryManager;
 
   private isDrawing = false;
   private activePointerId: number | null = null;
   private currentStrokeBeforeCanvas: HTMLCanvasElement | null = null;
-  private currentStrokeLayerId: string | null = null;
+  private currentStrokeLayerId: LayerId | null = null;
   private strokeMinX = Infinity;
   private strokeMinY = Infinity;
   private strokeMaxX = -Infinity;
@@ -357,13 +359,13 @@ export class Canvas implements HistoryContext {
    * reactive bindings like useSyncExternalStore.
    */
   public getSnapshot(): CanvasSnapshot {
-    return {
+    return Object.freeze({
       documentWidth: this.documentWidth,
       documentHeight: this.documentHeight,
-      layers: this.layers.getAll(),
+      layers: Object.freeze(this.layers.getAll().map((l) => l.toSnapshot())),
       activeLayerId: this.layers.getActiveId() ?? "",
       history: this.history.getHistoryState(),
-    };
+    });
   }
 
   private emitHistoryChange(): void {
@@ -1029,18 +1031,10 @@ export class Canvas implements HistoryContext {
    * Import and atomically load a complete canvas document.
    * Recreates all layers, loads bitmap graphics asynchronously, and sets active layer.
    */
-  public async importDocument(document: FuderuDocument): Promise<void> {
-    if (
-      !document ||
-      typeof document !== "object" ||
-      typeof document.width !== "number" ||
-      typeof document.height !== "number" ||
-      document.width <= 0 ||
-      document.height <= 0 ||
-      !Array.isArray(document.layers)
-    ) {
-      throw new Error("Invalid FuderuDocument payload");
-    }
+  public async importDocument(
+    rawDocument: FuderuDocument | unknown,
+  ): Promise<void> {
+    const document = migrateDocument(rawDocument);
 
     const loadedLayers: Layer[] = [];
 

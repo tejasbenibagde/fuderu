@@ -1,5 +1,6 @@
 import type { Layer } from "../Layer";
 import type { CanvasAction, StrokeAction } from "./actions";
+import type { LayerId, LayerSnapshot } from "./layers";
 
 export interface StrokeBounds {
   x: number;
@@ -15,12 +16,12 @@ export interface StrokePoint {
 }
 
 export interface StrokeStartEvent {
-  layerId: string;
+  layerId: LayerId;
   point: StrokePoint;
 }
 
 export interface StrokeEndEvent {
-  layerId: string;
+  layerId: LayerId;
   bounds: StrokeBounds;
   points: StrokePoint[];
 }
@@ -33,11 +34,11 @@ export interface HistoryState {
 }
 
 export interface CanvasSnapshot {
-  documentWidth: number;
-  documentHeight: number;
-  layers: readonly Layer[];
-  activeLayerId: string;
-  history: HistoryState;
+  readonly documentWidth: number;
+  readonly documentHeight: number;
+  readonly layers: readonly LayerSnapshot[];
+  readonly activeLayerId: LayerId;
+  readonly history: HistoryState;
 }
 
 export interface CanvasEventMap {
@@ -47,5 +48,5 @@ export interface CanvasEventMap {
   "stroke:record": (action: StrokeAction) => void;
   "action:record": (action: CanvasAction) => void;
   "history:change": (history: HistoryState) => void;
-  "layer:change": (layers: readonly Layer[], activeLayerId: string) => void;
+  "layer:change": (layers: readonly Layer[], activeLayerId: LayerId) => void;
 }

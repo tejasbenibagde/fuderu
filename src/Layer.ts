@@ -1,9 +1,9 @@
 // src/Layer.ts
 
-import type { BlendMode } from "./types/layers";
+import type { BlendMode, LayerId, LayerSnapshot } from "./types/layers";
 
 export interface LayerOptions {
-  id?: string;
+  id?: LayerId;
   name?: string;
   width: number;
   height: number;
@@ -15,7 +15,7 @@ export interface LayerOptions {
 }
 
 export class Layer {
-  public readonly id: string;
+  public readonly id: LayerId;
   public name: string;
 
   public readonly canvas: HTMLCanvasElement;
@@ -76,6 +76,20 @@ export class Layer {
 
   setOpacity(opacity: number): void {
     this.opacity = clampOpacity(opacity);
+  }
+
+  toSnapshot(): LayerSnapshot {
+    return Object.freeze({
+      id: this.id,
+      name: this.name,
+      visible: this.visible,
+      opacity: this.opacity,
+      blendMode: this.blendMode,
+      alphaLock: this.alphaLock,
+      locked: this.locked,
+      width: this.canvas.width,
+      height: this.canvas.height,
+    });
   }
 }
 

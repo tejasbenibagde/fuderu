@@ -4,6 +4,23 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
+## [1.4.2] - 2026-08-23
+
+- **Immutable `CanvasSnapshot`**:
+  - `canvas.getSnapshot()` returns a deeply frozen `CanvasSnapshot` containing frozen `LayerSnapshot` DTOs (`Object.freeze`), guaranteeing that external state listeners (e.g. `useSyncExternalStore`) cannot mutate internal layer state or context references.
+- **Encapsulated `LayerManager`**:
+  - Encapsulated `canvas.layers` as a private property. All layer operations (creation, selection, reordering, retrieval, deletion, updates) are strictly accessed through public `Canvas` facade methods (`createLayer`, `deleteLayer`, `duplicateLayer`, `moveLayer`, `updateLayer`, `getLayers`, `getActiveLayer`, `getLayerById`, `reorderLayers`).
+- **Explicit Type Aliases for Identifiers**:
+  - Introduced nominal type aliases `type LayerId = string`, `type ActionId = string`, and `type DocumentId = string` across types, events, actions, history, and document persistence pipelines.
+- **Document Version Migration Architecture**:
+  - Introduced `CURRENT_DOCUMENT_VERSION = 1` constant and the `migrateDocument(rawDoc)` pipeline function to enforce payload schema validation and forward-compatibility migration for serialized documents.
+- **Real Canvas2D Integration Test Suite**:
+  - Added `test/CanvasIntegration.spec.ts` providing realistic software Canvas2D buffer simulation to verify multi-layer compositing, raster modifications, and history interactions without full mocking stubs.
+- **Performance Benchmarking Suite**:
+  - Added `test/PerformanceBenchmark.spec.ts` providing automated profiling for high-frequency point capture (>10,000 points/sec), 30-layer compositing throughput, and sub-millisecond snapshot generation.
+
+---
+
 ## [1.4.1] - 2026-08-16
 
 - **Alpha Lock Flood Fill Fix**:

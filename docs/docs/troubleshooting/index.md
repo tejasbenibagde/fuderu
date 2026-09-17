@@ -430,9 +430,7 @@ This guide helps you diagnose and resolve common issues when working with Fuderu
    // Only initialize in browser environment
    if (typeof window !== "undefined") {
      // Safe to use window, document, etc.
-     const painter = new Canvas({
-       /* ... */
-     });
+     const painter = new Canvas({/* ... */});
    }
    ```
 
@@ -462,9 +460,7 @@ This guide helps you diagnose and resolve common issues when working with Fuderu
          }
        };
      },
-     [
-       /* dependencies */
-     ],
+     [/* dependencies */],
    );
    ```
 

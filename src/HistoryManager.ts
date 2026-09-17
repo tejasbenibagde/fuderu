@@ -352,12 +352,7 @@ export class LayerPropertyHistoryEntry implements HistoryEntry {
   constructor(
     private layerId: string,
     private propertyName:
-      | "name"
-      | "visible"
-      | "opacity"
-      | "blendMode"
-      | "alphaLock"
-      | "locked",
+      "name" | "visible" | "opacity" | "blendMode" | "alphaLock" | "locked",
     private beforeValue: string | number | boolean,
     private afterValue: string | number | boolean,
     private context: HistoryContext,

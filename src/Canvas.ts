@@ -801,12 +801,7 @@ export class Canvas implements HistoryContext {
 
     const originalValues: Record<string, string | number | boolean> = {};
     const keys: (
-      | "name"
-      | "visible"
-      | "opacity"
-      | "blendMode"
-      | "alphaLock"
-      | "locked"
+      "name" | "visible" | "opacity" | "blendMode" | "alphaLock" | "locked"
     )[] = ["name", "visible", "opacity", "blendMode", "alphaLock", "locked"];
     for (const key of keys) {
       if (options[key] !== undefined) {

@@ -2852,6 +2852,9 @@ export class Canvas implements HistoryContext {
   }
 
   destroy(): void {
+    if (this.transformSession && this.transformSession.isActive()) {
+      this.cancelTransform();
+    }
     this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
     this.canvas.removeEventListener("pointermove", this.handlePointerMove);
     this.canvas.removeEventListener("pointercancel", this.handlePointerCancel);

@@ -4,7 +4,7 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
-## [1.5.0-alpha.1] - 2026-09-27
+## [1.5.0] - 2026-09-27
 
 - **Selection Tools**:
   - `Selection` class managing an offscreen bitmask buffer supporting boolean combine modes (`replace`, `add`, `subtract`, `intersect`).

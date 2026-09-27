@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Stable 1.4.2 canvas drawing engine for the web.
+  Stable 1.5.0 canvas drawing engine for the web.
 </p>
 
 <p align="center">
@@ -23,6 +23,7 @@
 
 ## Features
 
+- **Artist Tools: Selection, Transformation & Clipboard (v1.5.0)** – Marquee and freehand lasso selections (`selectRectangle`, `selectEllipse`, `selectLasso`, `renderSelectionOutline`); floating interactive transformations with move, rotate, scale, and flip (`beginTransform`, `commitTransform`, `renderTransformBox`); cross-layer and cross-document clipboard pipeline (`copy`, `cut`, `paste`, `ClipboardStore`).
 - **Architecture Refinements & Safety (v1.4.2)** – Immutable `CanvasSnapshot` with frozen `LayerSnapshot` DTOs, encapsulated `LayerManager` (`canvas.layers` private), explicit type aliases (`LayerId`, `ActionId`, `DocumentId`), and schema version migration architecture (`migrateDocument`).
 - **Operation Log & Action Replay Engine (v1.4.0)** – Serializable stroke/action event stream (`action:record`, `stroke:record`), full log recording (`getActionLog`), and programmatic replay (`replay`, `replayAction`) with speed control and progress callbacks.
 - **Document Persistence API** – Export and import complete canvas state as versioned JSON with layer metadata and serialized bitmaps (`exportDocument`, `importDocument`, `exportPNG`).
@@ -36,9 +37,15 @@
 
 ## Release Focus
 
-For Fuderu 1.4.2, the engine delivers key architectural refinements: immutable `CanvasSnapshot` data transfer objects, strict encapsulation of `LayerManager` within `Canvas`, explicit type aliases for identifiers, forward-compatible document schema version migrations, real multi-component Canvas2D integration tests, and a dedicated performance benchmarking suite.
+For Fuderu 1.5.0, the engine delivers full artist workflow tooling: bitmask selections with Boolean operations and marching ants, floating interactive bounding transformations, and a full cross-layer and cross-document clipboard pipeline (copy, cut, paste) with undoable history patches and action replay support.
 
 ## Releases
+
+### 1.5.0
+
+- **Selection Tools**: Rectangular marquee, elliptical marquee, and freehand lasso selections (`selectRectangle`, `selectEllipse`, `selectLasso`, `selectAllSelection`, `clearSelection`, `invertSelection`) backed by an offscreen bitmask buffer supporting boolean combine modes (`replace`, `add`, `subtract`, `intersect`), dual-tone animated marching ants outline rendering (`renderSelectionOutline`), and automatic brush/command clipping.
+- **Transform Operations**: Interactive floating transformation sessions (`beginTransform`, `commitTransform`, `cancelTransform`, `transform`, `translate`, `rotate`, `scale`, `flipHorizontal`, `flipVertical`) with live resize handles, rotator handle, and pivot rendering (`renderTransformBox`), selection-aware pixel lifting and mask updating, alpha lock preservation, and undoable history patch generation.
+- **Clipboard Pipeline**: Unified clipboard store (`ClipboardStore`, `copy`, `cut`, `paste`) enabling raster selection and layer region transfers across layers and separate document instances, with optional new layer creation, marquee wrapping, floating transform initiation, and system clipboard interoperability.
 
 ### 1.4.2
 

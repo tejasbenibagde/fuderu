@@ -166,6 +166,29 @@ export interface TransformAction extends BaseAction {
   isSelection?: boolean;
 }
 
+export interface CopyAction extends BaseAction {
+  type: "copy";
+  layerId: LayerId;
+  isSelection?: boolean;
+}
+
+export interface CutAction extends BaseAction {
+  type: "cut";
+  layerId: LayerId;
+  isSelection?: boolean;
+}
+
+export interface PasteAction extends BaseAction {
+  type: "paste";
+  targetLayerId?: LayerId;
+  x?: number;
+  y?: number;
+  createLayer?: boolean;
+  newLayerName?: string;
+  asSelection?: boolean;
+  asTransform?: boolean;
+}
+
 export type CanvasAction =
   | StrokeAction
   | FloodFillAction
@@ -187,7 +210,10 @@ export type CanvasAction =
   | SelectAllAction
   | ClearSelectionAction
   | InvertSelectionAction
-  | TransformAction;
+  | TransformAction
+  | CopyAction
+  | CutAction
+  | PasteAction;
 
 export interface ReplayOptions {
   /** Speed multiplier for animated replay (e.g., 2 = twice as fast, 0 = instant) */

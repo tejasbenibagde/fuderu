@@ -350,6 +350,29 @@
                 Deselect
               </button>
             </div>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+                margin-top: 6px;
+              "
+            >
+              <button
+                id="copySelectionBtn"
+                type="button"
+                style="padding: 6px 8px; font-size: 12px"
+              >
+                Copy (Ctrl+C)
+              </button>
+              <button
+                id="cutSelectionBtn"
+                type="button"
+                style="padding: 6px 8px; font-size: 12px"
+              >
+                Cut (Ctrl+X)
+              </button>
+            </div>
             <button
               id="selectAllBtn"
               type="button"
@@ -614,6 +637,13 @@
             <span id="status" class="status-badge">Ready</span>
           </div>
           <div class="actions">
+            <button id="cutBtn" type="button" title="Cut (Ctrl+X)">Cut</button>
+            <button id="copyBtn" type="button" title="Copy (Ctrl+C)">
+              Copy
+            </button>
+            <button id="pasteBtn" type="button" title="Paste (Ctrl+V)">
+              Paste
+            </button>
             <button id="undoBtn" type="button" title="Undo (Ctrl+Z)">
               Undo
             </button>

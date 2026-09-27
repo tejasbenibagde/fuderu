@@ -1226,6 +1226,29 @@ window.addEventListener("keydown", (event) => {
   } else if ((event.ctrlKey || event.metaKey) && key === "y") {
     painter.redo();
     renderLayerList();
+  } else if ((event.ctrlKey || event.metaKey) && key === "c") {
+    const data = painter.copy();
+    if (data) status.textContent = `Copied (${data.width}x${data.height}px)`;
+  } else if ((event.ctrlKey || event.metaKey) && key === "x") {
+    try {
+      const data = painter.cut();
+      if (data) {
+        refreshLayerPreviews();
+        status.textContent = `Cut (${data.width}x${data.height}px)`;
+      }
+    } catch (err) {
+      status.textContent = err instanceof Error ? err.message : "Cut failed";
+    }
+  } else if ((event.ctrlKey || event.metaKey) && key === "v") {
+    try {
+      const res = painter.paste();
+      if (res) {
+        refreshLayerPreviews();
+        status.textContent = `Pasted (${res.width}x${res.height}px)`;
+      }
+    } catch (err) {
+      status.textContent = err instanceof Error ? err.message : "Paste failed";
+    }
   } else if (key === "b") {
     setTool("brush");
   } else if (key === "e") {
@@ -1389,6 +1412,49 @@ $("selectAllBtn")?.addEventListener("click", () => {
   painter.selectAll();
   status.textContent = "Selected all";
 });
+
+function handleCut() {
+  try {
+    const data = painter.cut();
+    if (data) {
+      refreshLayerPreviews();
+      status.textContent = `Cut (${data.width}x${data.height}px)`;
+    } else {
+      status.textContent = "Nothing to cut";
+    }
+  } catch (err) {
+    status.textContent = err instanceof Error ? err.message : "Cut failed";
+  }
+}
+
+function handleCopy() {
+  const data = painter.copy();
+  if (data) {
+    status.textContent = `Copied (${data.width}x${data.height}px)`;
+  } else {
+    status.textContent = "Nothing to copy";
+  }
+}
+
+function handlePaste() {
+  try {
+    const res = painter.paste();
+    if (res) {
+      refreshLayerPreviews();
+      status.textContent = `Pasted (${res.width}x${res.height}px)`;
+    } else {
+      status.textContent = "Clipboard is empty";
+    }
+  } catch (err) {
+    status.textContent = err instanceof Error ? err.message : "Paste failed";
+  }
+}
+
+$("cutBtn")?.addEventListener("click", handleCut);
+$("cutSelectionBtn")?.addEventListener("click", handleCut);
+$("copyBtn")?.addEventListener("click", handleCopy);
+$("copySelectionBtn")?.addEventListener("click", handleCopy);
+$("pasteBtn")?.addEventListener("click", handlePaste);
 
 // Inline icons
 const EYE_OPEN_ICON = `<svg viewBox="0 0 20 20" fill="none"><path d="M1.5 10S4.5 4 10 4s8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.4" stroke="currentColor" stroke-width="1.4"/></svg>`;

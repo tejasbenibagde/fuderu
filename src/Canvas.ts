@@ -53,6 +53,14 @@ import type {
 } from "./types/selection";
 import { TransformSession } from "./Transform";
 import type { TransformOptions, TransformBoxOptions } from "./types/transform";
+import { ClipboardStore } from "./Clipboard";
+import type {
+  ClipboardData,
+  CopyOptions,
+  CutOptions,
+  PasteOptions,
+  PasteResult,
+} from "./types/clipboard";
 
 let sharedColorCanvas: HTMLCanvasElement | null = null;
 let sharedColorCtx: CanvasRenderingContext2D | null = null;
@@ -417,6 +425,7 @@ export class Canvas implements HistoryContext {
       transform: this.transformSession
         ? this.transformSession.getSnapshot()
         : null,
+      clipboard: ClipboardStore.getSnapshot(),
     });
   }
 
@@ -2110,6 +2119,26 @@ export class Canvas implements HistoryContext {
           }
           break;
         }
+        case "copy": {
+          this.copy({ layerId: action.layerId });
+          break;
+        }
+        case "cut": {
+          this.cut({ layerId: action.layerId });
+          break;
+        }
+        case "paste": {
+          this.paste({
+            targetLayerId: action.targetLayerId,
+            x: action.x,
+            y: action.y,
+            createLayer: action.createLayer,
+            newLayerName: action.newLayerName,
+            asSelection: action.asSelection,
+            asTransform: action.asTransform,
+          });
+          break;
+        }
       }
     } finally {
       this.isReplaying = previousReplaying;
@@ -2434,6 +2463,392 @@ export class Canvas implements HistoryContext {
     if (this.transformSession && this.transformSession.isActive()) {
       this.transformSession.renderTransformBox(ctx, options);
     }
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                            Clipboard Pipeline                              */
+  /* -------------------------------------------------------------------------- */
+
+  private calculateLayerAABB(
+    ctx: CanvasRenderingContext2D,
+    w: number,
+    h: number,
+  ): { x: number; y: number; width: number; height: number } | null {
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    let minX = w;
+    let minY = h;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const alpha = data[(y * w + x) * 4 + 3];
+        if (alpha > 0) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    if (maxX < minX || maxY < minY) {
+      return null;
+    }
+
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX + 1,
+      height: maxY - minY + 1,
+    };
+  }
+
+  /**
+   * Copies the active selection (or active layer's non-empty bounds) to the clipboard.
+   */
+  public copy(options?: CopyOptions): ClipboardData | null {
+    const targetLayer = options?.layerId
+      ? this.getLayerById(options.layerId)
+      : this.layers.getActive();
+
+    if (!targetLayer) return null;
+
+    const layerCtx = targetLayer.canvas.getContext("2d");
+    if (!layerCtx) return null;
+
+    const docW = targetLayer.canvas.width;
+    const docH = targetLayer.canvas.height;
+    const hasSel = this.hasSelection();
+
+    let clipX: number;
+    let clipY: number;
+    let clipW: number;
+    let clipH: number;
+
+    if (hasSel) {
+      const bounds = this.selection.getBounds();
+      if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
+        return null;
+      }
+      clipX = bounds.x;
+      clipY = bounds.y;
+      clipW = bounds.width;
+      clipH = bounds.height;
+    } else {
+      const aabb = this.calculateLayerAABB(layerCtx, docW, docH);
+      if (!aabb || aabb.width <= 0 || aabb.height <= 0) {
+        return null;
+      }
+      clipX = aabb.x;
+      clipY = aabb.y;
+      clipW = aabb.width;
+      clipH = aabb.height;
+    }
+
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = Math.max(1, clipW);
+    tempCanvas.height = Math.max(1, clipH);
+    const tempCtx = tempCanvas.getContext("2d");
+    if (!tempCtx) return null;
+
+    tempCtx.drawImage(
+      targetLayer.canvas,
+      clipX,
+      clipY,
+      clipW,
+      clipH,
+      0,
+      0,
+      clipW,
+      clipH,
+    );
+
+    let maskData: ImageData | null = null;
+    if (hasSel) {
+      tempCtx.save();
+      tempCtx.globalCompositeOperation = "destination-in";
+      tempCtx.drawImage(this.selection.getMaskCanvas(), -clipX, -clipY);
+      tempCtx.restore();
+
+      const maskSliceCanvas = document.createElement("canvas");
+      maskSliceCanvas.width = Math.max(1, clipW);
+      maskSliceCanvas.height = Math.max(1, clipH);
+      const mCtx = maskSliceCanvas.getContext("2d");
+      if (mCtx) {
+        mCtx.drawImage(this.selection.getMaskCanvas(), -clipX, -clipY);
+        maskData = mCtx.getImageData(0, 0, clipW, clipH);
+      }
+    }
+
+    const imageData = tempCtx.getImageData(0, 0, clipW, clipH);
+    const clipboardData: ClipboardData = {
+      width: clipW,
+      height: clipH,
+      x: clipX,
+      y: clipY,
+      imageData,
+      maskData,
+      sourceLayerId: targetLayer.id,
+      timestamp: Date.now(),
+    };
+
+    ClipboardStore.set(clipboardData);
+
+    this.recordAction({
+      type: "copy",
+      layerId: targetLayer.id,
+      isSelection: hasSel,
+    });
+
+    this.emit("clipboard:copy", clipboardData);
+    this.emitStateChange();
+
+    return clipboardData;
+  }
+
+  /**
+   * Cuts the active selection (or active layer content) into the clipboard,
+   * clearing the region from the layer and pushing an undoable history patch.
+   */
+  public cut(options?: CutOptions): ClipboardData | null {
+    const targetLayer = options?.layerId
+      ? this.getLayerById(options.layerId)
+      : this.layers.getActive();
+
+    if (!targetLayer) return null;
+    if (targetLayer.locked) {
+      throw new Error("Cannot cut from locked layer");
+    }
+
+    const layerCtx = targetLayer.canvas.getContext("2d");
+    if (!layerCtx) return null;
+
+    const data = this.copy(options);
+    if (!data) return null;
+
+    const beforeData = layerCtx.getImageData(
+      data.x,
+      data.y,
+      data.width,
+      data.height,
+    );
+
+    if (this.hasSelection()) {
+      layerCtx.save();
+      layerCtx.globalCompositeOperation = "destination-out";
+      layerCtx.drawImage(this.selection.getMaskCanvas(), 0, 0);
+      layerCtx.restore();
+    } else {
+      layerCtx.clearRect(data.x, data.y, data.width, data.height);
+    }
+
+    const afterData = layerCtx.getImageData(
+      data.x,
+      data.y,
+      data.width,
+      data.height,
+    );
+
+    this.history.pushPatch({
+      layerId: targetLayer.id,
+      beforeData,
+      afterData,
+      x: data.x,
+      y: data.y,
+      description: "Cut",
+    });
+
+    this.cacheBelowValid = false;
+    this.brush.syncOriCanvas();
+    this.renderLayers();
+
+    this.recordAction({
+      type: "cut",
+      layerId: targetLayer.id,
+      isSelection: this.hasSelection(),
+    });
+
+    this.emit("clipboard:cut", data);
+    this.emitStateChange();
+
+    return data;
+  }
+
+  /**
+   * Pastes clipboard content onto target layer or a new layer, with optional
+   * selection marquee or interactive floating transform integration.
+   */
+  public paste(options?: PasteOptions): PasteResult | null {
+    const data = options?.clipboardData ?? ClipboardStore.get();
+    if (!data) return null;
+
+    let targetLayer: Layer | undefined;
+
+    if (options?.createLayer) {
+      targetLayer = this.createLayer(options.newLayerName ?? "Pasted Layer");
+    } else {
+      targetLayer = options?.targetLayerId
+        ? this.getLayerById(options.targetLayerId)
+        : this.layers.getActive();
+    }
+
+    if (!targetLayer) return null;
+    if (targetLayer.locked) {
+      throw new Error("Cannot paste onto locked layer");
+    }
+
+    const layerCtx = targetLayer.canvas.getContext("2d");
+    if (!layerCtx) return null;
+
+    this.setActiveLayer(targetLayer.id);
+
+    const dstX = options?.x !== undefined ? options.x : data.x;
+    const dstY = options?.y !== undefined ? options.y : data.y;
+
+    const docW = targetLayer.canvas.width;
+    const docH = targetLayer.canvas.height;
+
+    const minX = Math.max(0, Math.min(docW, dstX));
+    const minY = Math.max(0, Math.min(docH, dstY));
+    const maxX = Math.max(0, Math.min(docW, dstX + data.width));
+    const maxY = Math.max(0, Math.min(docH, dstY + data.height));
+
+    const patchW = Math.max(1, maxX - minX);
+    const patchH = Math.max(1, maxY - minY);
+
+    const beforeData = layerCtx.getImageData(minX, minY, patchW, patchH);
+
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = data.width;
+    tempCanvas.height = data.height;
+    const tempCtx = tempCanvas.getContext("2d");
+    if (tempCtx) {
+      tempCtx.putImageData(data.imageData, 0, 0);
+    }
+
+    layerCtx.save();
+    if (targetLayer.alphaLock) {
+      layerCtx.globalCompositeOperation = "source-atop";
+    }
+    layerCtx.drawImage(tempCanvas, dstX, dstY);
+    layerCtx.restore();
+
+    const afterData = layerCtx.getImageData(minX, minY, patchW, patchH);
+
+    this.history.pushPatch({
+      layerId: targetLayer.id,
+      beforeData,
+      afterData,
+      x: minX,
+      y: minY,
+      description: "Paste",
+    });
+
+    if (options?.asSelection) {
+      this.selectRectangle(dstX, dstY, data.width, data.height, "replace");
+    }
+
+    this.cacheBelowValid = false;
+    this.brush.syncOriCanvas();
+    this.renderLayers();
+
+    if (options?.asTransform) {
+      this.beginTransform(targetLayer.id);
+    }
+
+    this.recordAction({
+      type: "paste",
+      targetLayerId: targetLayer.id,
+      x: dstX,
+      y: dstY,
+      createLayer: options?.createLayer,
+      newLayerName: options?.newLayerName,
+      asSelection: options?.asSelection,
+      asTransform: options?.asTransform,
+    });
+
+    this.emit("clipboard:paste", data);
+    this.emitStateChange();
+
+    return {
+      layerId: targetLayer.id,
+      x: dstX,
+      y: dstY,
+      width: data.width,
+      height: data.height,
+    };
+  }
+
+  public getClipboard(): ClipboardData | null {
+    return ClipboardStore.get();
+  }
+
+  public hasClipboard(): boolean {
+    return ClipboardStore.has();
+  }
+
+  public clearClipboard(): void {
+    ClipboardStore.clear();
+    this.emitStateChange();
+  }
+
+  /**
+   * Copies active selection or layer region to the system clipboard via Web Clipboard API.
+   */
+  public async copyToSystemClipboard(): Promise<boolean> {
+    const data = this.copy();
+    if (!data) return false;
+    if (typeof navigator === "undefined" || !navigator.clipboard) return false;
+
+    const blob = await ClipboardStore.toBlob(data);
+    if (!blob || typeof ClipboardItem === "undefined") return false;
+
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob }),
+      ]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Reads an image from the system clipboard and pastes it into the canvas.
+   */
+  public async pasteFromSystemClipboard(
+    options?: PasteOptions,
+  ): Promise<PasteResult | null> {
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      return this.paste(options);
+    }
+
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imageType = item.types.find((t) => t.startsWith("image/"));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const data = await ClipboardStore.fromBlob(
+            blob,
+            options?.x ?? 0,
+            options?.y ?? 0,
+          );
+          if (data) {
+            return this.paste({
+              ...options,
+              clipboardData: data,
+            });
+          }
+        }
+      }
+    } catch {
+      // Fall back to internal clipboard
+    }
+
+    return this.paste(options);
   }
 
   destroy(): void {

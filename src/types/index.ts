@@ -56,6 +56,9 @@ export type {
   ClearSelectionAction,
   InvertSelectionAction,
   TransformAction,
+  CopyAction,
+  CutAction,
+  PasteAction,
   CanvasAction,
   ReplayOptions,
 } from "./actions";
@@ -79,3 +82,11 @@ export type {
   TransformBoxOptions,
   TransformSnapshot,
 } from "./transform";
+export type {
+  ClipboardData,
+  ClipboardSnapshot,
+  CopyOptions,
+  CutOptions,
+  PasteOptions,
+  PasteResult,
+} from "./clipboard";

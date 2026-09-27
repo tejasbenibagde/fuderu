@@ -24,6 +24,15 @@ All notable changes to the **fuderu** drawing library will be documented in this
   - History stack integration: committing transformations pushes undoable/redoable bounding patch entries (`HistoryManager.pushPatch`).
   - Action logging and replay pipeline integration for `TransformAction` via `canvas.replay()`.
   - Reactive event dispatching (`transform:start`, `transform:change`, `transform:end`) and inclusion of `transform` in `CanvasSnapshot`.
+- **Clipboard Pipeline**:
+  - `ClipboardStore` static manager providing in-memory clipboard data sharing across multiple layers and separate `Canvas` document instances.
+  - Core clipboard methods on `Canvas`: `canvas.copy()`, `canvas.cut()`, `canvas.paste()`, `canvas.hasClipboard()`, `canvas.getClipboard()`, and `canvas.clearClipboard()`.
+  - Selection-aware extraction: cuts and copies extract pixels strictly bounded and clipped to the active selection mask (or non-empty layer content when no selection is active).
+  - Undo/redo integration: cutting and pasting generate bounding before/after patch entries on `HistoryManager`.
+  - Flexible paste configuration (`PasteOptions`): custom destination coordinates, new layer creation (`createLayer: true`), automatic selection marquee matching pasted bounds (`asSelection: true`), and immediate floating transform activation (`asTransform: true`).
+  - Action logging and replay pipeline integration for `CopyAction`, `CutAction`, and `PasteAction` via `canvas.replay()`.
+  - Event dispatching (`clipboard:copy`, `clipboard:cut`, `clipboard:paste`) and inclusion of `clipboard` in `CanvasSnapshot`.
+  - Web Clipboard API integration: async helpers `copyToSystemClipboard()` and `pasteFromSystemClipboard()` for PNG Blob interoperability.
 
 ---
 

@@ -3,6 +3,7 @@ import type { CanvasAction, StrokeAction } from "./actions";
 import type { LayerId, LayerSnapshot } from "./layers";
 import type { SelectionSnapshot } from "./selection";
 import type { TransformSnapshot } from "./transform";
+import type { ClipboardData, ClipboardSnapshot } from "./clipboard";
 
 export interface StrokeBounds {
   x: number;
@@ -43,6 +44,7 @@ export interface CanvasSnapshot {
   readonly history: HistoryState;
   readonly selection?: SelectionSnapshot | null;
   readonly transform?: TransformSnapshot | null;
+  readonly clipboard?: ClipboardSnapshot | null;
 }
 
 export interface CanvasEventMap {
@@ -57,4 +59,7 @@ export interface CanvasEventMap {
   "transform:start": (transform: TransformSnapshot) => void;
   "transform:change": (transform: TransformSnapshot) => void;
   "transform:end": () => void;
+  "clipboard:copy": (data: ClipboardData) => void;
+  "clipboard:cut": (data: ClipboardData) => void;
+  "clipboard:paste": (data: ClipboardData) => void;
 }

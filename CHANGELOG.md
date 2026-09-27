@@ -4,6 +4,29 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
+## [1.5.0-alpha.1] - 2026-09-27
+
+- **Selection Tools**:
+  - `Selection` class managing an offscreen bitmask buffer supporting boolean combine modes (`replace`, `add`, `subtract`, `intersect`).
+  - Marquee selections: `canvas.selectRectangle`, `canvas.selectEllipse`, `canvas.selectLasso`.
+  - Whole-canvas operations: `canvas.selectAllSelection`, `canvas.clearSelection`, `canvas.invertSelection`.
+  - Dual-tone animated marching ants outline rendering (`renderSelectionOutline`).
+  - Selection clipping integration: brush and eraser strokes, shapes, text, bucket fill, layer fill, and layer clear operations are constrained to the active selection.
+  - Event dispatching (`selection:change`) and inclusion in `CanvasSnapshot`.
+  - Action logging and replay pipeline integration for selection actions (`SelectRectangleAction`, `SelectEllipseAction`, `SelectLassoAction`, `SelectAllAction`, `ClearSelectionAction`, `InvertSelectionAction`).
+- **Transform Operations**:
+  - `TransformSession` class managing floating layer and selection transformation with live translation, non-uniform scaling, rotation, and customizable origin/pivot.
+  - Interactive transform lifecycle on `Canvas`: `canvas.beginTransform`, `canvas.commitTransform`, `canvas.cancelTransform`, `canvas.isTransforming`, `canvas.getTransformSession`.
+  - One-shot transformation helper methods: `canvas.translate`, `canvas.rotate`, `canvas.scale`, `canvas.flipHorizontal`, `canvas.flipVertical`, and `canvas.transform`.
+  - Floating bounding box rendering (`renderTransformBox`) featuring directional resize handles, rotator handle with stem, and center pivot crosshair.
+  - Selection integration: lifts only selected raster pixels into the floating canvas buffer, erases the source area from the layer canvas, transforms the selection mask upon commit (`selection.setTransformedMask`), and clamps history patch bounds.
+  - Layer properties preservation: supports alpha lock (`source-atop`) and layer blend mode compositing during interactive floating transforms.
+  - History stack integration: committing transformations pushes undoable/redoable bounding patch entries (`HistoryManager.pushPatch`).
+  - Action logging and replay pipeline integration for `TransformAction` via `canvas.replay()`.
+  - Reactive event dispatching (`transform:start`, `transform:change`, `transform:end`) and inclusion of `transform` in `CanvasSnapshot`.
+
+---
+
 ## [1.4.2] - 2026-08-23
 
 - **Immutable `CanvasSnapshot`**:

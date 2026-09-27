@@ -107,6 +107,14 @@
             >
               ➰ Lasso
             </button>
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="transform"
+              title="Free Transform (V)"
+            >
+              ✨ Transform
+            </button>
           </div>
         </section>
 
@@ -353,6 +361,117 @@
               "
             >
               Select All
+            </button>
+          </div>
+
+          <div
+            class="tool-options-group"
+            id="transformOptions"
+            style="display: none"
+          >
+            <p
+              style="font-size: 11.5px; color: var(--ink-dim); margin: 0 0 8px"
+            >
+              Drag inside box to move. Use controls to rotate, scale, flip, or
+              apply.
+            </p>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+                margin-bottom: 6px;
+              "
+            >
+              <button
+                id="flipHBtn"
+                type="button"
+                style="padding: 6px 8px; font-size: 12px"
+              >
+                Flip Horiz
+              </button>
+              <button
+                id="flipVBtn"
+                type="button"
+                style="padding: 6px 8px; font-size: 12px"
+              >
+                Flip Vert
+              </button>
+            </div>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+                margin-bottom: 6px;
+              "
+            >
+              <button
+                id="rotateCWBtn"
+                type="button"
+                style="padding: 6px 8px; font-size: 12px"
+              >
+                Rotate +90°
+              </button>
+              <button
+                id="rotateCCWBtn"
+                type="button"
+                style="padding: 6px 8px; font-size: 12px"
+              >
+                Rotate -90°
+              </button>
+            </div>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 6px;
+                margin-bottom: 8px;
+              "
+            >
+              <button
+                id="scaleUpBtn"
+                type="button"
+                style="padding: 6px 4px; font-size: 12px"
+              >
+                +10%
+              </button>
+              <button
+                id="scaleDownBtn"
+                type="button"
+                style="padding: 6px 4px; font-size: 12px"
+              >
+                -10%
+              </button>
+              <button
+                id="resetTransformBtn"
+                type="button"
+                style="padding: 6px 4px; font-size: 12px"
+              >
+                Reset
+              </button>
+            </div>
+            <button
+              id="commitTransformBtn"
+              type="button"
+              style="
+                width: 100%;
+                padding: 7px 8px;
+                font-size: 12px;
+                background: var(--accent);
+                color: white;
+                border-color: var(--accent);
+                margin-bottom: 6px;
+              "
+            >
+              Apply Transform (Enter)
+            </button>
+            <button
+              id="cancelTransformBtn"
+              type="button"
+              style="width: 100%; padding: 6px 8px; font-size: 12px"
+            >
+              Cancel (Esc)
             </button>
           </div>
         </section>

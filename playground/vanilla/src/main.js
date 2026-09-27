@@ -511,6 +511,7 @@ function setTool(tool) {
     rectSelect: "Rect Marquee",
     ellipseSelect: "Ellipse Marquee",
     lassoSelect: "Lasso Select",
+    transform: "Transform",
   };
 
   if (activeToolName) activeToolName.textContent = toolLabels[tool] || tool;
@@ -529,6 +530,16 @@ function setTool(tool) {
   const isSelectionTool =
     tool === "rectSelect" || tool === "ellipseSelect" || tool === "lassoSelect";
   $("selectionOptions").style.display = isSelectionTool ? "block" : "none";
+  $("transformOptions").style.display = tool === "transform" ? "block" : "none";
+
+  if (tool === "transform" && !painter.isTransforming()) {
+    try {
+      painter.beginTransform();
+    } catch (err) {
+      status.textContent =
+        err instanceof Error ? err.message : "Transform failed";
+    }
+  }
 
   if (controls.eraser) {
     controls.eraser.checked = tool === "eraser";
@@ -572,7 +583,7 @@ function clearOverlay() {
 }
 
 function animateMarchingAnts() {
-  if (overlayCanvas && !isSelecting) {
+  if (overlayCanvas && !isSelecting && !isDrawingShape) {
     const ctx = overlayCanvas.getContext("2d");
     if (ctx) {
       ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
@@ -582,6 +593,14 @@ function animateMarchingAnts() {
           dashOffset: marchingAntsOffset,
           dashPattern: [4, 4],
           lineWidth: 1.5,
+        });
+      }
+      if (painter.isTransforming()) {
+        painter.renderTransformBox(ctx, {
+          handleSize: 10,
+          boxColor: "#0088ff",
+          handleStrokeColor: "#0088ff",
+          handleColor: "#ffffff",
         });
       }
     }
@@ -665,6 +684,38 @@ canvasEl.addEventListener(
     e.preventDefault();
 
     const coords = getCanvasCoords(e);
+
+    if (state.activeTool === "transform") {
+      if (!painter.isTransforming()) {
+        try {
+          painter.beginTransform();
+        } catch (err) {
+          status.textContent =
+            err instanceof Error ? err.message : "Transform failed";
+          return;
+        }
+      }
+      const session = painter.getTransformSession();
+      if (!session) return;
+
+      let lastCoords = coords;
+      const onMove = (moveEv) => {
+        const curCoords = getCanvasCoords(moveEv);
+        const dx = curCoords.x - lastCoords.x;
+        const dy = curCoords.y - lastCoords.y;
+        lastCoords = curCoords;
+        session.translate(dx, dy);
+        painter.renderLayers();
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        status.textContent = `Moved to (${Math.round(session.translation.x)}, ${Math.round(session.translation.y)})`;
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      return;
+    }
 
     if (state.activeTool === "bucket") {
       try {
@@ -1195,11 +1246,132 @@ window.addEventListener("keydown", (event) => {
     setTool("rectSelect");
   } else if (key === "q") {
     setTool("lassoSelect");
+  } else if (key === "v") {
+    setTool("transform");
+  } else if (key === "enter") {
+    if (painter.isTransforming()) {
+      painter.commitTransform();
+      refreshLayerPreviews();
+      setTool("brush");
+      status.textContent = "Applied transform";
+    }
   } else if (key === "escape") {
-    painter.clearSelection();
-    clearOverlay();
-    status.textContent = "Deselected";
+    if (painter.isTransforming()) {
+      painter.cancelTransform();
+      refreshLayerPreviews();
+      setTool("brush");
+      status.textContent = "Cancelled transform";
+    } else {
+      painter.clearSelection();
+      clearOverlay();
+      status.textContent = "Deselected";
+    }
   }
+});
+
+$("flipHBtn")?.addEventListener("click", () => {
+  if (!painter.isTransforming()) {
+    try {
+      painter.beginTransform();
+    } catch (err) {
+      status.textContent = err.message;
+      return;
+    }
+  }
+  painter.flipHorizontal();
+  status.textContent = "Flipped horizontally";
+});
+
+$("flipVBtn")?.addEventListener("click", () => {
+  if (!painter.isTransforming()) {
+    try {
+      painter.beginTransform();
+    } catch (err) {
+      status.textContent = err.message;
+      return;
+    }
+  }
+  painter.flipVertical();
+  status.textContent = "Flipped vertically";
+});
+
+$("rotateCWBtn")?.addEventListener("click", () => {
+  if (!painter.isTransforming()) {
+    try {
+      painter.beginTransform();
+    } catch (err) {
+      status.textContent = err.message;
+      return;
+    }
+  }
+  painter.rotate(Math.PI / 2);
+  status.textContent = "Rotated +90°";
+});
+
+$("rotateCCWBtn")?.addEventListener("click", () => {
+  if (!painter.isTransforming()) {
+    try {
+      painter.beginTransform();
+    } catch (err) {
+      status.textContent = err.message;
+      return;
+    }
+  }
+  painter.rotate(-Math.PI / 2);
+  status.textContent = "Rotated -90°";
+});
+
+$("scaleUpBtn")?.addEventListener("click", () => {
+  if (!painter.isTransforming()) {
+    try {
+      painter.beginTransform();
+    } catch (err) {
+      status.textContent = err.message;
+      return;
+    }
+  }
+  painter.scale(1.1, 1.1);
+  status.textContent = "Scaled +10%";
+});
+
+$("scaleDownBtn")?.addEventListener("click", () => {
+  if (!painter.isTransforming()) {
+    try {
+      painter.beginTransform();
+    } catch (err) {
+      status.textContent = err.message;
+      return;
+    }
+  }
+  painter.scale(0.9, 0.9);
+  status.textContent = "Scaled -10%";
+});
+
+$("resetTransformBtn")?.addEventListener("click", () => {
+  const session = painter.getTransformSession();
+  if (session) {
+    session.reset();
+    painter.renderLayers();
+    status.textContent = "Reset transform";
+  }
+});
+
+$("commitTransformBtn")?.addEventListener("click", () => {
+  if (painter.isTransforming()) {
+    painter.commitTransform();
+    refreshLayerPreviews();
+    status.textContent = "Applied transform";
+  }
+  setTool("brush");
+});
+
+$("cancelTransformBtn")?.addEventListener("click", () => {
+  if (painter.isTransforming()) {
+    painter.cancelTransform();
+    refreshLayerPreviews();
+    status.textContent = "Cancelled transform";
+  }
+  setTool("brush");
 });
 
 $("invertSelectionBtn")?.addEventListener("click", () => {

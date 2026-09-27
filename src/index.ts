@@ -2,6 +2,8 @@ export { Canvas } from "./Canvas";
 export { Brush } from "./Brush";
 export { Layer } from "./Layer";
 export { LayerManager } from "./LayerManager";
+export { Selection } from "./Selection";
+export { TransformSession } from "./Transform";
 export type { CreateLayerOptions, UpdateLayerOptions } from "./LayerManager";
 export * from "./utils";
 export * from "./types";

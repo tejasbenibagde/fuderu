@@ -51,6 +51,8 @@ import type {
   SelectionBounds,
   SelectionOutlineOptions,
 } from "./types/selection";
+import { TransformSession } from "./Transform";
+import type { TransformOptions, TransformBoxOptions } from "./types/transform";
 
 let sharedColorCanvas: HTMLCanvasElement | null = null;
 let sharedColorCtx: CanvasRenderingContext2D | null = null;
@@ -96,6 +98,7 @@ export class Canvas implements HistoryContext {
   public history: HistoryManager;
   public selection!: Selection;
   private scratchCanvas: HTMLCanvasElement | null = null;
+  private transformSession: TransformSession | null = null;
 
   private isDrawing = false;
   private activePointerId: number | null = null;
@@ -231,6 +234,14 @@ export class Canvas implements HistoryContext {
         ctx.globalAlpha = activeLayer.opacity;
         ctx.globalCompositeOperation = activeLayer.blendMode;
         ctx.drawImage(activeLayer.canvas, 0, 0);
+
+        if (
+          this.transformSession &&
+          this.transformSession.isActive() &&
+          this.transformSession.layerId === activeLayer.id
+        ) {
+          this.transformSession.render(ctx);
+        }
       }
 
       // 3. Draw above layers
@@ -240,6 +251,14 @@ export class Canvas implements HistoryContext {
         ctx.globalAlpha = layer.opacity;
         ctx.globalCompositeOperation = layer.blendMode;
         ctx.drawImage(layer.canvas, 0, 0);
+
+        if (
+          this.transformSession &&
+          this.transformSession.isActive() &&
+          this.transformSession.layerId === layer.id
+        ) {
+          this.transformSession.render(ctx);
+        }
       }
 
       ctx.globalAlpha = 1;
@@ -253,6 +272,14 @@ export class Canvas implements HistoryContext {
         ctx.globalAlpha = layer.opacity;
         ctx.globalCompositeOperation = layer.blendMode;
         ctx.drawImage(layer.canvas, 0, 0);
+
+        if (
+          this.transformSession &&
+          this.transformSession.isActive() &&
+          this.transformSession.layerId === layer.id
+        ) {
+          this.transformSession.render(ctx);
+        }
       }
 
       ctx.globalAlpha = 1;
@@ -387,6 +414,9 @@ export class Canvas implements HistoryContext {
       activeLayerId: this.layers.getActiveId() ?? "",
       history: this.history.getHistoryState(),
       selection: this.selection ? this.selection.getSnapshot() : null,
+      transform: this.transformSession
+        ? this.transformSession.getSnapshot()
+        : null,
     });
   }
 
@@ -2063,6 +2093,23 @@ export class Canvas implements HistoryContext {
           this.invertSelection();
           break;
         }
+        case "transform": {
+          const layer = this.getLayerById(action.layerId);
+          if (layer) {
+            this.setActiveLayer(layer.id);
+            const session = new TransformSession(
+              layer,
+              action.isSelection ? this.selection : null,
+            );
+            session.applyOptions(action.options);
+            session.commit(layer, action.isSelection ? this.selection : null);
+            this.cacheBelowValid = false;
+            this.brush.syncOriCanvas();
+            this.renderLayers();
+            this.emitStateChange();
+          }
+          break;
+        }
       }
     } finally {
       this.isReplaying = previousReplaying;
@@ -2190,6 +2237,203 @@ export class Canvas implements HistoryContext {
     options?: SelectionOutlineOptions,
   ): void {
     this.selection.renderOutline(ctx, options);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                           Transformation API                               */
+  /* -------------------------------------------------------------------------- */
+
+  /**
+   * Begins an interactive floating transformation session on the active layer (or specified layer).
+   * If a selection is active, lifts only the selected pixels into the floating session.
+   */
+  public beginTransform(layerId?: LayerId): TransformSession {
+    const targetLayer = layerId
+      ? this.getLayerById(layerId)
+      : this.layers.getActive();
+
+    if (!targetLayer) {
+      throw new Error(`Target layer not found`);
+    }
+    if (targetLayer.locked) {
+      throw new Error("Cannot transform locked layer");
+    }
+
+    if (this.transformSession && this.transformSession.isActive()) {
+      this.commitTransform();
+    }
+
+    this.setActiveLayer(targetLayer.id);
+    const session = new TransformSession(targetLayer, this.selection);
+    this.transformSession = session;
+
+    this.cacheBelowValid = false;
+    this.brush.syncOriCanvas();
+    this.renderLayers();
+    this.emit("transform:start", session.getSnapshot());
+    this.emitStateChange();
+
+    return session;
+  }
+
+  public getTransformSession(): TransformSession | null {
+    return this.transformSession && this.transformSession.isActive()
+      ? this.transformSession
+      : null;
+  }
+
+  public isTransforming(): boolean {
+    return !!(this.transformSession && this.transformSession.isActive());
+  }
+
+  public commitTransform(): void {
+    if (!this.transformSession || !this.transformSession.isActive()) {
+      return;
+    }
+
+    const session = this.transformSession;
+    const targetLayer = this.getLayerById(session.layerId);
+    if (!targetLayer) {
+      session.cancel(this.layers.getActive());
+      this.transformSession = null;
+      return;
+    }
+
+    const res = session.commit(targetLayer, this.selection);
+
+    this.history.pushPatch({
+      layerId: targetLayer.id,
+      beforeData: res.beforeData,
+      afterData: res.afterData,
+      x: res.patchBounds.x,
+      y: res.patchBounds.y,
+      description: "Transform",
+    });
+
+    this.recordAction({
+      type: "transform",
+      layerId: targetLayer.id,
+      options: {
+        translation: { ...session.translation },
+        scale: { ...session.scale },
+        rotation: session.rotation,
+        origin: { ...session.origin },
+      },
+      isSelection: session.isSelection,
+    });
+
+    this.transformSession = null;
+    this.cacheBelowValid = false;
+    this.brush.syncOriCanvas();
+    this.renderLayers();
+    this.emit("transform:end");
+    this.emitStateChange();
+  }
+
+  public cancelTransform(): void {
+    if (!this.transformSession || !this.transformSession.isActive()) {
+      return;
+    }
+
+    const session = this.transformSession;
+    const targetLayer = this.getLayerById(session.layerId);
+    if (targetLayer) {
+      session.cancel(targetLayer);
+    }
+
+    this.transformSession = null;
+    this.cacheBelowValid = false;
+    this.brush.syncOriCanvas();
+    this.renderLayers();
+    this.emit("transform:end");
+    this.emitStateChange();
+  }
+
+  public transform(options: TransformOptions, layerId?: LayerId): void {
+    if (this.transformSession && this.transformSession.isActive()) {
+      this.transformSession.applyOptions(options);
+      this.renderLayers();
+      this.emit("transform:change", this.transformSession.getSnapshot());
+      this.emitStateChange();
+    } else {
+      const session = this.beginTransform(layerId);
+      session.applyOptions(options);
+      this.commitTransform();
+    }
+  }
+
+  public flipHorizontal(layerId?: LayerId): void {
+    if (this.transformSession && this.transformSession.isActive()) {
+      this.transformSession.flipHorizontal();
+      this.renderLayers();
+      this.emit("transform:change", this.transformSession.getSnapshot());
+      this.emitStateChange();
+    } else {
+      const session = this.beginTransform(layerId);
+      session.flipHorizontal();
+      this.commitTransform();
+    }
+  }
+
+  public flipVertical(layerId?: LayerId): void {
+    if (this.transformSession && this.transformSession.isActive()) {
+      this.transformSession.flipVertical();
+      this.renderLayers();
+      this.emit("transform:change", this.transformSession.getSnapshot());
+      this.emitStateChange();
+    } else {
+      const session = this.beginTransform(layerId);
+      session.flipVertical();
+      this.commitTransform();
+    }
+  }
+
+  public rotate(angleRad: number, layerId?: LayerId): void {
+    if (this.transformSession && this.transformSession.isActive()) {
+      this.transformSession.rotate(angleRad);
+      this.renderLayers();
+      this.emit("transform:change", this.transformSession.getSnapshot());
+      this.emitStateChange();
+    } else {
+      const session = this.beginTransform(layerId);
+      session.rotate(angleRad);
+      this.commitTransform();
+    }
+  }
+
+  public scale(sx: number, sy: number, layerId?: LayerId): void {
+    if (this.transformSession && this.transformSession.isActive()) {
+      this.transformSession.scaleBy(sx, sy);
+      this.renderLayers();
+      this.emit("transform:change", this.transformSession.getSnapshot());
+      this.emitStateChange();
+    } else {
+      const session = this.beginTransform(layerId);
+      session.scaleBy(sx, sy);
+      this.commitTransform();
+    }
+  }
+
+  public translate(dx: number, dy: number, layerId?: LayerId): void {
+    if (this.transformSession && this.transformSession.isActive()) {
+      this.transformSession.translate(dx, dy);
+      this.renderLayers();
+      this.emit("transform:change", this.transformSession.getSnapshot());
+      this.emitStateChange();
+    } else {
+      const session = this.beginTransform(layerId);
+      session.translate(dx, dy);
+      this.commitTransform();
+    }
+  }
+
+  public renderTransformBox(
+    ctx: CanvasRenderingContext2D,
+    options?: TransformBoxOptions,
+  ): void {
+    if (this.transformSession && this.transformSession.isActive()) {
+      this.transformSession.renderTransformBox(ctx, options);
+    }
   }
 
   destroy(): void {

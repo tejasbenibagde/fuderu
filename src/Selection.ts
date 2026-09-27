@@ -61,9 +61,17 @@ export class Selection {
     return this.maskCanvas;
   }
 
+  private static readonly INACTIVE_SNAPSHOT: SelectionSnapshot = Object.freeze({
+    active: false,
+    bounds: null,
+  });
+
   public getSnapshot(): SelectionSnapshot {
+    if (!this._active) {
+      return Selection.INACTIVE_SNAPSHOT;
+    }
     return Object.freeze({
-      active: this._active,
+      active: true,
       bounds: this.getBounds(),
       lastShapeType: this._lastShape?.type,
     });
@@ -379,6 +387,24 @@ export class Selection {
         height: maxY - minY + 1,
       };
     }
+  }
+
+  public updateBoundsFromMask(): void {
+    this.recomputeBounds();
+    this._lastShape = this._bounds ? { type: "custom" } : null;
+    this.emitChange();
+  }
+
+  public setTransformedMask(
+    newMaskCanvas: HTMLCanvasElement,
+    newBounds: SelectionBounds,
+  ): void {
+    this.maskCtx.clearRect(0, 0, this.width, this.height);
+    this.maskCtx.drawImage(newMaskCanvas, 0, 0);
+    this._active = newBounds.width > 0 && newBounds.height > 0;
+    this._bounds = this._active ? { ...newBounds } : null;
+    this._lastShape = this._active ? { type: "custom" } : null;
+    this.emitChange();
   }
 
   public renderOutline(

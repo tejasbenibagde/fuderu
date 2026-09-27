@@ -8,6 +8,7 @@ import type {
   TextStyleOptions,
 } from "./commands";
 import type { SelectionMode, SelectionPoint } from "./selection";
+import type { TransformOptions } from "./transform";
 
 /**
  * Strongly-typed identifier for recorded canvas actions.
@@ -158,6 +159,13 @@ export interface InvertSelectionAction extends BaseAction {
   type: "invertSelection";
 }
 
+export interface TransformAction extends BaseAction {
+  type: "transform";
+  layerId: LayerId;
+  options: TransformOptions;
+  isSelection?: boolean;
+}
+
 export type CanvasAction =
   | StrokeAction
   | FloodFillAction
@@ -178,7 +186,8 @@ export type CanvasAction =
   | SelectLassoAction
   | SelectAllAction
   | ClearSelectionAction
-  | InvertSelectionAction;
+  | InvertSelectionAction
+  | TransformAction;
 
 export interface ReplayOptions {
   /** Speed multiplier for animated replay (e.g., 2 = twice as fast, 0 = instant) */

@@ -79,11 +79,13 @@ export class HistoryManager {
   }
 
   public getHistoryState(): HistoryState {
+    const undoLen = this.undoStack.length;
+    const redoLen = this.redoStack.length;
     return {
-      canUndo: this.canUndo(),
-      canRedo: this.canRedo(),
-      index: this.undoStack.length,
-      length: this.undoStack.length + this.redoStack.length,
+      canUndo: undoLen > 0,
+      canRedo: redoLen > 0,
+      index: undoLen,
+      length: undoLen + redoLen,
     };
   }
 

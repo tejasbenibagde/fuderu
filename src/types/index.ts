@@ -55,6 +55,7 @@ export type {
   SelectAllAction,
   ClearSelectionAction,
   InvertSelectionAction,
+  TransformAction,
   CanvasAction,
   ReplayOptions,
 } from "./actions";
@@ -69,3 +70,12 @@ export type {
   SelectEllipseOptions,
   SelectLassoOptions,
 } from "./selection";
+export type {
+  Point2D,
+  TransformBounds,
+  TransformOptions,
+  TransformHandleType,
+  TransformHandle,
+  TransformBoxOptions,
+  TransformSnapshot,
+} from "./transform";

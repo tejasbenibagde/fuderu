@@ -7,6 +7,7 @@ import type {
   DrawLineOptions,
   TextStyleOptions,
 } from "./commands";
+import type { SelectionMode, SelectionPoint } from "./selection";
 
 /**
  * Strongly-typed identifier for recorded canvas actions.
@@ -120,6 +121,43 @@ export interface DuplicateLayerAction extends BaseAction {
   newLayerId?: LayerId;
 }
 
+export interface SelectRectangleAction extends BaseAction {
+  type: "selectRectangle";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  mode?: SelectionMode;
+}
+
+export interface SelectEllipseAction extends BaseAction {
+  type: "selectEllipse";
+  cx: number;
+  cy: number;
+  radiusX: number;
+  radiusY: number;
+  rotation?: number;
+  mode?: SelectionMode;
+}
+
+export interface SelectLassoAction extends BaseAction {
+  type: "selectLasso";
+  points: SelectionPoint[];
+  mode?: SelectionMode;
+}
+
+export interface SelectAllAction extends BaseAction {
+  type: "selectAll";
+}
+
+export interface ClearSelectionAction extends BaseAction {
+  type: "clearSelection";
+}
+
+export interface InvertSelectionAction extends BaseAction {
+  type: "invertSelection";
+}
+
 export type CanvasAction =
   | StrokeAction
   | FloodFillAction
@@ -134,7 +172,13 @@ export type CanvasAction =
   | MoveLayerAction
   | SetLayerPropertiesAction
   | MergeLayerDownAction
-  | DuplicateLayerAction;
+  | DuplicateLayerAction
+  | SelectRectangleAction
+  | SelectEllipseAction
+  | SelectLassoAction
+  | SelectAllAction
+  | ClearSelectionAction
+  | InvertSelectionAction;
 
 export interface ReplayOptions {
   /** Speed multiplier for animated replay (e.g., 2 = twice as fast, 0 = instant) */

@@ -44,6 +44,13 @@ import {
   MoveLayerHistoryEntry,
   type HistoryContext,
 } from "./HistoryManager";
+import { Selection } from "./Selection";
+import type {
+  SelectionMode,
+  SelectionPoint,
+  SelectionBounds,
+  SelectionOutlineOptions,
+} from "./types/selection";
 
 let sharedColorCanvas: HTMLCanvasElement | null = null;
 let sharedColorCtx: CanvasRenderingContext2D | null = null;
@@ -87,6 +94,8 @@ export class Canvas implements HistoryContext {
   public brush: Brush;
   private layers!: LayerManager;
   public history: HistoryManager;
+  public selection!: Selection;
+  private scratchCanvas: HTMLCanvasElement | null = null;
 
   private isDrawing = false;
   private activePointerId: number | null = null;
@@ -268,6 +277,14 @@ export class Canvas implements HistoryContext {
     }
 
     this.layers = new LayerManager(this.documentWidth, this.documentHeight);
+    this.selection = new Selection(this.documentWidth, this.documentHeight);
+    this.selection.onSelectionChange = (snap) => {
+      this.brush?.setSelectionMask?.(
+        this.selection.isActive() ? this.selection.getMaskCanvas() : null,
+      );
+      this.emit("selection:change", snap);
+      this.emitStateChange();
+    };
 
     this.canvas.width = this.documentWidth;
     this.canvas.height = this.documentHeight;
@@ -294,6 +311,7 @@ export class Canvas implements HistoryContext {
     this.documentHeight = Math.max(1, Math.round(rect.height * dpr));
 
     this.layers.resize(this.documentWidth, this.documentHeight);
+    this.selection.resize(this.documentWidth, this.documentHeight);
 
     this.canvas.width = this.documentWidth;
     this.canvas.height = this.documentHeight;
@@ -303,6 +321,9 @@ export class Canvas implements HistoryContext {
 
     // Reload brush context to reinitialise internal canvases
     this.brush.loadContext(this.layers.getActive().canvas);
+    this.brush?.setSelectionMask?.(
+      this.selection.isActive() ? this.selection.getMaskCanvas() : null,
+    );
     this.renderLayers();
     this.emitStateChange();
   }
@@ -365,6 +386,7 @@ export class Canvas implements HistoryContext {
       layers: Object.freeze(this.layers.getAll().map((l) => l.toSnapshot())),
       activeLayerId: this.layers.getActiveId() ?? "",
       history: this.history.getHistoryState(),
+      selection: this.selection ? this.selection.getSnapshot() : null,
     });
   }
 
@@ -442,6 +464,77 @@ export class Canvas implements HistoryContext {
     if (x >= right || y >= bottom) return null;
 
     return { x, y, width: right - x, height: bottom - y };
+  }
+
+  private clampPatchBoundsToSelection(
+    patch: { x: number; y: number; width: number; height: number } | null,
+  ): { x: number; y: number; width: number; height: number } | null {
+    if (!patch) return null;
+    if (!this.hasSelection()) return patch;
+    const sb = this.selection.getBounds();
+    if (!sb) return patch;
+
+    const x1 = Math.max(patch.x, sb.x);
+    const y1 = Math.max(patch.y, sb.y);
+    const x2 = Math.min(patch.x + patch.width, sb.x + sb.width);
+    const y2 = Math.min(patch.y + patch.height, sb.y + sb.height);
+
+    if (x2 <= x1 || y2 <= y1) {
+      return null;
+    }
+    return {
+      x: x1,
+      y: y1,
+      width: x2 - x1,
+      height: y2 - y1,
+    };
+  }
+
+  private getScratchCanvas(): HTMLCanvasElement {
+    if (!this.scratchCanvas) {
+      this.scratchCanvas = document.createElement("canvas");
+    }
+    if (
+      this.scratchCanvas.width !== this.documentWidth ||
+      this.scratchCanvas.height !== this.documentHeight
+    ) {
+      this.scratchCanvas.width = this.documentWidth;
+      this.scratchCanvas.height = this.documentHeight;
+    }
+    return this.scratchCanvas;
+  }
+
+  private drawWithSelectionClip(
+    ctx: CanvasRenderingContext2D,
+    alphaLock: boolean | undefined,
+    drawCallback: (targetCtx: CanvasRenderingContext2D) => void,
+  ): void {
+    if (this.hasSelection()) {
+      const scratch = this.getScratchCanvas();
+      const sCtx = scratch.getContext("2d");
+      if (sCtx) {
+        sCtx.clearRect(0, 0, this.documentWidth, this.documentHeight);
+        drawCallback(sCtx);
+        sCtx.save();
+        sCtx.globalCompositeOperation = "destination-in";
+        sCtx.drawImage(this.selection.getMaskCanvas(), 0, 0);
+        sCtx.restore();
+
+        ctx.save();
+        if (alphaLock) {
+          ctx.globalCompositeOperation = "source-atop";
+        }
+        ctx.drawImage(scratch, 0, 0);
+        ctx.restore();
+      }
+    } else {
+      ctx.save();
+      if (alphaLock) {
+        ctx.globalCompositeOperation = "source-atop";
+      }
+      drawCallback(ctx);
+      ctx.restore();
+    }
   }
 
   private handlePointerDown = (e: PointerEvent) => {
@@ -851,29 +944,51 @@ export class Canvas implements HistoryContext {
     }
     const ctx = activeLayer.canvas.getContext("2d");
     if (ctx) {
-      const beforeData = ctx.getImageData(
+      let patch = this.getPatchBounds(
         0,
         0,
         activeLayer.canvas.width,
         activeLayer.canvas.height,
       );
+      if (this.hasSelection()) {
+        patch = this.clampPatchBoundsToSelection(patch);
+      }
+      if (!patch) return;
 
-      this.brush.clear();
+      const beforeData = ctx.getImageData(
+        patch.x,
+        patch.y,
+        patch.width,
+        patch.height,
+      );
+
+      if (this.hasSelection()) {
+        ctx.save();
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.drawImage(this.selection.getMaskCanvas(), 0, 0);
+        ctx.restore();
+        this.brush.syncOriCanvas();
+        this.cacheBelowValid = false;
+        this.renderLayers();
+        this.emitStateChange();
+      } else {
+        this.brush.clear();
+      }
 
       const afterData = ctx.getImageData(
-        0,
-        0,
-        activeLayer.canvas.width,
-        activeLayer.canvas.height,
+        patch.x,
+        patch.y,
+        patch.width,
+        patch.height,
       );
-      this.history.push(
-        new CanvasStateHistoryEntry(
-          activeLayer.id,
-          beforeData,
-          afterData,
-          this,
-        ),
-      );
+      this.history.pushPatch({
+        layerId: activeLayer.id,
+        beforeData,
+        afterData,
+        x: patch.x,
+        y: patch.y,
+        description: "Clear layer",
+      });
     } else {
       this.brush.clear();
       this.cacheBelowValid = false;
@@ -971,6 +1086,7 @@ export class Canvas implements HistoryContext {
       this.layers.clear();
     }
     this.layers.resize(width, height);
+    this.selection.resize(width, height);
     this.documentWidth = width;
     this.documentHeight = height;
 
@@ -982,6 +1098,9 @@ export class Canvas implements HistoryContext {
     if (ctx) ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     this.brush.loadContext(this.layers.getActive().canvas);
+    this.brush?.setSelectionMask?.(
+      this.selection.isActive() ? this.selection.getMaskCanvas() : null,
+    );
     this.history.clear();
     this.cacheBelowValid = false;
     this.renderLayers();
@@ -1131,24 +1250,37 @@ export class Canvas implements HistoryContext {
 
     const w = activeLayer.canvas.width;
     const h = activeLayer.canvas.height;
-    const beforeData = ctx.getImageData(0, 0, w, h);
-
-    ctx.save();
-    if (activeLayer.alphaLock) {
-      ctx.globalCompositeOperation = "source-atop";
+    let patch = this.getPatchBounds(0, 0, w, h);
+    if (this.hasSelection()) {
+      patch = this.clampPatchBoundsToSelection(patch);
     }
-    ctx.fillStyle = color;
-    ctx.fillRect(0, 0, w, h);
-    ctx.restore();
+    if (!patch) return;
 
-    const afterData = ctx.getImageData(0, 0, w, h);
+    const beforeData = ctx.getImageData(
+      patch.x,
+      patch.y,
+      patch.width,
+      patch.height,
+    );
+
+    this.drawWithSelectionClip(ctx, activeLayer.alphaLock, (tCtx) => {
+      tCtx.fillStyle = color;
+      tCtx.fillRect(0, 0, w, h);
+    });
+
+    const afterData = ctx.getImageData(
+      patch.x,
+      patch.y,
+      patch.width,
+      patch.height,
+    );
 
     this.history.pushPatch({
       layerId: activeLayer.id,
       beforeData,
       afterData,
-      x: 0,
-      y: 0,
+      x: patch.x,
+      y: patch.y,
       description: `Fill layer with ${color}`,
     });
 
@@ -1234,6 +1366,10 @@ export class Canvas implements HistoryContext {
       return;
     }
 
+    if (this.hasSelection() && !this.selection.containsPoint(startX, startY)) {
+      return;
+    }
+
     const imgData = ctx.getImageData(0, 0, width, height);
     const data = imgData.data;
 
@@ -1273,6 +1409,10 @@ export class Canvas implements HistoryContext {
 
       if (visited[idx]) continue;
       visited[idx] = 1;
+
+      if (this.hasSelection() && !this.selection.isPixelSelected(cx, cy)) {
+        continue;
+      }
 
       const pIdx = idx * 4;
       const r = data[pIdx];
@@ -1317,20 +1457,34 @@ export class Canvas implements HistoryContext {
       }
     }
 
-    const patchW = maxX - minX + 1;
-    const patchH = maxY - minY + 1;
-    const beforeData = ctx.getImageData(minX, minY, patchW, patchH);
+    let patch = this.getPatchBounds(minX, minY, maxX + 1, maxY + 1);
+    if (this.hasSelection()) {
+      patch = this.clampPatchBoundsToSelection(patch);
+    }
+    if (!patch) return;
+
+    const beforeData = ctx.getImageData(
+      patch.x,
+      patch.y,
+      patch.width,
+      patch.height,
+    );
 
     ctx.putImageData(imgData, 0, 0);
 
-    const afterData = ctx.getImageData(minX, minY, patchW, patchH);
+    const afterData = ctx.getImageData(
+      patch.x,
+      patch.y,
+      patch.width,
+      patch.height,
+    );
 
     this.history.pushPatch({
       layerId: activeLayer.id,
       beforeData,
       afterData,
-      x: minX,
-      y: minY,
+      x: patch.x,
+      y: patch.y,
       description: "Flood fill",
     });
 
@@ -1371,12 +1525,15 @@ export class Canvas implements HistoryContext {
     } = options;
 
     const sw = stroke ? strokeWidth : 0;
-    const patch = this.getPatchBounds(
+    let patch = this.getPatchBounds(
       Math.min(x, x + width) - sw - 2,
       Math.min(y, y + height) - sw - 2,
       Math.max(x, x + width) + sw + 2,
       Math.max(y, y + height) + sw + 2,
     );
+    if (this.hasSelection()) {
+      patch = this.clampPatchBoundsToSelection(patch);
+    }
     if (!patch) return;
 
     const beforeData = ctx.getImageData(
@@ -1386,30 +1543,27 @@ export class Canvas implements HistoryContext {
       patch.height,
     );
 
-    ctx.save();
-    if (activeLayer.alphaLock) {
-      ctx.globalCompositeOperation = "source-atop";
-    }
-    if (fill) ctx.fillStyle = fillColor;
-    if (stroke) {
-      ctx.strokeStyle = strokeColor ?? fillColor;
-      ctx.lineWidth = strokeWidth;
-    }
-
-    if (cornerRadius > 0 && typeof ctx.roundRect === "function") {
-      ctx.beginPath();
-      ctx.roundRect(x, y, width, height, cornerRadius);
-      if (fill) ctx.fill();
-      if (stroke) ctx.stroke();
-    } else {
-      if (fill) ctx.fillRect(x, y, width, height);
+    this.drawWithSelectionClip(ctx, activeLayer.alphaLock, (tCtx) => {
+      if (fill) tCtx.fillStyle = fillColor;
       if (stroke) {
-        ctx.beginPath();
-        ctx.rect(x, y, width, height);
-        ctx.stroke();
+        tCtx.strokeStyle = strokeColor ?? fillColor;
+        tCtx.lineWidth = strokeWidth;
       }
-    }
-    ctx.restore();
+
+      if (cornerRadius > 0 && typeof tCtx.roundRect === "function") {
+        tCtx.beginPath();
+        tCtx.roundRect(x, y, width, height, cornerRadius);
+        if (fill) tCtx.fill();
+        if (stroke) tCtx.stroke();
+      } else {
+        if (fill) tCtx.fillRect(x, y, width, height);
+        if (stroke) {
+          tCtx.beginPath();
+          tCtx.rect(x, y, width, height);
+          tCtx.stroke();
+        }
+      }
+    });
 
     const afterData = ctx.getImageData(
       patch.x,
@@ -1465,12 +1619,15 @@ export class Canvas implements HistoryContext {
     const sin = Math.sin(rotation);
     const extentX = Math.hypot(radiusX * cos, radiusY * sin);
     const extentY = Math.hypot(radiusX * sin, radiusY * cos);
-    const patch = this.getPatchBounds(
+    let patch = this.getPatchBounds(
       x - extentX - sw - 2,
       y - extentY - sw - 2,
       x + extentX + sw + 2,
       y + extentY + sw + 2,
     );
+    if (this.hasSelection()) {
+      patch = this.clampPatchBoundsToSelection(patch);
+    }
     if (!patch) return;
 
     const beforeData = ctx.getImageData(
@@ -1480,22 +1637,19 @@ export class Canvas implements HistoryContext {
       patch.height,
     );
 
-    ctx.save();
-    if (activeLayer.alphaLock) {
-      ctx.globalCompositeOperation = "source-atop";
-    }
-    if (fill) ctx.fillStyle = fillColor;
-    if (stroke) {
-      ctx.strokeStyle = strokeColor ?? fillColor;
-      ctx.lineWidth = strokeWidth;
-    }
+    this.drawWithSelectionClip(ctx, activeLayer.alphaLock, (tCtx) => {
+      if (fill) tCtx.fillStyle = fillColor;
+      if (stroke) {
+        tCtx.strokeStyle = strokeColor ?? fillColor;
+        tCtx.lineWidth = strokeWidth;
+      }
 
-    ctx.beginPath();
-    ctx.ellipse(x, y, radiusX, radiusY, rotation, 0, Math.PI * 2);
+      tCtx.beginPath();
+      tCtx.ellipse(x, y, radiusX, radiusY, rotation, 0, Math.PI * 2);
 
-    if (fill) ctx.fill();
-    if (stroke) ctx.stroke();
-    ctx.restore();
+      if (fill) tCtx.fill();
+      if (stroke) tCtx.stroke();
+    });
 
     const afterData = ctx.getImageData(
       patch.x,
@@ -1544,12 +1698,15 @@ export class Canvas implements HistoryContext {
     } = options;
 
     const sw = strokeWidth;
-    const patch = this.getPatchBounds(
+    let patch = this.getPatchBounds(
       Math.min(x1, x2) - sw - 2,
       Math.min(y1, y2) - sw - 2,
       Math.max(x1, x2) + sw + 2,
       Math.max(y1, y2) + sw + 2,
     );
+    if (this.hasSelection()) {
+      patch = this.clampPatchBoundsToSelection(patch);
+    }
     if (!patch) return;
 
     const beforeData = ctx.getImageData(
@@ -1559,19 +1716,16 @@ export class Canvas implements HistoryContext {
       patch.height,
     );
 
-    ctx.save();
-    if (activeLayer.alphaLock) {
-      ctx.globalCompositeOperation = "source-atop";
-    }
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = strokeWidth;
-    ctx.lineCap = lineCap;
+    this.drawWithSelectionClip(ctx, activeLayer.alphaLock, (tCtx) => {
+      tCtx.strokeStyle = strokeColor;
+      tCtx.lineWidth = strokeWidth;
+      tCtx.lineCap = lineCap;
 
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-    ctx.restore();
+      tCtx.beginPath();
+      tCtx.moveTo(x1, y1);
+      tCtx.lineTo(x2, y2);
+      tCtx.stroke();
+    });
 
     const afterData = ctx.getImageData(
       patch.x,
@@ -1625,16 +1779,9 @@ export class Canvas implements HistoryContext {
       maxWidth,
     } = style ?? {};
 
-    ctx.save();
-    if (activeLayer.alphaLock) {
-      ctx.globalCompositeOperation = "source-atop";
-    }
-    ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
-    ctx.fillStyle = color;
-    ctx.textAlign = align;
-    ctx.textBaseline = baseline;
-
-    const metrics = ctx.measureText(text);
+    const metricsCtx = this.getScratchCanvas().getContext("2d") ?? ctx;
+    metricsCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+    const metrics = metricsCtx.measureText(text);
     const textWidth = maxWidth
       ? Math.min(metrics.width, maxWidth)
       : metrics.width;
@@ -1649,14 +1796,16 @@ export class Canvas implements HistoryContext {
     else if (baseline === "bottom" || baseline === "alphabetic")
       top = y - fontHeight;
 
-    const patch = this.getPatchBounds(
+    let patch = this.getPatchBounds(
       left - 5,
       top - 5,
       left + textWidth + 5,
       top + fontHeight + 5,
     );
+    if (this.hasSelection()) {
+      patch = this.clampPatchBoundsToSelection(patch);
+    }
     if (!patch) {
-      ctx.restore();
       return;
     }
 
@@ -1667,12 +1816,18 @@ export class Canvas implements HistoryContext {
       patch.height,
     );
 
-    if (maxWidth !== undefined) {
-      ctx.fillText(text, x, y, maxWidth);
-    } else {
-      ctx.fillText(text, x, y);
-    }
-    ctx.restore();
+    this.drawWithSelectionClip(ctx, activeLayer.alphaLock, (tCtx) => {
+      tCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+      tCtx.fillStyle = color;
+      tCtx.textAlign = align;
+      tCtx.textBaseline = baseline;
+
+      if (maxWidth !== undefined) {
+        tCtx.fillText(text, x, y, maxWidth);
+      } else {
+        tCtx.fillText(text, x, y);
+      }
+    });
 
     const afterData = ctx.getImageData(
       patch.x,
@@ -1871,6 +2026,43 @@ export class Canvas implements HistoryContext {
           this.duplicateLayer(action.layerId);
           break;
         }
+        case "selectRectangle": {
+          this.selectRectangle(
+            action.x,
+            action.y,
+            action.width,
+            action.height,
+            action.mode,
+          );
+          break;
+        }
+        case "selectEllipse": {
+          this.selectEllipse(
+            action.cx,
+            action.cy,
+            action.radiusX,
+            action.radiusY,
+            action.rotation,
+            action.mode,
+          );
+          break;
+        }
+        case "selectLasso": {
+          this.selectLasso(action.points, action.mode);
+          break;
+        }
+        case "selectAll": {
+          this.selectAllSelection();
+          break;
+        }
+        case "clearSelection": {
+          this.clearSelection();
+          break;
+        }
+        case "invertSelection": {
+          this.invertSelection();
+          break;
+        }
       }
     } finally {
       this.isReplaying = previousReplaying;
@@ -1903,6 +2095,101 @@ export class Canvas implements HistoryContext {
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                            Selection Tools API                             */
+  /* -------------------------------------------------------------------------- */
+
+  public selectRectangle(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    mode?: SelectionMode,
+  ): void {
+    this.selection.selectRectangle(x, y, width, height, mode);
+    this.recordAction({
+      type: "selectRectangle",
+      x,
+      y,
+      width,
+      height,
+      mode,
+    });
+  }
+
+  public selectEllipse(
+    cx: number,
+    cy: number,
+    radiusX: number,
+    radiusY: number,
+    rotation: number = 0,
+    mode?: SelectionMode,
+  ): void {
+    this.selection.selectEllipse(cx, cy, radiusX, radiusY, rotation, mode);
+    this.recordAction({
+      type: "selectEllipse",
+      cx,
+      cy,
+      radiusX,
+      radiusY,
+      rotation,
+      mode,
+    });
+  }
+
+  public selectLasso(points: SelectionPoint[], mode?: SelectionMode): void {
+    this.selection.selectLasso(points, mode);
+    this.recordAction({
+      type: "selectLasso",
+      points: points.map((p) => ({ x: p.x, y: p.y })),
+      mode,
+    });
+  }
+
+  public selectAllSelection(): void {
+    this.selection.selectAll();
+    this.recordAction({
+      type: "selectAll",
+    });
+  }
+
+  public selectAll(): void {
+    this.selectAllSelection();
+  }
+
+  public clearSelection(): void {
+    this.selection.clear();
+    this.recordAction({
+      type: "clearSelection",
+    });
+  }
+
+  public deselect(): void {
+    this.clearSelection();
+  }
+
+  public invertSelection(): void {
+    this.selection.invert();
+    this.recordAction({
+      type: "invertSelection",
+    });
+  }
+
+  public hasSelection(): boolean {
+    return this.selection.isActive();
+  }
+
+  public getSelectionBounds(): SelectionBounds | null {
+    return this.selection.getBounds();
+  }
+
+  public renderSelectionOutline(
+    ctx: CanvasRenderingContext2D,
+    options?: SelectionOutlineOptions,
+  ): void {
+    this.selection.renderOutline(ctx, options);
   }
 
   destroy(): void {

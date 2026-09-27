@@ -508,6 +508,9 @@ function setTool(tool) {
     line: "Line",
     text: "Text",
     eyedropper: "Eyedropper",
+    rectSelect: "Rect Marquee",
+    ellipseSelect: "Ellipse Marquee",
+    lassoSelect: "Lasso Select",
   };
 
   if (activeToolName) activeToolName.textContent = toolLabels[tool] || tool;
@@ -523,6 +526,9 @@ function setTool(tool) {
   $("textOptions").style.display = tool === "text" ? "block" : "none";
   $("eyedropperOptions").style.display =
     tool === "eyedropper" ? "block" : "none";
+  const isSelectionTool =
+    tool === "rectSelect" || tool === "ellipseSelect" || tool === "lassoSelect";
+  $("selectionOptions").style.display = isSelectionTool ? "block" : "none";
 
   if (controls.eraser) {
     controls.eraser.checked = tool === "eraser";
@@ -554,12 +560,35 @@ function getCanvasCoords(event) {
 
 let isDrawingShape = false;
 let shapeStartCoords = null;
+let isSelecting = false;
+let selectionStartCoords = null;
+let lassoPoints = [];
+let marchingAntsOffset = 0;
 
 function clearOverlay() {
   if (!overlayCanvas) return;
   const ctx = overlayCanvas.getContext("2d");
   if (ctx) ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 }
+
+function animateMarchingAnts() {
+  if (overlayCanvas && !isSelecting) {
+    const ctx = overlayCanvas.getContext("2d");
+    if (ctx) {
+      ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+      if (painter.hasSelection()) {
+        marchingAntsOffset = (marchingAntsOffset + 0.4) % 8;
+        painter.renderSelectionOutline(ctx, {
+          dashOffset: marchingAntsOffset,
+          dashPattern: [4, 4],
+          lineWidth: 1.5,
+        });
+      }
+    }
+  }
+  requestAnimationFrame(animateMarchingAnts);
+}
+requestAnimationFrame(animateMarchingAnts);
 
 function drawOverlayPreview(endCoords) {
   if (!overlayCanvas || !shapeStartCoords) return;
@@ -776,6 +805,114 @@ canvasEl.addEventListener(
           console.error(err);
           status.textContent =
             err instanceof Error ? err.message : "Shape drawing failed";
+        }
+      };
+
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", onPointerUp);
+    } else if (
+      state.activeTool === "rectSelect" ||
+      state.activeTool === "ellipseSelect" ||
+      state.activeTool === "lassoSelect"
+    ) {
+      isSelecting = true;
+      selectionStartCoords = coords;
+      lassoPoints = [coords];
+
+      const onPointerMove = (moveEv) => {
+        if (!isSelecting || !overlayCanvas) return;
+        const currentCoords = getCanvasCoords(moveEv);
+        const ctx = overlayCanvas.getContext("2d");
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        ctx.save();
+        ctx.strokeStyle = "#0088ff";
+        ctx.fillStyle = "rgba(0, 136, 255, 0.15)";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+
+        if (state.activeTool === "rectSelect") {
+          const minX = Math.min(selectionStartCoords.x, currentCoords.x);
+          const minY = Math.min(selectionStartCoords.y, currentCoords.y);
+          const w = Math.abs(currentCoords.x - selectionStartCoords.x);
+          const h = Math.abs(currentCoords.y - selectionStartCoords.y);
+          ctx.fillRect(minX, minY, w, h);
+          ctx.strokeRect(minX, minY, w, h);
+        } else if (state.activeTool === "ellipseSelect") {
+          const minX = Math.min(selectionStartCoords.x, currentCoords.x);
+          const minY = Math.min(selectionStartCoords.y, currentCoords.y);
+          const w = Math.abs(currentCoords.x - selectionStartCoords.x);
+          const h = Math.abs(currentCoords.y - selectionStartCoords.y);
+          ctx.beginPath();
+          ctx.ellipse(
+            minX + w / 2,
+            minY + h / 2,
+            Math.max(0.1, w / 2),
+            Math.max(0.1, h / 2),
+            0,
+            0,
+            Math.PI * 2,
+          );
+          ctx.fill();
+          ctx.stroke();
+        } else if (state.activeTool === "lassoSelect") {
+          lassoPoints.push(currentCoords);
+          ctx.beginPath();
+          ctx.moveTo(lassoPoints[0].x, lassoPoints[0].y);
+          for (let i = 1; i < lassoPoints.length; i++) {
+            ctx.lineTo(lassoPoints[i].x, lassoPoints[i].y);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+      };
+
+      const onPointerUp = (upEv) => {
+        if (!isSelecting) return;
+        isSelecting = false;
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", onPointerUp);
+
+        const endCoords = getCanvasCoords(upEv);
+        const mode = $("selectionModeSelect")?.value || "replace";
+
+        try {
+          if (state.activeTool === "rectSelect") {
+            const minX = Math.min(selectionStartCoords.x, endCoords.x);
+            const minY = Math.min(selectionStartCoords.y, endCoords.y);
+            const w = Math.abs(endCoords.x - selectionStartCoords.x);
+            const h = Math.abs(endCoords.y - selectionStartCoords.y);
+            if (w > 2 && h > 2) {
+              painter.selectRectangle(minX, minY, w, h, mode);
+              status.textContent = `Selected rect: ${Math.round(w)}x${Math.round(h)}px (${mode})`;
+            }
+          } else if (state.activeTool === "ellipseSelect") {
+            const minX = Math.min(selectionStartCoords.x, endCoords.x);
+            const minY = Math.min(selectionStartCoords.y, endCoords.y);
+            const w = Math.abs(endCoords.x - selectionStartCoords.x);
+            const h = Math.abs(endCoords.y - selectionStartCoords.y);
+            if (w > 2 && h > 2) {
+              painter.selectEllipse(
+                minX + w / 2,
+                minY + h / 2,
+                w / 2,
+                h / 2,
+                0,
+                mode,
+              );
+              status.textContent = `Selected ellipse: ${Math.round(w)}x${Math.round(h)}px (${mode})`;
+            }
+          } else if (state.activeTool === "lassoSelect") {
+            lassoPoints.push(endCoords);
+            if (lassoPoints.length >= 3) {
+              painter.selectLasso(lassoPoints, mode);
+              status.textContent = `Selected lasso: ${lassoPoints.length} points (${mode})`;
+            }
+          }
+        } catch (err) {
+          console.error(err);
+          status.textContent = "Selection failed";
         }
       };
 
@@ -1054,7 +1191,31 @@ window.addEventListener("keydown", (event) => {
     setTool("text");
   } else if (key === "i") {
     setTool("eyedropper");
+  } else if (key === "m") {
+    setTool("rectSelect");
+  } else if (key === "q") {
+    setTool("lassoSelect");
+  } else if (key === "escape") {
+    painter.clearSelection();
+    clearOverlay();
+    status.textContent = "Deselected";
   }
+});
+
+$("invertSelectionBtn")?.addEventListener("click", () => {
+  painter.invertSelection();
+  status.textContent = "Inverted selection";
+});
+
+$("deselectBtn")?.addEventListener("click", () => {
+  painter.clearSelection();
+  clearOverlay();
+  status.textContent = "Cleared selection";
+});
+
+$("selectAllBtn")?.addEventListener("click", () => {
+  painter.selectAll();
+  status.textContent = "Selected all";
 });
 
 // Inline icons

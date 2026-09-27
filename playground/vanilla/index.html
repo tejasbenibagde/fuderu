@@ -83,6 +83,30 @@
             >
               💧 Color
             </button>
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="rectSelect"
+              title="Rect Marquee (M)"
+            >
+              ⬚ Rect Sel
+            </button>
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="ellipseSelect"
+              title="Ellipse Marquee"
+            >
+              ⬭ Ellipse Sel
+            </button>
+            <button
+              type="button"
+              class="tool-btn"
+              data-tool="lassoSelect"
+              title="Freehand Lasso (Q)"
+            >
+              ➰ Lasso
+            </button>
           </div>
         </section>
 
@@ -279,6 +303,57 @@
                 >#111111</span
               >
             </div>
+          </div>
+
+          <div
+            class="tool-options-group"
+            id="selectionOptions"
+            style="display: none"
+          >
+            <label class="field">
+              <span>Combine Mode</span>
+              <select id="selectionModeSelect">
+                <option value="replace">New (Replace)</option>
+                <option value="add">Add (+)</option>
+                <option value="subtract">Subtract (-)</option>
+                <option value="intersect">Intersect (∩)</option>
+              </select>
+            </label>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+                margin-top: 6px;
+              "
+            >
+              <button
+                id="invertSelectionBtn"
+                type="button"
+                style="padding: 6px 8px; font-size: 12px"
+              >
+                Invert
+              </button>
+              <button
+                id="deselectBtn"
+                type="button"
+                style="padding: 6px 8px; font-size: 12px"
+              >
+                Deselect
+              </button>
+            </div>
+            <button
+              id="selectAllBtn"
+              type="button"
+              style="
+                width: 100%;
+                margin-top: 6px;
+                padding: 6px 8px;
+                font-size: 12px;
+              "
+            >
+              Select All
+            </button>
           </div>
         </section>
 

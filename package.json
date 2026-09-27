@@ -1,6 +1,6 @@
 {
   "name": "fuderu",
-  "version": "1.4.2",
+  "version": "1.5.0-alpha.1",
   "description": "High-performance canvas drawing library with a different approach to brush stroke rendering.",
   "type": "module",
   "sideEffects": false,

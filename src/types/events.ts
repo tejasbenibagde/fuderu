@@ -1,6 +1,7 @@
 import type { Layer } from "../Layer";
 import type { CanvasAction, StrokeAction } from "./actions";
 import type { LayerId, LayerSnapshot } from "./layers";
+import type { SelectionSnapshot } from "./selection";
 
 export interface StrokeBounds {
   x: number;
@@ -39,6 +40,7 @@ export interface CanvasSnapshot {
   readonly layers: readonly LayerSnapshot[];
   readonly activeLayerId: LayerId;
   readonly history: HistoryState;
+  readonly selection?: SelectionSnapshot | null;
 }
 
 export interface CanvasEventMap {
@@ -49,4 +51,5 @@ export interface CanvasEventMap {
   "action:record": (action: CanvasAction) => void;
   "history:change": (history: HistoryState) => void;
   "layer:change": (layers: readonly Layer[], activeLayerId: LayerId) => void;
+  "selection:change": (selection: SelectionSnapshot) => void;
 }

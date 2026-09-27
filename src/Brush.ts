@@ -69,6 +69,7 @@ export class Brush {
   private _strokeOpacity: number = 1;
   isEraser: boolean = false;
   isAlphaLocked: boolean = false;
+  private selectionMask: HTMLCanvasElement | null = null;
 
   private points: Point[] = [];
   private drawCount: number = 0;
@@ -233,6 +234,14 @@ export class Brush {
   removeImage() {
     this.shapeCanvas = void 0;
     this.shapeContext = void 0;
+  }
+
+  /**
+   * Set or clear the active selection clipping mask.
+   * When set, brush strokes are strictly clipped to the mask boundaries.
+   */
+  setSelectionMask(mask: HTMLCanvasElement | null): void {
+    this.selectionMask = mask;
   }
 
   /**
@@ -839,6 +848,12 @@ export class Brush {
     this.transferContext!.drawImage(strokeCanvas, 0, 0);
     resetOpacity(this.transferContext!);
 
+    if (this.selectionMask) {
+      this.transferContext!.globalCompositeOperation = "destination-in";
+      this.transferContext!.drawImage(this.selectionMask, 0, 0);
+      this.transferContext!.globalCompositeOperation = "source-over";
+    }
+
     const savedGco = this.context!.globalCompositeOperation;
     const savedFilter = this.context!.filter;
 
@@ -867,6 +882,12 @@ export class Brush {
     applyStrokeOpacity(this.transferContext!, this._strokeOpacity ?? 1);
     this.transferContext!.drawImage(strokeCanvas, 0, 0);
     resetOpacity(this.transferContext!);
+
+    if (this.selectionMask) {
+      this.transferContext!.globalCompositeOperation = "destination-in";
+      this.transferContext!.drawImage(this.selectionMask, 0, 0);
+      this.transferContext!.globalCompositeOperation = "source-over";
+    }
 
     const oriGlobalCompositeOperation =
       this.oriContext!.globalCompositeOperation;

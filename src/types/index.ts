@@ -49,6 +49,23 @@ export type {
   SetLayerPropertiesAction,
   MergeLayerDownAction,
   DuplicateLayerAction,
+  SelectRectangleAction,
+  SelectEllipseAction,
+  SelectLassoAction,
+  SelectAllAction,
+  ClearSelectionAction,
+  InvertSelectionAction,
   CanvasAction,
   ReplayOptions,
 } from "./actions";
+export type {
+  SelectionMode,
+  SelectionType,
+  SelectionBounds,
+  SelectionPoint,
+  SelectionSnapshot,
+  SelectionOutlineOptions,
+  SelectRectangleOptions,
+  SelectEllipseOptions,
+  SelectLassoOptions,
+} from "./selection";

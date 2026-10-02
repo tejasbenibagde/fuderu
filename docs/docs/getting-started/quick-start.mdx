@@ -419,20 +419,22 @@ npm run dev
 
 ## Next Steps
 
-Now that you have a basic drawing application running, consider exploring these features:
+Now that you have a basic drawing application running, explore Fuderu's full capabilities:
 
-1. **[Brush Configuration](api/configuration.mdx)** - Customize brush behavior for different effects
-2. **[Modules](guides/modules.mdx)** - Add special effects like texture, jitter, and patterns
-3. **[Image Brushes](guides/image-brushes.mdx)** - Use custom images as brush tips
-4. **[Layer System](api/canvas.mdx#layer-system)** - Learn how to create complex drawings with multiple layers
-5. **[React Integration](/docs/guides/integration-react)** - Learn advanced patterns for React apps
-6. **[Performance Optimization](guides/performance.mdx)** - Ensure your application runs smoothly on all devices
+1. **[The Art Studio Mental Model](./mental-model.mdx)** - Understand how Canvas, Layers, and Selections work together
+2. **[Layer System Guide](../guides/layer-system.mdx)** - Work with multiple transparent layers, opacity, and blend modes
+3. **[Selection Tools](../guides/selection-tools.mdx)** - Use rectangular, elliptical, and lasso selections with marching ants
+4. **[Transform Operations](../guides/transform-operations.mdx)** - Move, rotate, scale, and flip selections with interactive handles
+5. **[Clipboard Pipeline](../guides/clipboard-pipeline.mdx)** - Cut, copy, and paste artwork across layers and documents
+6. **[History & Snapshots](../guides/history-and-undo.mdx)** - Implement undo, redo, and reactive UI bindings
+7. **[Brush Configuration](../api/configuration.mdx)** - Customize colors, sizes, flow, and spacing
+8. **[Framework Integrations](../guides/integration-react.mdx)** - Deep-dive patterns for React, Vue, and Svelte
 
 ## Common Issues and Solutions
 
 ### "Canvas is not defined" Error
 
-Make sure you're running your code in a browser environment. Fuderu requires the HTML Canvas API and won't work in Node.js without a canvas implementation like `canvas`.
+Make sure you're running your code in a browser environment. Fuderu requires the HTML Canvas API and won't work in server-side Node.js without a polyfill.
 
 ### Nothing Appears on Canvas
 
@@ -442,20 +444,13 @@ Make sure you're running your code in a browser environment. Fuderu requires the
 
 ### Poor Performance
 
-- Reduce your canvas size if it's unnecessarily large
-- Consider disabling expensive features like complex patterns or high-density scattering
-- Use the performance profiling tips in our [Performance Guide](guides/performance.mdx)
+- Reduce your canvas logical dimensions if unnecessarily large
+- Use the performance profiling tips in our [Performance Guide](../guides/performance.mdx)
 
 ### Events Not Working
 
 - Make sure you're attaching event listeners to the correct element
-- Check if another element is covering your canvas (z-index issues)
-- Verify that you're not preventing default behavior unnecessarily
-
-## Where to Go Next
-
-Try the [interactive editor](/editor) or revisit the [Layer System](/docs/api/layers) guide for more advanced workflows.
-
-Join our [Discord community](https://discord.gg/fuderu) to ask questions, share your creations, and get help from other developers.
+- Check if another element is covering your canvas (`pointer-events: none` on overlays)
+- Verify that you're not preventing default pointer behavior unnecessarily
 
 Happy drawing! 🎨

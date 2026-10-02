@@ -12,14 +12,16 @@ import FuderuDemo from "@site/src/components/FuderuDemo";
 <div className="hero-section">
   <div className="hero-content">
     <p className="hero-tagline">
-      Stable 1.4.0 canvas drawing engine for the web
+      Stable 1.5.0 canvas drawing engine for the web
     </p>
     <div className="hero-badges">
       <span className="badge">Framework-Agnostic</span>
       <span className="badge">TypeScript-First</span>
       <span className="badge">Brush Engine</span>
+      <span className="badge">Layer Stack & Alpha Lock</span>
+      <span className="badge">Selection & Transform Tools</span>
+      <span className="badge">Clipboard Pipeline</span>
       <span className="badge">Action Replay Stream</span>
-      <span className="badge">Layer System & Alpha Lock</span>
       <span className="badge">Document Persistence API</span>
     </div>
   </div>
@@ -37,15 +39,21 @@ import FuderuDemo from "@site/src/components/FuderuDemo";
 
 Fuderu is designed for developers who want to build beautiful drawing experiences without the complexity of heavy graphics libraries. Whether you're building a simple sketch pad, a professional annotation tool, or a creative art application, Fuderu gives you the building blocks you need.
 
-Fuderu 1.4.0 expands beyond brush rendering into a complete, production-ready canvas architecture: featuring a serializable Operation Log & Action Replay stream API (`action:record`, `stroke:record`, `replay`), first-class document persistence, layer-level Alpha Lock and Layer Lock, native scanline flood fill, shape primitives, raster text, pointer ID gesture safety, and typed state event subscriptions.
+Fuderu 1.5.0 brings a complete, professional artist workstation to the browser: featuring **Selection Tools** (rectangle, ellipse, freehand lasso, and marching ants), **Floating Interactive Transformations** (move, rotate, scale, and flip with live handles), **Cross-Layer & Cross-Document Clipboard Pipeline** (cut, copy, paste), a serializable **Operation Log & Action Replay Stream API** (`action:record`, `stroke:record`, `replay`), first-class **Document Persistence** with automated schema migrations, layer-level **Alpha Lock** and **Layer Lock**, native scanline **flood fill**, shape primitives, raster text, and typed state event subscriptions.
 
 ### 🎨 Key Capabilities
 
-Unlike general-purpose canvas libraries, Fuderu combines a **standalone brush engine** with a **full layer compositing stack** and **document state system**:
+Unlike general-purpose canvas libraries, Fuderu combines a **standalone brush engine** with a **full layer compositing stack**, **artist tools**, and **document state system**:
+
+#### ✂️ Artist Tools: Selection, Transform & Clipboard (v1.5.0)
+
+- **Selection Tools**: Rectangular, elliptical, and freehand lasso selections with Boolean combine modes (`replace`, `add`, `subtract`, `intersect`), animated marching ants rendering (`renderSelectionOutline`), and automatic tool clipping.
+- **Transform Operations**: Interactive floating transform sessions (`beginTransform`, `commitTransform`, `cancelTransform`) with live resize handles, rotation handle stem, center pivot, and one-shot transformation helpers (`translate`, `rotate`, `scale`, `flipHorizontal`, `flipVertical`).
+- **Clipboard Pipeline**: Unified clipboard store (`ClipboardStore`, `copy`, `cut`, `paste`) enabling raster selection and layer region transfers across layers and separate documents, with optional new layer creation, marquee wrapping, and system clipboard interoperability.
 
 #### 📄 Document Persistence API
 
-Export and import complete canvas state as versioned JSON containing dimensions, layer metadata, active selections, and serialized image data (`exportDocument`, `importDocument`), or export flattened PNG composition renders (`exportPNG`).
+Export and import complete canvas state as versioned JSON containing dimensions, layer metadata, active selections, and serialized image data (`exportDocument`, `importDocument`), or export flattened PNG composition renders (`exportPNG`). Includes automatic forward schema migration (`migrateDocument`).
 
 #### 🔒 Advanced Layer Stack & Alpha Lock
 
@@ -57,35 +65,19 @@ Built-in scanline **flood fill** (`floodFill`), vector shape primitives (`drawRe
 
 #### ⚡ Reactive Event System & Timeline History
 
-Subscribe to typed state events (`change`, `stroke:start`, `stroke:end`, `layer:change`, `history:change`) with `getSnapshot()`, and navigate history timeline directly with `canvas.history.goTo(index)` or sparse memory patches.
+Subscribe to typed state events (`change`, `stroke:start`, `stroke:end`, `layer:change`, `history:change`, `selection:change`, `transform:start`, `clipboard:copy`) with immutable `getSnapshot()`, and navigate history timeline directly with `canvas.history.goTo(index)` or sparse memory patches.
 
-#### ✨ Smooth Interpolation
+#### 🎬 Action Replay Stream
 
-Natural-looking strokes that connect points intelligently, eliminating jagged lines. Fuderu uses advanced Bezier curve algorithms to ensure your drawings look professional and fluid, regardless of drawing speed.
+Record every user interaction as a serializable action log and play it back programmatically at adjustable speeds (`canvas.replay()`), ideal for animated time-lapses, tutorials, or multiplayer canvas synchronization.
 
-#### ⚡ Adaptive Spacing
+#### ✨ Smooth Interpolation & Adaptive Spacing
 
-Automatically adjusts brush stamp density for consistent texture at any drawing speed. Whether you're making slow, precise lines or quick, gestural strokes, the texture remains uniform.
+Natural-looking strokes that connect points intelligently, eliminating jagged lines using Bezier curve algorithms with adaptive brush stamp density for consistent texture at any drawing speed.
 
-#### 🖱️ Pressure Sensitivity
+#### 🖱️ Pressure Sensitivity & Image Brushes
 
-Real pen pressure support with intelligent mouse/touch simulation. Fidelity to your input device creates natural variations in line weight and opacity that feel authentic to traditional media.
-
-#### 🖼️ Image Brushes
-
-Use PNG/WebP stamps as brush tips with recoloring and rotation capabilities. Turn any image into a custom brush for stamps, textures, or special effects.
-
-#### 📚 Professional Layers
-
-Non-destructive editing with blend modes, opacity control, and layer management. Work like a pro with the ability to experiment without permanently altering your artwork.
-
-#### 🔧 Runtime Configuration
-
-Change brush properties on the fly without recreating objects. Adjust size, color, opacity, and more mid-stroke for dynamic creative control.
-
-#### 🔩 Module System
-
-Extend brush behavior with size jitter, scatter, transparency effects, and patterns. Create unique brushes that respond to pressure, velocity, or randomization for natural media simulation.
+Real pen pressure support with intelligent mouse/touch simulation, plus PNG/WebP custom stamp tips with recoloring and rotation capabilities.
 
 ### 🧩 Built for Integration
 

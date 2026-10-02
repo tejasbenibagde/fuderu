@@ -1,0 +1,126 @@
+---
+sidebar_position: 4
+title: Transform Operations & Handles
+sidebar_label: Transform Operations (v1.5.0)
+---
+
+# Transform Operations & Handles 🔄
+
+Transform operations allow artists to **move, rotate, scale, and flip** active selections or entire layer regions. Fuderu uses a non-destructive floating session model: selected raster pixels are lifted into an offscreen scratch buffer, transformed interactively with live bounding handles, and baked down onto the layer upon commit.
+
+---
+
+## 1. Interactive Transform Lifecycle
+
+An interactive transform follows three clear stages:
+
+```typescript
+// Stage 1: Begin transform session (lifts selected pixels or active layer)
+painter.beginTransform();
+
+// Stage 2: Adjust transformation dynamically (e.g. from UI sliders or mouse drag)
+const session = painter.getTransformSession();
+if (session) {
+  session.translate(50, 30); // Move 50px right, 30px down
+  session.rotate(Math.PI / 4); // Rotate 45 degrees
+  session.scale(1.2, 1.2); // Scale up by 20%
+}
+
+// Stage 3: Commit changes (bakes transformed pixels and pushes undoable history patch)
+painter.commitTransform();
+
+// Or Cancel: (Restores original pixels exactly as they were)
+// painter.cancelTransform();
+```
+
+### Checking Transform Status
+
+```typescript
+if (painter.isTransforming()) {
+  console.log("Transform session is active!");
+}
+```
+
+---
+
+## 2. Interactive Bounding Box & Handles
+
+Fuderu includes a built-in bounding box renderer featuring:
+
+- **8 Directional Resize Grips** (Top, Bottom, Left, Right, and 4 Corners).
+- **Rotator Handle with Stem** extending above the top edge.
+- **Center Pivot Crosshair** indicating the rotation and scale origin.
+
+```typescript
+function renderOverlay(overlayCtx: CanvasRenderingContext2D) {
+  overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+  if (painter.isTransforming()) {
+    painter.renderTransformBox(overlayCtx, {
+      boxColor: "#3b82f6", // Border color
+      handleColor: "#ffffff", // Handle fill color
+      handleBorderColor: "#1d4ed8", // Handle stroke color
+      handleSize: 8, // Handle width/height in px
+      rotatorDistance: 24, // Stem length in px
+      showPivot: true, // Draw center crosshair
+    });
+  }
+}
+```
+
+---
+
+## 3. One-Shot Transformation Helpers
+
+If you want to apply instant transformations programmatically without entering interactive session mode, Fuderu provides convenient one-shot helpers:
+
+```typescript
+// Translate active layer/selection by dx, dy
+painter.translate(40, -20);
+
+// Rotate by radians around center (or custom pivot)
+painter.rotate(Math.PI / 2); // 90 degrees clockwise
+
+// Non-uniform scaling
+painter.scale(1.5, 0.8);
+
+// Flip horizontally (mirror left-to-right)
+painter.flipHorizontal();
+
+// Flip vertically (upside down)
+painter.flipVertical();
+```
+
+---
+
+## 4. Selection Integration
+
+When a selection is active, `beginTransform()` automatically:
+
+1. **Lifts only the selected pixels** using the exact bitmask contour.
+2. **Erases the source region** from the underlying layer.
+3. Automatically **transforms the selection mask** to match the transformed bounds upon commit.
+4. Generates an undoable history patch clamped to the combined bounding area.
+
+---
+
+## 5. Reactive Events
+
+```typescript
+painter.on("transform:start", (snapshot) => {
+  console.log("Transform started for layer:", snapshot.layerId);
+});
+
+painter.on("transform:change", (snapshot) => {
+  console.log(
+    "Transform updated: scale =",
+    snapshot.scaleX,
+    "rotation =",
+    snapshot.rotation,
+  );
+});
+
+painter.on("transform:end", () => {
+  console.log("Transform finished and committed.");
+});
+```

@@ -1,0 +1,131 @@
+---
+sidebar_position: 2
+title: Layer System & Alpha Lock
+sidebar_label: Layer System & Alpha Lock
+---
+
+# Layer System & Alpha Lock 📚
+
+In Fuderu, artwork is composed of **stacked transparent layers** (like clear plastic acetate animation cels). Working with layers allows non-destructive drawing: you can ink on one layer, color underneath on another, and shade with blend modes on top without damaging your underlying lines.
+
+```typescript
+import { Canvas } from "fuderu";
+
+const painter = new Canvas({
+  canvas: "#my-canvas",
+  document: { width: 1200, height: 800 },
+});
+```
+
+---
+
+## 1. Creating and Managing Layers
+
+Every new `Canvas` starts with a default background layer. You can create additional layers at any time:
+
+```typescript
+// 1. Create a new layer
+const inkLayer = painter.createLayer("Inking");
+
+// 2. Make it the active layer you draw onto
+painter.setActiveLayer(inkLayer.id);
+
+// 3. Inspect all layers currently in the stack (bottom to top)
+const layers = painter.getLayers();
+console.log(layers.map((l) => l.name)); // ["Background", "Inking"]
+```
+
+### Layer Management Methods
+
+All layer operations are invoked directly on the `Canvas` instance:
+
+| Method                                    | Description                                                   |
+| :---------------------------------------- | :------------------------------------------------------------ |
+| `painter.createLayer(name?, options?)`    | Creates and inserts a new layer at the top of the stack.      |
+| `painter.getLayers()`                     | Returns an immutable, frozen list of `LayerSnapshot` objects. |
+| `painter.getActiveLayer()`                | Returns the currently active `Layer` being painted onto.      |
+| `painter.setActiveLayer(layerId)`         | Switches active drawing target to the specified layer.        |
+| `painter.updateLayer(layerId, options)`   | Updates properties (opacity, blend mode, visibility, locks).  |
+| `painter.deleteLayer(layerId)`            | Removes a layer. (Cannot delete the last remaining layer).    |
+| `painter.duplicateLayer(layerId)`         | Clones a layer and all its raster pixels.                     |
+| `painter.reorderLayer(layerId, newIndex)` | Moves a layer up or down in the rendering stack.              |
+| `painter.mergeLayerDown(layerId)`         | Merges a layer with the one directly beneath it.              |
+
+---
+
+## 2. Layer Properties
+
+You can update any layer's properties on the fly:
+
+```typescript
+painter.updateLayer(inkLayer.id, {
+  name: "Clean Lineart",
+  opacity: 0.85, // Value between 0.0 (transparent) and 1.0 (opaque)
+  visible: true, // Toggle layer visibility on/off
+  blendMode: "multiply", // How pixels blend with layers below
+  alphaLock: false, // Stencil lock to existing pixels
+  locked: false, // Prevent any modifications or accidental drawing
+});
+```
+
+---
+
+## 3. Alpha Lock: Color Inside the Lines 🔒
+
+`alphaLock` is an artist's favorite feature. When enabled, **transparent pixels are completely protected**. Any new paint, brush stroke, or fill operation will only modify existing colored pixels.
+
+```typescript
+// Step 1: Draw a black circle on a transparent layer
+painter.drawEllipse(200, 200, 80, 80, { fill: true, stroke: false });
+
+// Step 2: Lock the alpha channel
+painter.updateLayer(activeLayer.id, { alphaLock: true });
+
+// Step 3: Switch brush color to gold and paint across the entire canvas
+painter.loadConfig({ color: "#f59e0b", size: 40 });
+// Even if your stroke covers the whole screen, only the circle turns gold!
+```
+
+> 💡 **Tip**: Alpha Lock is great for cell shading, recoloring lineart, adding highlights, and applying textures without needing complex clipping masks.
+
+---
+
+## 4. Layer Lock: Protecting Finished Work 🛡️
+
+To prevent accidental edits, deletions, or cuts on a finished layer, set `locked: true`:
+
+```typescript
+painter.updateLayer(backgroundLayer.id, { locked: true });
+
+// Attempting to draw or cut on a locked layer throws a descriptive error:
+// Error: Cannot paint onto locked layer
+```
+
+---
+
+## 5. Blend Modes
+
+Fuderu supports 16 standard W3C blend modes mapping to `globalCompositeOperation`:
+
+- **Normal**: `source-over`
+- **Darkening**: `multiply`, `darken`, `color-burn`
+- **Lightening**: `screen`, `lighten`, `color-dodge`
+- **Contrast**: `overlay`, `soft-light`, `hard-light`
+- **Comparative**: `difference`, `exclusion`
+- **HSL Components**: `hue`, `saturation`, `color`, `luminosity`
+
+For visual demonstrations and mathematical explanations of each mode, see the [**Blend Modes Guide**](../api/blend-modes.mdx).
+
+---
+
+## 6. Reactive UI Synchronization
+
+Fuderu dispatches `layer:change` whenever any layer is added, removed, reordered, or edited:
+
+```typescript
+painter.on("layer:change", (snapshot) => {
+  console.log("Current layer stack:", snapshot.layers);
+  console.log("Active layer:", snapshot.activeLayerId);
+  // Re-render your UI layer list or thumbnails
+});
+```

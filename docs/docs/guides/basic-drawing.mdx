@@ -1,0 +1,108 @@
+---
+sidebar_position: 1
+title: Basic Drawing, Shapes & Flood Fill
+sidebar_label: Basic Drawing & Shapes
+---
+
+# Basic Drawing, Shapes & Flood Fill 🎨
+
+Fuderu provides both freehand brush drawing and built-in vector raster operations like shapes, text, scanline flood fill, and pixel sampling.
+
+---
+
+## 1. Changing Brush Properties
+
+You can adjust brush properties dynamically at runtime without recreating the canvas:
+
+```typescript
+// Change color and size
+painter.loadConfig({
+  color: "#3b82f6",
+  size: 24,
+  opacity: 0.9,
+  spacing: 0.15, // Density of brush stamps
+});
+
+// Enable eraser mode
+painter.loadConfig({
+  eraser: true,
+  size: 32,
+});
+
+// Switch back to drawing pen
+painter.loadConfig({
+  eraser: false,
+  color: "#000000",
+});
+```
+
+---
+
+## 2. Drawing Geometric Shapes
+
+Fuderu includes native shape rendering primitives that respect the active layer and selection boundary:
+
+### Rectangle
+
+```typescript
+painter.drawRectangle(50, 50, 200, 100, {
+  fill: true,
+  stroke: true,
+  fillColor: "#e0e7ff",
+  strokeColor: "#4338ca",
+  lineWidth: 3,
+});
+```
+
+### Ellipse & Circle
+
+```typescript
+painter.drawEllipse(250, 200, 80, 50, {
+  fill: true,
+  stroke: false,
+  fillColor: "#f43f5e",
+});
+```
+
+### Line
+
+```typescript
+painter.drawLine(50, 50, 300, 300, {
+  strokeColor: "#10b981",
+  lineWidth: 4,
+});
+```
+
+---
+
+## 3. Scanline Flood Fill (Paint Bucket) 🪣
+
+Fuderu features an optimized scanline flood fill algorithm:
+
+```typescript
+// Fill contiguous area starting at coordinate (150, 150)
+painter.floodFill(150, 150, "#8b5cf6", {
+  tolerance: 32, // Color match tolerance (0-255)
+});
+```
+
+---
+
+## 4. Raster Text Rendering
+
+```typescript
+painter.drawText("Hello Fuderu!", 100, 200, {
+  font: "bold 32px sans-serif",
+  color: "#1e293b",
+});
+```
+
+---
+
+## 5. Color Sampling (Eyedropper)
+
+```typescript
+// Samples the RGBA color at screen coordinates (x, y)
+const color = painter.getColorAt(120, 85);
+console.log(color); // "rgba(59, 130, 246, 1)"
+```

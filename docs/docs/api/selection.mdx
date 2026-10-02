@@ -1,0 +1,75 @@
+---
+sidebar_position: 5
+title: Selection API
+sidebar_label: Selection API
+---
+
+# Selection API ✂️
+
+The `Selection` module manages offscreen 8-bit bitmask buffers, Boolean combine modes, marching ants outline calculations, and selection bounds.
+
+```typescript
+import { Selection } from "fuderu";
+import type { SelectionMode, SelectionBounds, SelectionSnapshot } from "fuderu";
+```
+
+---
+
+## Canvas Selection Methods
+
+In standard applications, selection methods are invoked directly on `Canvas`:
+
+### `selectRectangle(x: number, y: number, width: number, height: number, mode?: SelectionMode): void`
+
+Replaces, adds, subtracts, or intersects a rectangular selection region.
+
+### `selectEllipse(cx: number, cy: number, rx: number, ry: number, mode?: SelectionMode): void`
+
+Replaces, adds, subtracts, or intersects an elliptical selection region.
+
+### `selectLasso(points: Array<{ x: number; y: number }>, mode?: SelectionMode): void`
+
+Replaces, adds, subtracts, or intersects a freehand polygonal lasso contour.
+
+### `selectAllSelection(): void`
+
+Selects the entire canvas buffer.
+
+### `clearSelection(): void`
+
+Clears any active selection mask completely.
+
+### `invertSelection(): void`
+
+Inverts the active selection (selected pixels become unselected, and vice versa).
+
+### `hasSelection(): boolean`
+
+Returns `true` if an active non-empty selection mask exists.
+
+### `getSelectionBounds(): SelectionBounds | null`
+
+Returns `{ x, y, width, height }` axis-aligned bounding box of the active selection mask.
+
+### `renderSelectionOutline(ctx: CanvasRenderingContext2D, dashOffset?: number): void`
+
+Renders an animated dual-tone dashed marching ants outline onto the provided overlay context.
+
+---
+
+## Types
+
+### `SelectionMode`
+
+```typescript
+type SelectionMode = "replace" | "add" | "subtract" | "intersect";
+```
+
+### `SelectionSnapshot`
+
+```typescript
+interface SelectionSnapshot {
+  readonly hasSelection: boolean;
+  readonly bounds: SelectionBounds | null;
+}
+```

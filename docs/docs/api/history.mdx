@@ -1,0 +1,73 @@
+---
+sidebar_position: 8
+title: History & Snapshots API
+sidebar_label: History & Snapshots API
+---
+
+# History & Snapshots API ⏱️
+
+Fuderu's timeline history engine manages sparse memory-efficient bounding box patches, undo/redo stacks, and immutable `CanvasSnapshot` data transfer objects.
+
+```typescript
+import { HistoryManager } from "fuderu";
+import type { HistoryState, HistoryPatch, CanvasSnapshot } from "fuderu";
+```
+
+---
+
+## Canvas History Methods
+
+### `undo(): boolean`
+
+Reverts the last action. Returns `true` if an undo was executed.
+
+### `redo(): boolean`
+
+Re-applies the last undone action. Returns `true` if a redo was executed.
+
+### `canUndo(): boolean`
+
+Returns `true` if undo states exist in the stack.
+
+### `canRedo(): boolean`
+
+Returns `true` if redo states exist in the stack.
+
+### `getHistoryState(): HistoryState`
+
+Returns `{ canUndo, canRedo, index, length }`.
+
+### `getSnapshot(): CanvasSnapshot`
+
+Returns an immutable, deeply frozen snapshot of complete canvas state.
+
+---
+
+## Types
+
+### `CanvasSnapshot`
+
+```typescript
+interface CanvasSnapshot {
+  readonly id: DocumentId;
+  readonly width: number;
+  readonly height: number;
+  readonly activeLayerId: LayerId;
+  readonly layers: readonly LayerSnapshot[];
+  readonly history: HistoryState;
+  readonly selection?: SelectionSnapshot | null;
+  readonly transform?: TransformSnapshot | null;
+  readonly clipboard?: ClipboardSnapshot | null;
+}
+```
+
+### `HistoryState`
+
+```typescript
+interface HistoryState {
+  canUndo: boolean;
+  canRedo: boolean;
+  index: number;
+  length: number;
+}
+```

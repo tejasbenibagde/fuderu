@@ -1,0 +1,90 @@
+---
+sidebar_position: 7
+title: Document Persistence & Schema Migrations
+sidebar_label: Document Persistence
+---
+
+# Document Persistence & Schema Migrations 💾
+
+Fuderu provides built-in methods to save artwork as editable multi-layer document files, export flattened PNG images, and seamlessly migrate schemas across library versions.
+
+---
+
+## 1. Exporting Flattened PNG
+
+To save the artwork as a flattened image:
+
+```typescript
+// Export as a high-quality data URL
+const dataUrl = painter.exportPNG({ quality: 1.0 });
+
+// Trigger browser file download
+const link = document.createElement("a");
+link.download = "artwork.png";
+link.href = dataUrl;
+link.click();
+```
+
+---
+
+## 2. Exporting Editable Multi-Layer Documents
+
+To save the artwork so a user can reopen it later with all layers, opacities, blend modes, and dimensions intact:
+
+```typescript
+// Exports a clean JSON-serializable CanvasDocument object
+const doc = painter.exportDocument();
+
+// Convert to string and save to localStorage, database, or JSON file
+const jsonString = JSON.stringify(doc);
+localStorage.setItem("my_saved_drawing", jsonString);
+```
+
+### Document Schema Structure
+
+```typescript
+interface CanvasDocument {
+  version: string; // e.g. "1.5.0"
+  width: number; // Document logical width
+  height: number; // Document logical height
+  activeLayerId: string; // Currently selected layer ID
+  layers: Array<{
+    id: string;
+    name: string;
+    visible: boolean;
+    opacity: number;
+    blendMode: BlendMode;
+    alphaLock: boolean;
+    locked: boolean;
+    data: string; // Base64 PNG image data
+  }>;
+}
+```
+
+---
+
+## 3. Importing Saved Documents
+
+```typescript
+const jsonString = localStorage.getItem("my_saved_drawing");
+if (jsonString) {
+  const doc = JSON.parse(jsonString);
+  await painter.importDocument(doc);
+  console.log("Document restored successfully!");
+}
+```
+
+---
+
+## 4. Automated Schema Version Migration
+
+As Fuderu introduces new features across minor versions, existing saved documents continue to work seamlessly via `migrateDocument()`:
+
+```typescript
+import { migrateDocument } from "fuderu";
+
+// Older documents (e.g. from v1.3.0 or v1.4.0) are automatically upgraded
+// to the latest schema version, filling in defaults for new fields (alphaLock, locked, etc.)
+const upToDateDoc = migrateDocument(olderVersionDoc);
+await painter.importDocument(upToDateDoc);
+```

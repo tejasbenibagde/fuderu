@@ -1,0 +1,40 @@
+---
+sidebar_position: 10
+title: Document Persistence API
+sidebar_label: Persistence API
+---
+
+# Document Persistence API 💾
+
+Export, import, and version-migrate multi-layer Fuderu artworks.
+
+```typescript
+import { migrateDocument } from "fuderu";
+import type { CanvasDocument, ExportPNGOptions } from "fuderu";
+```
+
+---
+
+## Canvas Persistence Methods
+
+### `exportPNG(options?: ExportPNGOptions): string`
+
+Returns a base64 Data URL of the flattened, composited canvas.
+
+- `options.quality`: Compression quality between `0` and `1` (defaults to `1.0`).
+
+### `exportDocument(): CanvasDocument`
+
+Exports the full editable document as a clean, JSON-serializable object containing document dimensions, layer stack, and base64 layer bitmaps.
+
+### `importDocument(doc: CanvasDocument): Promise<void>`
+
+Imports a `CanvasDocument`, restoring dimensions, layers, and raster bitmaps.
+
+---
+
+## Utility Methods
+
+### `migrateDocument(doc: Record<string, unknown>): CanvasDocument`
+
+Upgrades older document schema structures to the current version.

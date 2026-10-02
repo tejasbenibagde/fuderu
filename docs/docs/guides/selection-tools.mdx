@@ -1,0 +1,135 @@
+---
+sidebar_position: 3
+title: Selection Tools & Marching Ants
+sidebar_label: Selection Tools (v1.5.0)
+---
+
+# Selection Tools & Marching Ants ✂️
+
+Selections allow artists to isolate specific regions of a canvas. Once a selection is active:
+
+- **Brush & Eraser Strokes** are clipped strictly inside the selection boundary.
+- **Flood Fill & Layer Fill** only color within the selected area.
+- **Shapes & Text** are constrained to the selection mask.
+- **Cut & Copy** operations lift only the selected pixels.
+
+Fuderu manages selections using an internal high-performance offscreen 8-bit bitmask buffer.
+
+---
+
+## 1. Creating Selections
+
+Fuderu provides three intuitive selection shapes:
+
+### Rectangular Marquee
+
+```typescript
+// Select a 300x200 rectangle starting at (50, 50)
+painter.selectRectangle(50, 50, 300, 200);
+```
+
+### Elliptical Marquee
+
+```typescript
+// Select an ellipse centered at (250, 250) with radius X=120, radius Y=80
+painter.selectEllipse(250, 250, 120, 80);
+```
+
+### Freehand Lasso
+
+```typescript
+// Select an arbitrary polygonal or hand-drawn lasso contour
+const polygon = [
+  { x: 100, y: 100 },
+  { x: 180, y: 80 },
+  { x: 220, y: 160 },
+  { x: 140, y: 210 },
+];
+painter.selectLasso(polygon);
+```
+
+---
+
+## 2. Boolean Combine Modes
+
+Just like desktop graphics editors, you can combine multiple selections using boolean modes (`replace`, `add`, `subtract`, `intersect`):
+
+```typescript
+// 1. Initial rectangle
+painter.selectRectangle(100, 100, 200, 200, "replace");
+
+// 2. Add an ellipse to the selection (Shift modifier)
+painter.selectEllipse(300, 200, 80, 80, "add");
+
+// 3. Cut a circular hole out of the selection (Alt/Option modifier)
+painter.selectEllipse(200, 200, 50, 50, "subtract");
+
+// 4. Intersect with another shape (Shift + Alt modifier)
+painter.selectRectangle(150, 150, 250, 250, "intersect");
+```
+
+| Mode          | Real-World Analogy    | Behavior                                                      |
+| :------------ | :-------------------- | :------------------------------------------------------------ |
+| `"replace"`   | Stick down new tape   | Replaces any existing selection with the new shape. (Default) |
+| `"add"`       | Add more tape         | Unions the new shape with existing selected pixels.           |
+| `"subtract"`  | Cut out a tape hole   | Erases the new shape from the existing selection.             |
+| `"intersect"` | Overlapping tape only | Keeps only areas where old and new selections overlap.        |
+
+---
+
+## 3. Whole-Canvas Selection Controls
+
+```typescript
+// Select the entire canvas
+painter.selectAllSelection();
+
+// Invert the selection (unselected areas become selected)
+painter.invertSelection();
+
+// Clear the selection completely (Deselect / Ctrl+D)
+painter.clearSelection();
+
+// Check if a selection is active
+if (painter.hasSelection()) {
+  const bounds = painter.getSelectionBounds();
+  console.log(
+    `Selected AABB: ${bounds.width}x${bounds.height} at (${bounds.x}, ${bounds.y})`,
+  );
+}
+```
+
+---
+
+## 4. Dual-Tone Animated Marching Ants
+
+Fuderu provides an animated dashed outline renderer with contrasting black and white dashes:
+
+```typescript
+function renderLoop() {
+  const overlayCtx = overlayCanvas.getContext("2d");
+  overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+  if (painter.hasSelection()) {
+    // Offset increases every frame to animate the ants crawling
+    const dashOffset = (performance.now() / 50) % 8;
+    painter.renderSelectionOutline(overlayCtx, dashOffset);
+  }
+
+  requestAnimationFrame(renderLoop);
+}
+requestAnimationFrame(renderLoop);
+```
+
+---
+
+## 5. Reactive Events
+
+```typescript
+painter.on("selection:change", (snapshot) => {
+  if (snapshot.hasSelection) {
+    console.log("Active selection bounds:", snapshot.bounds);
+  } else {
+    console.log("No active selection");
+  }
+});
+```

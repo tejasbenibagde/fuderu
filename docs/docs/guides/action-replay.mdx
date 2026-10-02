@@ -1,0 +1,75 @@
+---
+sidebar_position: 8
+title: Action Replay Stream & Time-Lapse
+sidebar_label: Action Replay Stream
+---
+
+# Action Replay Stream & Time-Lapse 🎬
+
+Fuderu includes a serializable **Operation Log & Action Replay engine**. Every user interaction (brush strokes, flood fills, shapes, text, selections, transforms, and clipboard paste) is captured as a lightweight, serializable JSON action object.
+
+This enables:
+
+- **Animated Time-Lapse Playback**: Replay an artist's creation process at 1x, 2x, or instant speed.
+- **Collaborative Sync**: Broadcast actions over WebSockets for multiplayer collaborative canvases.
+- **Automated Testing & Bug Reports**: Replay an exact sequence of user actions to reproduce visual bugs.
+
+---
+
+## 1. Recording Actions
+
+Fuderu automatically records actions into an internal session log:
+
+```typescript
+// Inspect all actions performed in this session
+const actions = painter.getActionLog();
+console.log(`Recorded ${actions.length} actions so far.`);
+```
+
+### Listening to Real-Time Action Events
+
+```typescript
+// Fires whenever a high-level action (fill, shape, clear, paste, transform) completes
+painter.on("action:record", (action) => {
+  console.log("Action recorded:", action.type);
+  // Example: broadcast over WebSocket to other users
+  socket.emit("canvas:action", action);
+});
+
+// Fires for every interpolated stylus point during a brush stroke
+painter.on("stroke:record", (point) => {
+  // Low-latency stroke streaming
+});
+```
+
+---
+
+## 2. Programmatic Replay
+
+You can replay any recorded action log on any `Canvas` instance:
+
+```typescript
+// Instant replay (speed = 0)
+await painter.replay(actions);
+
+// Animated playback (speed = 1.5x) with live progress callback
+await painter.replay(actions, {
+  speed: 1.5,
+  onProgress: (progress, currentAction) => {
+    progressBar.style.width = `${Math.round(progress * 100)}%`;
+    statusText.textContent = `Replaying ${currentAction.type}...`;
+  },
+});
+```
+
+---
+
+## 3. Replaying Single Actions
+
+If you are receiving actions one-by-one from a server or multiplayer room:
+
+```typescript
+socket.on("remote_canvas_action", (action) => {
+  painter.replayAction(action);
+});
+```

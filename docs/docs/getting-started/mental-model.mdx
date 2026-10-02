@@ -1,0 +1,174 @@
+---
+sidebar_position: 3
+title: The Art Studio Mental Model
+sidebar_label: The Mental Model
+---
+
+# The Art Studio Mental Model 🎨
+
+If you are new to canvas graphics or creative tools, words like _offscreen composite rasterization_, _bitmask clip paths_, and _sparse patch state delta serialization_ sound intimidating.
+
+**Fuderu does not require you to be a graphics math wizard.**
+
+To understand how Fuderu works, imagine you are sitting at an **artist's workbench in a real-world art studio**. Every single class and feature in Fuderu directly corresponds to a physical tool on that desk.
+
+---
+
+## The Physical Analogies
+
+| Real-World Art Studio Tool                 | Fuderu Class / Feature | What It Does (In Plain English)                                                                                                                                                                 |
+| :----------------------------------------- | :--------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **The Easel & Desk**                       | `Canvas`               | The main workstation that holds your artwork, listens for your hand/pen movements, and coordinates all the tools.                                                                               |
+| **Clear Acetate Sheets**                   | `Layer`                | Stacked transparent plastic sheets. Drawing on sheet #2 doesn't ruin sheet #1 underneath. You can slide them, hide them, or adjust their see-through opacity.                                   |
+| **The Artist's Pen / Stylus**              | `Brush`                | The physical pen you hold in your hand. Controls ink color, thickness, softness, pressure sensitivity, and tip shapes.                                                                          |
+| **Coloring Inside the Lines (Stenciling)** | `Alpha Lock`           | A magical stencil that only lets paint stick to places where ink already exists. Transparent areas refuse to accept new paint.                                                                  |
+| **Blue Painter's Masking Tape**            | `Selection`            | Taping off a section of your paper with rectangular, oval, or freehand tape. Any brush strokes or paint buckets only affect the taped-in area. Animated "marching ants" show the tape boundary. |
+| **Floating Paper Cutout**                  | `TransformSession`     | Lifting a piece of artwork off the page so you can slide it around, rotate it with your fingers, shrink/stretch it by its corners, and press it back down when satisfied.                       |
+| **The Decal Tray (Cut, Copy, Paste)**      | `ClipboardStore`       | Cutting out a sticker with scissors or copying a drawing onto transfer paper, then sticking it onto another layer or into an entirely separate sketchbook.                                      |
+| **The Time Machine Film Reel**             | `HistoryManager`       | An automated film reel that remembers every stroke, cut, and paste. Lets you step backwards (`undo`) or forwards (`redo`) without re-drawing.                                                   |
+| **The Polaroid Snapshot**                  | `CanvasSnapshot`       | Frozen photo snapshots of your easel's current state that you can safely hand over to React, Vue, or Svelte without them accidentally modifying your active canvas.                             |
+| **The Time-Lapse Video**                   | `ActionReplay`         | A recorded log of every single pen movement and command that can be played back like a movie at 1x, 2x, or instant speed.                                                                       |
+
+---
+
+## 1. The Easel (`Canvas`)
+
+When you create a `Canvas` instance, you are setting up your physical desk:
+
+```typescript
+import { Canvas } from "fuderu";
+
+const painter = new Canvas({
+  canvas: "#my-canvas",
+  document: { width: 1200, height: 800 },
+});
+```
+
+The easel handles three jobs automatically:
+
+1. **Listens to your hand**: Intercepts mouse, touch, and stylus pen events with zero jitter.
+2. **Maintains crisp resolution**: Handles high-DPI (Retina) screens automatically so your artwork never looks blurry.
+3. **Coordinates tools**: Switches between your brush, eraser, selection marquee, shape tools, and transforms.
+
+---
+
+## 2. Clear Acetate Sheets (`Layers`)
+
+Instead of painting on a single piece of wood, professional artists paint on transparent celluloid sheets (like classic animation cels).
+
+- You can have a **"Sketch"** layer on the bottom.
+- An **"Ink / Lineart"** layer in the middle.
+- A **"Color"** layer beneath the ink.
+- A **"Shading"** layer with _Multiply_ blend mode on top.
+
+```typescript
+// Create a new clear sheet
+const colorLayer = painter.createLayer("Coloring");
+
+// Set it as the active sheet you are painting on
+painter.setActiveLayer(colorLayer.id);
+
+// Adjust its see-through transparency (50%)
+painter.updateLayer(colorLayer.id, { opacity: 0.5 });
+```
+
+---
+
+## 3. The Magical Stencil (`Alpha Lock`)
+
+Have you ever tried coloring a character's shirt, but accidentally drew outside the lines onto the background?
+
+`alphaLock` acts as a magical stencil:
+
+```typescript
+painter.updateLayer(colorLayer.id, { alphaLock: true });
+```
+
+When `alphaLock` is turned **on**, new paint will **only stick to pixels that already have paint**. All empty, transparent areas on that sheet are completely protected.
+
+---
+
+## 4. Blue Painter's Masking Tape (`Selection`)
+
+When painting a wall or canvas, you use blue painter's tape to protect specific areas:
+
+```typescript
+// Tape off a 200x150 rectangular window
+painter.selectRectangle(50, 50, 200, 150);
+```
+
+- Any brush strokes, eraser marks, bucket fills, or text stamps will **only** affect what is inside the tape.
+- The tape boundary is rendered as animated, dashed **marching ants**.
+- When you are done, pull off the tape: `painter.clearSelection()`.
+
+---
+
+## 5. Floating Paper Cutouts (`Transform`)
+
+Sometimes you draw an eye or a flower, and realize it is slightly too small or tilted:
+
+```typescript
+// 1. Lift the pixels off the canvas into your hands
+painter.beginTransform();
+
+// 2. Rotate it slightly (radians) and make it 20% bigger
+painter.rotate(0.15);
+painter.scale(1.2, 1.2);
+
+// 3. Stick it back down onto the layer
+painter.commitTransform();
+```
+
+While in transform mode, Fuderu renders interactive **bounding handles**, a **rotator grip**, and a **center pivot**. If you change your mind, `painter.cancelTransform()` puts the cutout back exactly where it came from.
+
+---
+
+## 6. The Decal Tray (`Clipboard`)
+
+Just like cutting out paper stickers:
+
+```typescript
+// Cut the selected drawing into the decal tray
+painter.cut();
+
+// Switch to another layer or document
+painter.setActiveLayer(backgroundLayer.id);
+
+// Stick the decal onto the new layer as a brand new layer
+painter.paste({ createLayer: true, newLayerName: "Decal" });
+```
+
+The clipboard is shared globally across layers and even between separate canvas documents on the same web page.
+
+---
+
+## 7. The Polaroid Snapshot (`CanvasSnapshot`)
+
+Modern frontend frameworks like **React**, **Vue**, and **Svelte** get unhappy when internal objects change behind their back.
+
+Fuderu solves this by giving you immutable **Polaroid snapshots**:
+
+```typescript
+const snapshot = painter.getSnapshot();
+
+console.log(snapshot.layers); // Read-only list of all layers
+console.log(snapshot.history.canUndo); // true or false
+console.log(snapshot.selection); // Current selection bounds
+```
+
+Whenever you draw, change a layer, or make a selection, Fuderu emits a state change event. You can feed `painter.getSnapshot()` straight into React's `useSyncExternalStore()` without worrying about accidental state mutation.
+
+---
+
+## Summary
+
+That's the entire architecture of Fuderu:
+
+1. **Easel** (`Canvas`) holds your **Sheets** (`Layers`).
+2. Your **Pen** (`Brush`) paints on the active sheet.
+3. **Masking Tape** (`Selection`) limits where paint can go.
+4. **Cutouts** (`Transform`) let you slide and scale things before stamping them down.
+5. **Decals** (`Clipboard`) let you move artwork around freely.
+6. The **Time Machine** (`HistoryManager`) lets you undo mistakes fearlessly.
+
+Now that you know the mental model, let's jump straight into the [**Quick Start Guide**](./quick-start.mdx)!

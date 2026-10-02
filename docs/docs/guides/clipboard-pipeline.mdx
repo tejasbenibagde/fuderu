@@ -1,0 +1,135 @@
+---
+sidebar_position: 5
+title: Clipboard Pipeline (Cut, Copy, Paste)
+sidebar_label: Clipboard Pipeline (v1.5.0)
+---
+
+# Clipboard Pipeline (Cut, Copy, Paste) 📋
+
+Fuderu features a complete raster clipboard pipeline supporting **cut, copy, and paste** operations across different layers within a canvas, across separate `Canvas` document instances on the same page, and even with the operating system clipboard.
+
+```typescript
+import { Canvas, ClipboardStore } from "fuderu";
+```
+
+---
+
+## 1. Copying Content
+
+`copy()` extracts raster pixels from the active layer:
+
+- **If a selection is active**: Extracts pixels bounded strictly to the selection mask with alpha clipping.
+- **If no selection is active**: Automatically detects the non-empty bounding box of drawn pixels on the layer.
+
+```typescript
+// 1. Select a region
+painter.selectRectangle(50, 50, 200, 150);
+
+// 2. Copy to clipboard
+const clipboardData = painter.copy();
+console.log(`Copied ${clipboardData.width}x${clipboardData.height} pixels!`);
+```
+
+---
+
+## 2. Cutting Content
+
+`cut()` copies the selected pixels into the clipboard and erases them from the source layer canvas, automatically pushing an undoable bounding patch to the history stack:
+
+```typescript
+try {
+  painter.cut();
+} catch (err) {
+  // If the active layer is locked, cut throws an error to prevent data loss
+  console.error("Cannot cut from a locked layer:", err);
+}
+```
+
+---
+
+## 3. Pasting Content with Options
+
+`paste()` stamps clipboard pixels onto the canvas. You can customize where and how the pixels land using `PasteOptions`:
+
+```typescript
+// Simple paste (pastes onto active layer at original coordinates)
+painter.paste();
+
+// Paste with customized position
+painter.paste({ x: 250, y: 180 });
+
+// Paste onto a brand new layer automatically
+painter.paste({
+  createLayer: true,
+  newLayerName: "Pasted Decal",
+});
+
+// Paste and automatically wrap a selection marquee around the pasted bounds
+painter.paste({ asSelection: true });
+
+// Paste and immediately start an interactive TransformSession
+painter.paste({ asTransform: true });
+```
+
+### `PasteOptions` Reference
+
+| Option          | Type            | Default          | Description                                                 |
+| :-------------- | :-------------- | :--------------- | :---------------------------------------------------------- |
+| `targetLayerId` | `LayerId`       | Active Layer     | Target layer to paste onto.                                 |
+| `x`             | `number`        | Source X         | Destination X coordinate.                                   |
+| `y`             | `number`        | Source Y         | Destination Y coordinate.                                   |
+| `createLayer`   | `boolean`       | `false`          | Creates a new layer for the pasted content.                 |
+| `newLayerName`  | `string`        | `"Pasted Layer"` | Name for the new layer if `createLayer: true`.              |
+| `asSelection`   | `boolean`       | `false`          | Sets the selection marquee to match the pasted bounds.      |
+| `asTransform`   | `boolean`       | `false`          | Automatically starts a floating transform session on paste. |
+| `clipboardData` | `ClipboardData` | `Store Data`     | Explicit data payload, bypassing internal clipboard.        |
+
+---
+
+## 4. Cross-Document Pasting
+
+Because clipboard data is maintained in a shared static `ClipboardStore`, you can easily copy from Canvas A and paste into Canvas B:
+
+```typescript
+const sketchpad = new Canvas({ canvas: "#canvas-1" });
+const masterDoc = new Canvas({ canvas: "#canvas-2" });
+
+// Copy a flower from canvas 1
+sketchpad.selectRectangle(10, 10, 100, 100);
+sketchpad.copy();
+
+// Paste the flower directly into canvas 2
+masterDoc.paste({ x: 300, y: 300, createLayer: true, newLayerName: "Flower" });
+```
+
+---
+
+## 5. Web Clipboard API (System Integration)
+
+Fuderu provides asynchronous helpers to read from and write to the operating system's system clipboard as PNG images:
+
+```typescript
+// Copy drawing to system clipboard (available to paste in Photoshop, Slack, etc.)
+await painter.copyToSystemClipboard();
+
+// Paste an image copied from another application or browser tab
+await painter.pasteFromSystemClipboard({ createLayer: true });
+```
+
+---
+
+## 6. Clipboard Events
+
+```typescript
+painter.on("clipboard:copy", (data) => {
+  console.log("Copied to clipboard:", data.width, data.height);
+});
+
+painter.on("clipboard:cut", (data) => {
+  console.log("Cut to clipboard:", data.width, data.height);
+});
+
+painter.on("clipboard:paste", (data) => {
+  console.log("Pasted from clipboard:", data.width, data.height);
+});
+```

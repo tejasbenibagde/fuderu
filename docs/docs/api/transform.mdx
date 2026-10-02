@@ -1,0 +1,101 @@
+---
+sidebar_position: 6
+title: Transform API
+sidebar_label: Transform API
+---
+
+# Transform API 🔄
+
+The `TransformSession` class manages floating transformation sessions, interactive bounding handles, origin/pivot calculations, and layer pixel baking.
+
+```typescript
+import { TransformSession } from "fuderu";
+import type {
+  TransformOptions,
+  TransformBoxOptions,
+  TransformSnapshot,
+} from "fuderu";
+```
+
+---
+
+## Canvas Transform Methods
+
+### `beginTransform(layerId?: LayerId): TransformSession | null`
+
+Initiates an interactive floating transform session on the specified layer (or currently active layer). If a selection is active, only the selected raster pixels are lifted.
+
+### `commitTransform(): void`
+
+Bakes the floating transformed pixels into the destination layer, updates selection mask bounds if applicable, records an undoable history patch, and ends the session.
+
+### `cancelTransform(): void`
+
+Cancels the active transform session, restoring lifted raster pixels back to their original position without creating a history entry.
+
+### `isTransforming(): boolean`
+
+Returns `true` if an interactive transformation session is currently active.
+
+### `getTransformSession(): TransformSession | null`
+
+Returns the active `TransformSession` instance or `null`.
+
+### `renderTransformBox(ctx: CanvasRenderingContext2D, options?: TransformBoxOptions): void`
+
+Renders the bounding box, 8 resize handles, rotation handle stem, and center crosshair onto the specified overlay context.
+
+---
+
+## One-Shot Transformation Methods
+
+### `translate(dx: number, dy: number): void`
+
+Translates active selection or layer region by `dx` and `dy`.
+
+### `rotate(angleRadians: number, originX?: number, originY?: number): void`
+
+Rotates active selection or layer region around the center or specified origin.
+
+### `scale(scaleX: number, scaleY: number, originX?: number, originY?: number): void`
+
+Scales active selection or layer region.
+
+### `flipHorizontal(): void`
+
+Flips active selection or layer region horizontally across its center.
+
+### `flipVertical(): void`
+
+Flips active selection or layer region vertically across its center.
+
+---
+
+## Types
+
+### `TransformBoxOptions`
+
+```typescript
+interface TransformBoxOptions {
+  boxColor?: string;
+  handleColor?: string;
+  handleBorderColor?: string;
+  handleSize?: number;
+  rotatorDistance?: number;
+  showPivot?: boolean;
+}
+```
+
+### `TransformSnapshot`
+
+```typescript
+interface TransformSnapshot {
+  readonly isActive: boolean;
+  readonly layerId: LayerId;
+  readonly translation: { x: number; y: number };
+  readonly scale: { x: number; y: number };
+  readonly rotation: number;
+  readonly origin: { x: number; y: number };
+  readonly bounds: { x: number; y: number; width: number; height: number };
+}
+```

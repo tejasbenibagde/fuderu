@@ -1,0 +1,69 @@
+---
+sidebar_position: 9
+title: Actions & Replay API
+sidebar_label: Actions & Replay API
+---
+
+# Actions & Replay API 🎬
+
+Fuderu provides a serializable event log and replay engine for canvas operations.
+
+```typescript
+import type { CanvasAction, ReplayOptions } from "fuderu";
+```
+
+---
+
+## Canvas Replay Methods
+
+### `getActionLog(): readonly CanvasAction[]`
+
+Returns the array of all serializable actions executed in the current session.
+
+### `replay(actions: CanvasAction[], options?: ReplayOptions): Promise<void>`
+
+Replays an array of actions sequentially on the canvas.
+
+### `replayAction(action: CanvasAction): void`
+
+Replays a single action immediately.
+
+---
+
+## Types
+
+### `CanvasAction`
+
+```typescript
+type CanvasAction =
+  | StrokeAction
+  | FloodFillAction
+  | ClearLayerAction
+  | DrawRectangleAction
+  | DrawEllipseAction
+  | DrawLineAction
+  | DrawTextAction
+  | CreateLayerAction
+  | DeleteLayerAction
+  | SelectRectangleAction
+  | SelectEllipseAction
+  | SelectLassoAction
+  | SelectAllAction
+  | ClearSelectionAction
+  | InvertSelectionAction
+  | TransformAction
+  | CopyAction
+  | CutAction
+  | PasteAction;
+```
+
+### `ReplayOptions`
+
+```typescript
+interface ReplayOptions {
+  /** Speed multiplier (e.g. 1 = real-time, 2 = 2x speed, 0 = instant) */
+  speed?: number;
+  /** Callback invoked on each action step during replay */
+  onProgress?: (progress: number, action: CanvasAction) => void;
+}
+```

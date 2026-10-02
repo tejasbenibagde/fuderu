@@ -1,0 +1,70 @@
+---
+sidebar_position: 7
+title: Clipboard API
+sidebar_label: Clipboard API
+---
+
+# Clipboard API 📋
+
+The `ClipboardStore` class provides static in-memory clipboard management for raster selections and layer regions across layers and separate `Canvas` document instances.
+
+```typescript
+import { ClipboardStore } from "fuderu";
+import type {
+  ClipboardData,
+  ClipboardSnapshot,
+  CopyOptions,
+  CutOptions,
+  PasteOptions,
+  PasteResult,
+} from "fuderu";
+```
+
+---
+
+## Canvas Clipboard Methods
+
+### `copy(options?: CopyOptions): ClipboardData | null`
+
+Copies the active selection (or active layer non-empty AABB) to the clipboard. Returns the `ClipboardData` or `null` if empty.
+
+### `cut(options?: CutOptions): ClipboardData | null`
+
+Cuts the active selection, clears the region from the layer, pushes an undoable history patch, and returns `ClipboardData`. Throws if layer is locked.
+
+### `paste(options?: PasteOptions): PasteResult | null`
+
+Pastes clipboard content onto the target layer or a new layer with optional transformation/selection wrapping.
+
+### `getClipboard(): ClipboardData | null`
+
+Returns current in-memory clipboard data.
+
+### `hasClipboard(): boolean`
+
+Returns `true` if clipboard currently contains raster data.
+
+### `clearClipboard(): void`
+
+Empties the in-memory clipboard store.
+
+### `copyToSystemClipboard(): Promise<boolean>`
+
+Writes the current clipboard selection as a PNG Blob to the system clipboard via Web Clipboard API.
+
+### `pasteFromSystemClipboard(options?: PasteOptions): Promise<PasteResult | null>`
+
+Reads an image from the system clipboard and pastes it into the canvas.
+
+---
+
+## `ClipboardStore` Static Methods
+
+- `ClipboardStore.set(data: ClipboardData): void`
+- `ClipboardStore.get(): ClipboardData | null`
+- `ClipboardStore.has(): boolean`
+- `ClipboardStore.clear(): void`
+- `ClipboardStore.getSnapshot(): ClipboardSnapshot`
+- `ClipboardStore.subscribe(listener: () => void): () => void`
+- `ClipboardStore.toBlob(data: ClipboardData): Promise<Blob | null>`
+- `ClipboardStore.fromBlob(blob: Blob, x?: number, y?: number): Promise<ClipboardData | null>`

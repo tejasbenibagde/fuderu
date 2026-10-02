@@ -1,0 +1,96 @@
+---
+sidebar_position: 6
+title: History, Undo & Snapshots
+sidebar_label: History & Snapshots
+---
+
+# History, Undo & Snapshots ⏱️
+
+Fuderu features a memory-efficient timeline history stack with full **undo, redo, and timeline jumping**, backed by immutable state snapshots for reactive frontend frameworks.
+
+---
+
+## 1. Basic Undo & Redo
+
+```typescript
+// Undo the last stroke, fill, transform, or cut
+painter.undo();
+
+// Redo the last undone action
+painter.redo();
+
+// Check if undo or redo are available
+if (painter.canUndo()) {
+  console.log("Can step backward!");
+}
+if (painter.canRedo()) {
+  console.log("Can step forward!");
+}
+```
+
+---
+
+## 2. Memory-Safe Bounding Patches
+
+Traditional canvas libraries save full-canvas `ImageData` snapshots on every stroke. For a 4K canvas (3840×2160 pixels), each history state would consume ~33MB of RAM, causing browser crashes after 15 strokes!
+
+Fuderu solves this by storing **sparse bounding box patches**:
+
+- When you draw a small 50×50 smiley face, Fuderu only records the 50×50 pixel patch before and after that stroke.
+- Memory usage is reduced by **95% to 99%**, allowing deep history stacks (50+ steps) without performance degradation.
+
+---
+
+## 3. Timeline Jumps
+
+You can jump to any arbitrary step in the undo/redo timeline:
+
+```typescript
+const state = painter.getHistoryState();
+console.log(`Current index: ${state.index} of ${state.length}`);
+
+// Jump directly to step 5 in the timeline
+painter.history.goTo(5);
+```
+
+---
+
+## 4. Immutable `CanvasSnapshot`
+
+Modern frameworks like **React** (`useSyncExternalStore`), **Vue** (`shallowRef`), and **Svelte** (`readable`) require immutable references to detect state changes cleanly.
+
+Calling `painter.getSnapshot()` returns a deeply frozen `CanvasSnapshot` data transfer object (DTO):
+
+```typescript
+const snapshot = painter.getSnapshot();
+
+// Layer snapshots (frozen, safe from external mutation)
+console.log(snapshot.layers);
+
+// Active layer ID
+console.log(snapshot.activeLayerId);
+
+// History flags
+console.log(snapshot.history.canUndo); // boolean
+console.log(snapshot.history.canRedo); // boolean
+console.log(snapshot.history.index); // current timeline index
+
+// Selection state
+console.log(snapshot.selection?.hasSelection);
+
+// Transform state
+console.log(snapshot.transform?.isActive);
+
+// Clipboard state
+console.log(snapshot.clipboard?.hasData);
+```
+
+Whenever anything changes inside the engine, Fuderu emits the `"change"` event, making it trivial to bind to reactive UI state:
+
+```typescript
+painter.on("change", (snapshot) => {
+  // Update UI buttons (e.g. enable/disable undo button)
+  undoButton.disabled = !snapshot.history.canUndo;
+  redoButton.disabled = !snapshot.history.canRedo;
+});
+```

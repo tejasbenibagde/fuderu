@@ -5,6 +5,7 @@ import Layout from "@theme/Layout";
 import Heading from "@theme/Heading";
 
 import FuderuDemo from "@site/src/components/FuderuDemo";
+import { CURRENT_VERSION } from "../constants";
 import styles from "./index.module.css";
 
 const features = [
@@ -44,9 +45,9 @@ export default function Home(): ReactNode {
                 />
               </Heading>
               <p className={styles.subtitle}>
-                Fuderu 0.8.7 brings spacing-aware flow, explicit document
-                sizing, smooth brush strokes, pressure-aware input, image
-                stamps, and runtime effects.
+                Fuderu {CURRENT_VERSION} brings selection tools, floating
+                transformations, clipboard pipelines, layer compositing,
+                pressure-aware brush strokes, and document persistence.
               </p>
               <div className={styles.actions}>
                 <Link

@@ -2,9 +2,9 @@
  * Single source of truth for documentation constants, release versions, and package metadata.
  * Whenever Fuderu publishes a new version, update `CURRENT_VERSION` here to sync the entire portal.
  */
-export const CURRENT_VERSION = "1.5.0";
+export const CURRENT_VERSION = "1.5.1";
 export const PACKAGE_NAME = "fuderu";
-export const RELEASE_DATE = "2026-09-27";
+export const RELEASE_DATE = "2026-10-04";
 export const TAGLINE =
   "High-performance canvas drawing engine with selection, transform, and layer pipelines.";
 export const GITHUB_REPO_URL = "https://github.com/tejasbenibagde/fuderu";

@@ -463,5 +463,22 @@ describe("Selection Module & Artist Selection Tools", () => {
         height: 45,
       });
     });
+
+    it("provides cached getMaskData buffer and boundary-accurate containsPoint", () => {
+      const sel = new Selection(100, 100);
+      sel.selectRectangle(10, 10, 20, 20);
+
+      const maskData = sel.getMaskData();
+      expect(maskData).toBeInstanceOf(Uint8ClampedArray);
+      expect(maskData.length).toBe(100 * 100 * 4);
+
+      // Points strictly inside
+      expect(sel.containsPoint(15, 15)).toBe(true);
+
+      // Points strictly outside
+      expect(sel.containsPoint(5, 5)).toBe(false);
+      expect(sel.containsPoint(35, 35)).toBe(false);
+      expect(sel.containsPoint(30, 30)).toBe(false); // Exactly at right/bottom edge
+    });
   });
 });

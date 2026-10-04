@@ -4,6 +4,31 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
+## [1.5.1] - 2026-10-04
+
+- **Single-Argument Layer Constructor & Signature Alignment**:
+  - Reverted `Layer` constructor to accept strictly 1 argument: `constructor(options: LayerOptions)`.
+  - Removed internal `_onMutation` and `setOnMutation()` methods from `Layer`, preventing signature mismatch errors (`Expected 1 arguments, but got 2` and `Property 'setOnMutation' does not exist on type 'Layer'`).
+  - Scoped snapshot cache invalidation directly inside `LayerManager` methods (`createLayer`, `deleteLayer`, `duplicateLayer`, `moveLayer`, `reorderLayers`, `updateLayer`, `resize`, `replaceAllLayers`).
+- **Public Layer Snapshot Query API**:
+  - Exposed `canvas.getLayerSnapshots(): readonly LayerSnapshot[]` directly on `Canvas` for reactive state consumers (React `useSyncExternalStore`, Zustand, Svelte stores, Vue `ref`).
+  - Added `getSnapshots()` alias on `LayerManager`.
+- **High-Performance Selection Mask Buffer in Flood Fill**:
+  - Added `Selection.getMaskData(): Uint8ClampedArray` caching a 1D pixel mask buffer upon mask mutation.
+  - Replaced synchronous `maskCtx.getImageData(px, py, 1, 1)` context stalls inside scanline flood fills with direct $\mathcal{O}(1)$ typed memory indexing.
+- **Persistent Offscreen Stroke Canvas Reuse**:
+  - Replaced per-stroke `document.createElement("canvas")` allocation thrashing in `handlePointerDown()` and `replay()` with a reusable persistent `getStrokeBeforeCanvas(w, h)` instance, eliminating garbage collection pauses during rapid sketching.
+- **Floating Transform Serialization in Exports**:
+  - Updated `canvas.exportPNG()` and `canvas.exportDocument()` to composite the active floating transform onto the target layer if an export is requested during an ongoing transform session.
+- **Comprehensive Resource Teardown in `canvas.destroy()`**:
+  - Zeroed dimensions (`width = 0, height = 0`) on all internal offscreen scratch canvases (`currentStrokeBeforeCanvas`, `scratchCanvas`, `cacheBelowCanvas`) to guarantee immediate GPU backing buffer deallocation upon unmount.
+- **Selection Boundary Precision**:
+  - Corrected boundary check in `Selection.containsPoint()` from `x > bounds.x + bounds.width` to strict `>=` rejection.
+- **Alpha Fallback Robustness**:
+  - Ensured `Canvas.getColorAt()` properly falls back to `"0"` rather than producing an empty string when alpha is 0.
+
+---
+
 ## [1.5.0] - 2026-09-27
 
 - **Selection Tools**:

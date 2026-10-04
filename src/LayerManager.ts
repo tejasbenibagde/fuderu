@@ -1,7 +1,7 @@
 // src/LayerManager.ts
 
 import { Layer } from "./Layer";
-import type { BlendMode, LayerId } from "./types/layers";
+import type { BlendMode, LayerId, LayerSnapshot } from "./types/layers";
 
 export interface CreateLayerOptions {
   id?: LayerId;
@@ -27,6 +27,24 @@ export class LayerManager {
   private activeLayerId: LayerId | null = null;
   private width: number;
   private height: number;
+  private cachedSnapshots: readonly LayerSnapshot[] | null = null;
+
+  public invalidateSnapshotCache = (): void => {
+    this.cachedSnapshots = null;
+  };
+
+  public getLayerSnapshots(): readonly LayerSnapshot[] {
+    if (this.cachedSnapshots === null) {
+      this.cachedSnapshots = Object.freeze(
+        this.layers.map((l) => l.toSnapshot()),
+      );
+    }
+    return this.cachedSnapshots;
+  }
+
+  public getSnapshots(): readonly LayerSnapshot[] {
+    return this.getLayerSnapshots();
+  }
 
   constructor(width: number, height: number) {
     this.width = width;
@@ -83,6 +101,7 @@ export class LayerManager {
 
     this.layers.push(layer);
     this.activeLayerId = layer.id;
+    this.invalidateSnapshotCache();
 
     return layer;
   }
@@ -103,6 +122,7 @@ export class LayerManager {
     }
 
     this.layers.splice(layerIndex, 1);
+    this.invalidateSnapshotCache();
 
     if (this.activeLayerId === layerId) {
       const fallbackIndex = Math.min(layerIndex, this.layers.length - 1);
@@ -113,12 +133,14 @@ export class LayerManager {
   addLayerAt(layer: Layer, index: number): void {
     const boundedIndex = Math.min(Math.max(index, 0), this.layers.length);
     this.layers.splice(boundedIndex, 0, layer);
+    this.invalidateSnapshotCache();
   }
 
   removeLayerOnly(layerId: LayerId): void {
     const layerIndex = this.layers.findIndex((layer) => layer.id === layerId);
     if (layerIndex !== -1) {
       this.layers.splice(layerIndex, 1);
+      this.invalidateSnapshotCache();
       if (this.activeLayerId === layerId && this.layers.length > 0) {
         this.activeLayerId = this.layers[0].id;
       }
@@ -149,6 +171,7 @@ export class LayerManager {
     const sourceIndex = this.layers.indexOf(source);
     this.layers.splice(sourceIndex + 1, 0, duplicate);
     this.activeLayerId = duplicate.id;
+    this.invalidateSnapshotCache();
 
     return duplicate;
   }
@@ -168,6 +191,7 @@ export class LayerManager {
     const [layer] = this.layers.splice(currentIndex, 1);
 
     this.layers.splice(boundedTargetIndex, 0, layer);
+    this.invalidateSnapshotCache();
   }
 
   reorderLayers(ids: LayerId[]): void {
@@ -186,6 +210,7 @@ export class LayerManager {
     }
     if (newLayers.length > 0) {
       this.layers = newLayers;
+      this.invalidateSnapshotCache();
     }
   }
 
@@ -199,6 +224,7 @@ export class LayerManager {
     if (options.alphaLock !== undefined) layer.alphaLock = options.alphaLock;
     if (options.locked !== undefined) layer.locked = options.locked;
 
+    this.invalidateSnapshotCache();
     return layer;
   }
 
@@ -218,6 +244,7 @@ export class LayerManager {
     for (const layer of this.layers) {
       layer.resize(width, height);
     }
+    this.invalidateSnapshotCache();
   }
 
   clear(): void {
@@ -240,5 +267,6 @@ export class LayerManager {
         ? activeLayerId
         : layers[0].id;
     this.activeLayerId = targetActive;
+    this.invalidateSnapshotCache();
   }
 }

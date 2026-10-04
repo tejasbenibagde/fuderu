@@ -15,6 +15,7 @@ export class Selection {
 
   private maskCanvas: HTMLCanvasElement;
   private maskCtx: CanvasRenderingContext2D;
+  private maskDataCache: Uint8ClampedArray | null = null;
 
   private _active: boolean = false;
   private _bounds: SelectionBounds | null = null;
@@ -61,6 +62,18 @@ export class Selection {
     return this.maskCanvas;
   }
 
+  public getMaskData(): Uint8ClampedArray {
+    if (!this.maskDataCache) {
+      this.maskDataCache = this.maskCtx.getImageData(
+        0,
+        0,
+        this.width,
+        this.height,
+      ).data;
+    }
+    return this.maskDataCache;
+  }
+
   private static readonly INACTIVE_SNAPSHOT: SelectionSnapshot = Object.freeze({
     active: false,
     bounds: null,
@@ -82,6 +95,7 @@ export class Selection {
     const newHeight = Math.max(1, Math.round(height));
     if (newWidth === this.width && newHeight === this.height) return;
 
+    this.maskDataCache = null;
     const oldCanvas = this.maskCanvas;
     this.width = newWidth;
     this.height = newHeight;
@@ -101,6 +115,7 @@ export class Selection {
   }
 
   private applyCompositeMode(mode: SelectionMode): void {
+    this.maskDataCache = null;
     switch (mode) {
       case "replace":
         this.maskCtx.clearRect(0, 0, this.width, this.height);
@@ -276,6 +291,7 @@ export class Selection {
   }
 
   public selectAll(): void {
+    this.maskDataCache = null;
     this.maskCtx.clearRect(0, 0, this.width, this.height);
     this.maskCtx.globalCompositeOperation = "source-over";
     this.maskCtx.fillStyle = "#ffffff";
@@ -292,6 +308,7 @@ export class Selection {
   }
 
   public clear(): void {
+    this.maskDataCache = null;
     this.maskCtx.clearRect(0, 0, this.width, this.height);
     this._active = false;
     this._bounds = null;
@@ -305,6 +322,7 @@ export class Selection {
   }
 
   public invert(): void {
+    this.maskDataCache = null;
     if (!this._active) {
       this.selectAll();
       return;
@@ -332,8 +350,8 @@ export class Selection {
     if (
       x < this._bounds.x ||
       y < this._bounds.y ||
-      x > this._bounds.x + this._bounds.width ||
-      y > this._bounds.y + this._bounds.height
+      x >= this._bounds.x + this._bounds.width ||
+      y >= this._bounds.y + this._bounds.height
     ) {
       return false;
     }
@@ -342,8 +360,8 @@ export class Selection {
     const py = Math.floor(y);
     if (px < 0 || py < 0 || px >= this.width || py >= this.height) return false;
 
-    const data = this.maskCtx.getImageData(px, py, 1, 1).data;
-    return data[3] > 128;
+    const data = this.getMaskData();
+    return data[(py * this.width + px) * 4 + 3] > 128;
   }
 
   public isPixelSelected(x: number, y: number): boolean {
@@ -353,6 +371,7 @@ export class Selection {
   public recomputeBounds(): void {
     const imgData = this.maskCtx.getImageData(0, 0, this.width, this.height);
     const data = imgData.data;
+    this.maskDataCache = data;
 
     let minX = Infinity;
     let minY = Infinity;
@@ -399,6 +418,7 @@ export class Selection {
     newMaskCanvas: HTMLCanvasElement,
     newBounds: SelectionBounds,
   ): void {
+    this.maskDataCache = null;
     this.maskCtx.clearRect(0, 0, this.width, this.height);
     this.maskCtx.drawImage(newMaskCanvas, 0, 0);
     this._active = newBounds.width > 0 && newBounds.height > 0;

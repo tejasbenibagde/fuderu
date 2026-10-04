@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Stable 1.5.0 canvas drawing engine for the web.
+  Stable 1.5.1 canvas drawing engine for the web.
 </p>
 
 <p align="center">
@@ -23,8 +23,8 @@
 
 ## Features
 
-- **Artist Tools: Selection, Transformation & Clipboard (v1.5.0)** – Marquee and freehand lasso selections (`selectRectangle`, `selectEllipse`, `selectLasso`, `renderSelectionOutline`); floating interactive transformations with move, rotate, scale, and flip (`beginTransform`, `commitTransform`, `renderTransformBox`); cross-layer and cross-document clipboard pipeline (`copy`, `cut`, `paste`, `ClipboardStore`).
-- **Architecture Refinements & Safety (v1.4.2)** – Immutable `CanvasSnapshot` with frozen `LayerSnapshot` DTOs, encapsulated `LayerManager` (`canvas.layers` private), explicit type aliases (`LayerId`, `ActionId`, `DocumentId`), and schema version migration architecture (`migrateDocument`).
+- **Artist Tools: Selection, Transformation & Clipboard (v1.5.0 / v1.5.1)** – Marquee and freehand lasso selections (`selectRectangle`, `selectEllipse`, `selectLasso`, `renderSelectionOutline`); floating interactive transformations with move, rotate, scale, and flip (`beginTransform`, `commitTransform`, `renderTransformBox`); cross-layer and cross-document clipboard pipeline (`copy`, `cut`, `paste`, `ClipboardStore`); typed mask caching for scanline fills.
+- **Reactive State & Layer Snapshots (v1.5.1)** – Clean single-argument `Layer` constructor contract, public `canvas.getLayerSnapshots()` returning cached immutable `LayerSnapshot` DTOs, and persistent offscreen stroke canvas reuse.
 - **Operation Log & Action Replay Engine (v1.4.0)** – Serializable stroke/action event stream (`action:record`, `stroke:record`), full log recording (`getActionLog`), and programmatic replay (`replay`, `replayAction`) with speed control and progress callbacks.
 - **Document Persistence API** – Export and import complete canvas state as versioned JSON with layer metadata and serialized bitmaps (`exportDocument`, `importDocument`, `exportPNG`).
 - **Advanced Layer Controls** – Full layer stack with visibility, opacity, 16 blend modes, **Alpha Lock** (clip strokes to opaque pixels), and **Layer Lock** (protect layers from modifications).
@@ -37,9 +37,18 @@
 
 ## Release Focus
 
-For Fuderu 1.5.0, the engine delivers full artist workflow tooling: bitmask selections with Boolean operations and marching ants, floating interactive bounding transformations, and a full cross-layer and cross-document clipboard pipeline (copy, cut, paste) with undoable history patches and action replay support.
+For Fuderu 1.5.1, the engine delivers stability refinements, strict type signature alignment, high-frequency scanline fill optimizations, and active transform preservation in exports, building upon the complete artist tools suite (bitmask selections, floating transformations, and cross-layer clipboard pipeline) introduced in 1.5.0.
 
 ## Releases
+
+### 1.5.1
+
+- **Clean Layer Constructor & Signature Alignment**: Reverted `Layer` constructor to strictly accept a single argument (`new Layer(options: LayerOptions)`), removed internal mutation callback leaks, and scoped snapshot invalidation cleanly within `LayerManager`.
+- **Public Layer Snapshots API**: Added `canvas.getLayerSnapshots(): readonly LayerSnapshot[]` directly on `Canvas` (and `getSnapshots()` on `LayerManager`) returning cached immutable `LayerSnapshot` DTOs for reactive state bindings (React `useSyncExternalStore`, Zustand, Svelte, Vue).
+- **Fast Selection Mask Buffer in Flood Fill**: Added `Selection.getMaskData()` 1D typed mask caching, replacing synchronous `getImageData` context stalls in scanline fills with $\mathcal{O}(1)$ typed memory lookups.
+- **Stroke Canvas Reuse**: Replaced per-stroke canvas allocation thrashing with a reusable persistent offscreen buffer (`getStrokeBeforeCanvas`), eliminating garbage collection pauses during rapid sketching.
+- **Floating Transform Export Preservation**: Ensured in-progress floating transforms are seamlessly composited into output images and serialized documents in `canvas.exportPNG()` and `canvas.exportDocument()`.
+- **Resource Teardown**: Updated `canvas.destroy()` to explicitly zero-out and detach all scratch canvases to prevent GPU memory retention.
 
 ### 1.5.0
 
@@ -47,30 +56,9 @@ For Fuderu 1.5.0, the engine delivers full artist workflow tooling: bitmask sele
 - **Transform Operations**: Interactive floating transformation sessions (`beginTransform`, `commitTransform`, `cancelTransform`, `transform`, `translate`, `rotate`, `scale`, `flipHorizontal`, `flipVertical`) with live resize handles, rotator handle, and pivot rendering (`renderTransformBox`), selection-aware pixel lifting and mask updating, alpha lock preservation, and undoable history patch generation.
 - **Clipboard Pipeline**: Unified clipboard store (`ClipboardStore`, `copy`, `cut`, `paste`) enabling raster selection and layer region transfers across layers and separate document instances, with optional new layer creation, marquee wrapping, floating transform initiation, and system clipboard interoperability.
 
-### 1.4.2
+### Earlier Releases Summary
 
-- **Immutable `CanvasSnapshot`**: `canvas.getSnapshot()` returns deeply frozen snapshot objects and layer DTOs (`LayerSnapshot[]`), guaranteeing that reactive consumers (such as React `useSyncExternalStore`) cannot accidentally mutate internal layer references.
-- **Encapsulate `LayerManager`**: `canvas.layers` is now strictly private, ensuring all layer creation, selection, reordering, update, and deletion operations route cleanly through public `Canvas` methods.
-- **Explicit Type Aliases for Identifiers**: Introduced distinct `LayerId`, `ActionId`, and `DocumentId` string type aliases across the engine, actions, events, and persistence layers for future-proof multiplayer collaboration.
-- **Document Version Migration Architecture**: Established `CURRENT_DOCUMENT_VERSION = 1` and a composable `migrateDocument(doc)` pipeline, validating schemas and guaranteeing forward compatibility across document schema revisions.
-- **Real Canvas2D Integration Tests**: Multi-component integration test suite verifying real raster rendering, compositing, layer reordering, and history interactions without reliance on full mock stubs.
-- **Performance Benchmarking Suite**: Automated profiling suite benchmarking high-frequency stroke event capture (>10,000 points/sec), high layer-count compositing (30 layers), and sub-millisecond snapshot generation.
-
-### 1.4.1
-
-- **Alpha Lock Flood Fill Fix**: Pixel-level alpha blending in `floodFill` strictly preserves original pixel alpha values and leaves zero-alpha transparent pixels untouched when `alphaLock === true`.
-- **Brush Engine Clean Decoupling**: Purged legacy history code (`maxUndoRedoStackSize`, `initCanvasStack()`, and dummy `undo()`/`redo()` stubs) from `Brush.ts`, standardizing on `HistoryManager` as the single source of truth for history.
-- **Layer-Switch History Hardening**: Regression test suite ensuring lossless global undo/redo across arbitrary active-layer switches.
-- **Locked Layer Enforcement**: Comprehensive test coverage verifying that locked layers reject brush drawing, flood fill, clear, raster commands, and deletion.
-- **Lossless Persistence Round-Trip**: Automated test verification validating document dimension, layer stack, and property integrity across export and import cycles.
-
-### 1.4.0
-
-- **Operation Log & Action Stream API**: Strong type definitions for canvas actions (`CanvasAction`, `StrokeAction`, etc.), stream events (`"action:record"`, `"stroke:record"`), and action replay engine (`recordAction()`, `getActionLog()`, `clearActionLog()`, `replayAction()`, `replay()`).
-- **Replay Execution Guard**: `isReplaying` state isolation ensures replaying action sequences never duplicates action logs or triggers recursive event loops.
-
-### Pre-1.4.0 Releases Summary
-
+- **v1.4.x**: Introduced the Operation Log & Action Replay Engine (`CanvasAction`, `action:record`, `stroke:record`, `replay`), immutable `CanvasSnapshot` with frozen `LayerSnapshot` DTOs, encapsulated `LayerManager` (`canvas.layers` private), nominal type aliases (`LayerId`, `ActionId`, `DocumentId`), schema version migration architecture (`migrateDocument`), and Alpha Lock flood fill correctness.
 - **v1.3.x**: Introduced the Document Persistence API (`exportDocument`, `importDocument`, `exportPNG`), Advanced Layer Controls (`alphaLock`, `locked`), native raster commands (`floodFill`, `drawRectangle`, `drawEllipse`, `drawLine`, `drawText`, `getColorAt`), reactive state events (`change`, `stroke:start`, `stroke:end`), and public history navigation (`goTo`, `pushPatch`).
 - **v1.2.x**: Major performance and memory optimizations: sparse bounding-box history patches (90-95% memory reduction), offscreen compositing cache ($O(1)$ brush strokes), and pointer gesture isolation.
 - **v1.1.x & v1.0.x**: Decoupled global history engine across layers, undoable layer properties, and initial stable architecture.
@@ -232,7 +220,7 @@ brush.useModule(
 
 ## Status
 
-Fuderu 1.4.0 is the current stable release, providing a complete canvas engine with serializable operation logs & action replay stream API, layer controls (including Alpha Lock and Layer Lock), native raster commands, multi-pointer gesture safety, state events, document persistence with lock state serialization, pressure sensitivity, and extensible brush modules.
+Fuderu 1.5.1 is the current stable release, providing a complete canvas engine with serializable operation logs & action replay stream API, layer controls (including Alpha Lock and Layer Lock), native raster commands, multi-pointer gesture safety, state events, document persistence with lock state serialization, pressure sensitivity, and extensible brush modules.
 
 The library is fully verified with robust unit testing via Vitest, browser-style canvas rendering tests, and various local playground environments across multiple web frameworks.
 

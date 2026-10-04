@@ -12,6 +12,12 @@ describe("Transformation System & Floating Transform Bounds", () => {
     pixelBuffers = new WeakMap<HTMLCanvasElement, Uint8ClampedArray>();
     contextMap = new WeakMap<HTMLCanvasElement, unknown>();
 
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockImplementation(
+      function (type = "image/png") {
+        return `data:${type};base64,mockImageData`;
+      },
+    );
+
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
       function (this: HTMLCanvasElement, contextId: string) {
         if (contextId === "2d") {
@@ -467,6 +473,32 @@ describe("Transformation System & Floating Transform Bounds", () => {
       expect(() => {
         canvas.beginTransform();
       }).toThrow(/locked/i);
+    });
+
+    it("preserves active floating transform during exportPNG and exportDocument", async () => {
+      canvas.selectRectangle(10, 10, 30, 30);
+      canvas.beginTransform();
+      expect(canvas.isTransforming()).toBe(true);
+
+      const pngData = await canvas.exportPNG();
+      expect(pngData).toContain("data:image/png");
+
+      const doc = await canvas.exportDocument();
+      expect(doc.layers).toHaveLength(1);
+      expect(doc.layers[0].dataUrl).toContain("data:image/png");
+
+      canvas.commitTransform();
+      expect(canvas.isTransforming()).toBe(false);
+    });
+
+    it("cleans up resources upon destroy() during transform session", () => {
+      canvas.beginTransform();
+      expect(canvas.isTransforming()).toBe(true);
+
+      expect(() => {
+        canvas.destroy();
+      }).not.toThrow();
+      expect(canvas.isTransforming()).toBe(false);
     });
   });
 });

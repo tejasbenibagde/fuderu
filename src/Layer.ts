@@ -16,25 +16,25 @@ export interface LayerOptions {
 
 export class Layer {
   public readonly id: LayerId;
-  public name: string;
-
   public readonly canvas: HTMLCanvasElement;
   public readonly ctx: CanvasRenderingContext2D;
 
-  public visible: boolean;
-  public opacity: number;
-  public blendMode: BlendMode;
-  public alphaLock: boolean;
-  public locked: boolean;
+  private _name: string;
+  private _visible: boolean;
+  private _opacity: number;
+  private _blendMode: BlendMode;
+  private _alphaLock: boolean;
+  private _locked: boolean;
+  private _cachedSnapshot: LayerSnapshot | null = null;
 
   constructor(options: LayerOptions) {
     this.id = options.id ?? generateUUID();
-    this.name = options.name ?? "Layer";
-    this.visible = options.visible ?? true;
-    this.opacity = clampOpacity(options.opacity ?? 1);
-    this.blendMode = options.blendMode ?? "source-over";
-    this.alphaLock = options.alphaLock ?? false;
-    this.locked = options.locked ?? false;
+    this._name = options.name ?? "Layer";
+    this._visible = options.visible ?? true;
+    this._opacity = clampOpacity(options.opacity ?? 1);
+    this._blendMode = options.blendMode ?? "source-over";
+    this._alphaLock = options.alphaLock ?? false;
+    this._locked = options.locked ?? false;
 
     this.canvas = document.createElement("canvas");
     this.canvas.width = options.width;
@@ -49,6 +49,71 @@ export class Layer {
     this.ctx = ctx;
   }
 
+  get name(): string {
+    return this._name;
+  }
+  set name(value: string) {
+    if (this._name !== value) {
+      this._name = value;
+      this.invalidateSnapshot();
+    }
+  }
+
+  get visible(): boolean {
+    return this._visible;
+  }
+  set visible(value: boolean) {
+    if (this._visible !== value) {
+      this._visible = value;
+      this.invalidateSnapshot();
+    }
+  }
+
+  get opacity(): number {
+    return this._opacity;
+  }
+  set opacity(value: number) {
+    const clamped = clampOpacity(value);
+    if (this._opacity !== clamped) {
+      this._opacity = clamped;
+      this.invalidateSnapshot();
+    }
+  }
+
+  get blendMode(): BlendMode {
+    return this._blendMode;
+  }
+  set blendMode(value: BlendMode) {
+    if (this._blendMode !== value) {
+      this._blendMode = value;
+      this.invalidateSnapshot();
+    }
+  }
+
+  get alphaLock(): boolean {
+    return this._alphaLock;
+  }
+  set alphaLock(value: boolean) {
+    if (this._alphaLock !== value) {
+      this._alphaLock = value;
+      this.invalidateSnapshot();
+    }
+  }
+
+  get locked(): boolean {
+    return this._locked;
+  }
+  set locked(value: boolean) {
+    if (this._locked !== value) {
+      this._locked = value;
+      this.invalidateSnapshot();
+    }
+  }
+
+  public invalidateSnapshot(): void {
+    this._cachedSnapshot = null;
+  }
+
   clear(): void {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
@@ -57,6 +122,8 @@ export class Layer {
     if (this.canvas.width === width && this.canvas.height === height) {
       return;
     }
+
+    this.invalidateSnapshot();
 
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = this.canvas.width;
@@ -75,21 +142,24 @@ export class Layer {
   }
 
   setOpacity(opacity: number): void {
-    this.opacity = clampOpacity(opacity);
+    this.opacity = opacity;
   }
 
   toSnapshot(): LayerSnapshot {
-    return Object.freeze({
-      id: this.id,
-      name: this.name,
-      visible: this.visible,
-      opacity: this.opacity,
-      blendMode: this.blendMode,
-      alphaLock: this.alphaLock,
-      locked: this.locked,
-      width: this.canvas.width,
-      height: this.canvas.height,
-    });
+    if (!this._cachedSnapshot) {
+      this._cachedSnapshot = Object.freeze({
+        id: this.id,
+        name: this._name,
+        visible: this._visible,
+        opacity: this._opacity,
+        blendMode: this._blendMode,
+        alphaLock: this._alphaLock,
+        locked: this._locked,
+        width: this.canvas.width,
+        height: this.canvas.height,
+      });
+    }
+    return this._cachedSnapshot;
   }
 }
 

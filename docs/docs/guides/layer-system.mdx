@@ -129,3 +129,19 @@ painter.on("layer:change", (snapshot) => {
   // Re-render your UI layer list or thumbnails
 });
 ```
+
+---
+
+## 7. Immutable Layer Snapshots (`getLayerSnapshots()`)
+
+To integrate cleanly with reactive state management (such as React `useSyncExternalStore`, Zustand, Svelte stores, or Vue `ref`), `Canvas` exposes `painter.getLayerSnapshots()`:
+
+```typescript
+const layerSnapshots = painter.getLayerSnapshots();
+
+for (const snap of layerSnapshots) {
+  console.log(snap.id, snap.name, snap.visible, snap.opacity, snap.locked);
+}
+```
+
+Each item in the returned array is an immutable, frozen `LayerSnapshot` Data Transfer Object (DTO). Snapshots are cached internally, ensuring `painter.getLayerSnapshots()` executes in $\mathcal{O}(1)$ time without re-allocating objects unless a layer property has mutated.

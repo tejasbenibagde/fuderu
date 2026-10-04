@@ -22,7 +22,7 @@ import type {
   StrokeBounds,
   StrokePoint,
 } from "./types/events";
-import type { LayerId } from "./types/layers";
+import type { LayerId, LayerSnapshot } from "./types/layers";
 import type {
   CanvasAction,
   StrokeAction,
@@ -418,7 +418,7 @@ export class Canvas implements HistoryContext {
     return Object.freeze({
       documentWidth: this.documentWidth,
       documentHeight: this.documentHeight,
-      layers: Object.freeze(this.layers.getAll().map((l) => l.toSnapshot())),
+      layers: this.getLayerSnapshots(),
       activeLayerId: this.layers.getActiveId() ?? "",
       history: this.history.getHistoryState(),
       selection: this.selection ? this.selection.getSnapshot() : null,
@@ -543,6 +543,23 @@ export class Canvas implements HistoryContext {
     return this.scratchCanvas;
   }
 
+  private getStrokeBeforeCanvas(
+    width: number,
+    height: number,
+  ): HTMLCanvasElement {
+    if (!this.currentStrokeBeforeCanvas) {
+      this.currentStrokeBeforeCanvas = document.createElement("canvas");
+    }
+    if (
+      this.currentStrokeBeforeCanvas.width !== width ||
+      this.currentStrokeBeforeCanvas.height !== height
+    ) {
+      this.currentStrokeBeforeCanvas.width = width;
+      this.currentStrokeBeforeCanvas.height = height;
+    }
+    return this.currentStrokeBeforeCanvas;
+  }
+
   private drawWithSelectionClip(
     ctx: CanvasRenderingContext2D,
     alphaLock: boolean | undefined,
@@ -607,11 +624,13 @@ export class Canvas implements HistoryContext {
 
     const ctx = activeLayer.canvas.getContext("2d");
     if (ctx) {
-      this.currentStrokeBeforeCanvas = document.createElement("canvas");
-      this.currentStrokeBeforeCanvas.width = activeLayer.canvas.width;
-      this.currentStrokeBeforeCanvas.height = activeLayer.canvas.height;
-      const bCtx = this.currentStrokeBeforeCanvas.getContext("2d");
+      const beforeCanvas = this.getStrokeBeforeCanvas(
+        activeLayer.canvas.width,
+        activeLayer.canvas.height,
+      );
+      const bCtx = beforeCanvas.getContext("2d");
       if (bCtx) {
+        bCtx.clearRect(0, 0, beforeCanvas.width, beforeCanvas.height);
         bCtx.drawImage(activeLayer.canvas, 0, 0);
       }
       this.currentStrokeLayerId = activeLayer.id;
@@ -659,7 +678,6 @@ export class Canvas implements HistoryContext {
   private commitStroke() {
     const beforeCanvas = this.currentStrokeBeforeCanvas;
     const layerId = this.currentStrokeLayerId;
-    this.currentStrokeBeforeCanvas = null;
     this.currentStrokeLayerId = null;
 
     const minX = this.strokeMinX;
@@ -824,6 +842,15 @@ export class Canvas implements HistoryContext {
 
   public getLayers(): readonly Layer[] {
     return this.layers.getAll();
+  }
+
+  /**
+   * Returns immutable snapshots of all layers in the document.
+   */
+  public getLayerSnapshots(): readonly LayerSnapshot[] {
+    return typeof this.layers?.getLayerSnapshots === "function"
+      ? this.layers.getLayerSnapshots()
+      : (this.layers?.getAll().map((l) => l.toSnapshot()) ?? []);
   }
 
   public getActiveLayer(): Layer {
@@ -1160,16 +1187,34 @@ export class Canvas implements HistoryContext {
 
     const serializedLayers: SerializedLayer[] = this.layers
       .getAll()
-      .map((layer) => ({
-        id: layer.id,
-        name: layer.name,
-        visible: layer.visible,
-        opacity: layer.opacity,
-        blendMode: layer.blendMode,
-        alphaLock: layer.alphaLock,
-        locked: layer.locked,
-        dataUrl: layer.canvas.toDataURL(mimeType, quality),
-      }));
+      .map((layer) => {
+        let exportCanvas = layer.canvas;
+        if (
+          this.transformSession &&
+          this.transformSession.isActive() &&
+          this.transformSession.layerId === layer.id
+        ) {
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = layer.canvas.width;
+          tempCanvas.height = layer.canvas.height;
+          const tCtx = tempCanvas.getContext("2d");
+          if (tCtx) {
+            tCtx.drawImage(layer.canvas, 0, 0);
+            this.transformSession.render(tCtx, false);
+            exportCanvas = tempCanvas;
+          }
+        }
+        return {
+          id: layer.id,
+          name: layer.name,
+          visible: layer.visible,
+          opacity: layer.opacity,
+          blendMode: layer.blendMode,
+          alphaLock: layer.alphaLock,
+          locked: layer.locked,
+          dataUrl: exportCanvas.toDataURL(mimeType, quality),
+        };
+      });
 
     return {
       version: 1,
@@ -1266,6 +1311,14 @@ export class Canvas implements HistoryContext {
       ctx.globalAlpha = layer.opacity;
       ctx.globalCompositeOperation = layer.blendMode;
       ctx.drawImage(layer.canvas, 0, 0);
+
+      if (
+        this.transformSession &&
+        this.transformSession.isActive() &&
+        this.transformSession.layerId === layer.id
+      ) {
+        this.transformSession.render(ctx, false);
+      }
     }
 
     return exportCanvas.toDataURL("image/png", options?.quality);
@@ -1370,7 +1423,7 @@ export class Canvas implements HistoryContext {
     const hex = `#${r.toString(16).padStart(2, "0")}${g
       .toString(16)
       .padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-    const alphaNormalized = (a / 255).toFixed(2).replace(/\.?0+$/, "");
+    const alphaNormalized = (a / 255).toFixed(2).replace(/\.?0+$/, "") || "0";
     const rgba = `rgba(${r}, ${g}, ${b}, ${alphaNormalized})`;
 
     return {
@@ -1435,6 +1488,7 @@ export class Canvas implements HistoryContext {
 
     const visited = new Uint8Array(width * height);
     const stack: number[] = [startX, startY];
+    const maskData = this.hasSelection() ? this.selection.getMaskData() : null;
 
     let minX = startX;
     let maxX = startX;
@@ -1449,7 +1503,7 @@ export class Canvas implements HistoryContext {
       if (visited[idx]) continue;
       visited[idx] = 1;
 
-      if (this.hasSelection() && !this.selection.isPixelSelected(cx, cy)) {
+      if (maskData && maskData[idx * 4 + 3] <= 128) {
         continue;
       }
 
@@ -1960,11 +2014,13 @@ export class Canvas implements HistoryContext {
             this.strokeMaxY = -Infinity;
 
             if (typeof document !== "undefined") {
-              this.currentStrokeBeforeCanvas = document.createElement("canvas");
-              this.currentStrokeBeforeCanvas.width = layer.canvas.width;
-              this.currentStrokeBeforeCanvas.height = layer.canvas.height;
-              const bCtx = this.currentStrokeBeforeCanvas.getContext("2d");
+              const beforeCanvas = this.getStrokeBeforeCanvas(
+                layer.canvas.width,
+                layer.canvas.height,
+              );
+              const bCtx = beforeCanvas.getContext("2d");
               if (bCtx) {
+                bCtx.clearRect(0, 0, beforeCanvas.width, beforeCanvas.height);
                 bCtx.drawImage(layer.canvas, 0, 0);
               }
             }
@@ -2866,5 +2922,21 @@ export class Canvas implements HistoryContext {
     this.listeners.clear();
     this.isDrawing = false;
     this.activePointerId = null;
+
+    if (this.currentStrokeBeforeCanvas) {
+      this.currentStrokeBeforeCanvas.width = 0;
+      this.currentStrokeBeforeCanvas.height = 0;
+      this.currentStrokeBeforeCanvas = null;
+    }
+    if (this.scratchCanvas) {
+      this.scratchCanvas.width = 0;
+      this.scratchCanvas.height = 0;
+      this.scratchCanvas = null;
+    }
+    if (this.cacheBelowCanvas) {
+      this.cacheBelowCanvas.width = 0;
+      this.cacheBelowCanvas.height = 0;
+      this.cacheBelowCanvas = null;
+    }
   }
 }

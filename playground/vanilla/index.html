@@ -3,675 +3,1200 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Fuderu Vanilla Playground</title>
+    <title>Fuderu Studio Playground</title>
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <div class="app-shell">
-      <aside class="sidebar">
-        <div class="brand">
-          <img src="/fuderu.webp" alt="Fuderu" />
+    <div class="studio-shell">
+      <!-- ── Top App Header ──────────────────────────────────────── -->
+      <header class="studio-header">
+        <div class="header-left">
+          <div class="brand">
+            <img src="/fuderu.webp" alt="Fuderu" />
+            <span class="version-tag">v1.5.1</span>
+          </div>
+          <div class="doc-meta-badge">
+            <span id="documentLabel" class="doc-dim">1920 × 1080</span>
+            <span class="meta-sep">/</span>
+            <span id="zoomLevelDisplay" class="doc-zoom">100%</span>
+          </div>
         </div>
 
-        <section class="panel">
-          <div class="panel-heading">
-            <h2>Active Tool</h2>
-            <span id="activeToolName">Brush</span>
+        <div class="header-center">
+          <div id="status" class="status-indicator">Ready</div>
+        </div>
+
+        <div class="header-right">
+          <div class="quick-actions">
+            <button
+              id="undoBtn"
+              type="button"
+              class="action-btn"
+              title="Undo (Ctrl+Z)"
+              disabled
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+                <path
+                  d="M4 6.5h7a3 3 0 0 1 3 3v.5a3 3 0 0 1-3 3H8M4 6.5l3-3M4 6.5l3 3"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span>Undo</span>
+            </button>
+            <button
+              id="redoBtn"
+              type="button"
+              class="action-btn"
+              title="Redo (Ctrl+Y)"
+              disabled
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+                <path
+                  d="M12 6.5H5a3 3 0 0 0-3 3v.5a3 3 0 0 0 3 3h3M12 6.5l-3-3M12 6.5l-3 3"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span>Redo</span>
+            </button>
+            <div class="action-divider"></div>
+            <button
+              id="cutBtn"
+              type="button"
+              class="action-btn"
+              title="Cut (Ctrl+X)"
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+                <circle
+                  cx="4"
+                  cy="11.5"
+                  r="2"
+                  stroke="currentColor"
+                  stroke-width="1.3"
+                />
+                <circle
+                  cx="4"
+                  cy="4.5"
+                  r="2"
+                  stroke="currentColor"
+                  stroke-width="1.3"
+                />
+                <path
+                  d="M5.5 10l6.5-6.5M5.5 6L12 12.5"
+                  stroke="currentColor"
+                  stroke-width="1.3"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <span>Cut</span>
+            </button>
+            <button
+              id="copyBtn"
+              type="button"
+              class="action-btn"
+              title="Copy (Ctrl+C)"
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+                <rect
+                  x="5.5"
+                  y="5.5"
+                  width="8"
+                  height="8"
+                  rx="1.5"
+                  stroke="currentColor"
+                  stroke-width="1.3"
+                />
+                <path
+                  d="M3 10.5V3.8A1.3 1.3 0 0 1 4.3 2.5h6.7"
+                  stroke="currentColor"
+                  stroke-width="1.3"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <span>Copy</span>
+            </button>
+            <button
+              id="pasteBtn"
+              type="button"
+              class="action-btn"
+              title="Paste (Ctrl+V)"
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+                <path
+                  d="M5.5 3h5a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 10.5 14h-5A1.5 1.5 0 0 1 4 12.5v-8A1.5 1.5 0 0 1 5.5 3z"
+                  stroke="currentColor"
+                  stroke-width="1.3"
+                />
+                <path
+                  d="M6 3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1H6V3z"
+                  stroke="currentColor"
+                  stroke-width="1.3"
+                />
+              </svg>
+              <span>Paste</span>
+            </button>
+            <div class="action-divider"></div>
+            <button
+              id="headerReplayBtn"
+              type="button"
+              class="action-btn highlight"
+              title="Play Action Stream Replay"
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+                <polygon points="5,3 13,8 5,13" fill="currentColor" />
+              </svg>
+              <span>Replay</span>
+            </button>
+            <button
+              id="clearBtn"
+              type="button"
+              class="action-btn danger"
+              title="Clear Active Layer"
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+                <path
+                  d="M3 4.5h10M6.3 4.5V3.3A1 1 0 0 1 7.3 2.3h1.4a1 1 0 0 1 1 1V4.5M4.5 4.5l.6 8.2a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8.2"
+                  stroke="currentColor"
+                  stroke-width="1.3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span>Clear</span>
+            </button>
+            <button
+              id="shortcutsModalBtn"
+              type="button"
+              class="action-btn icon-only"
+              title="Keyboard Shortcuts (?)"
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+                <circle
+                  cx="8"
+                  cy="8"
+                  r="6"
+                  stroke="currentColor"
+                  stroke-width="1.3"
+                />
+                <path
+                  d="M6.5 6.5A1.5 1.5 0 0 1 8 5a1.5 1.5 0 0 1 1.5 1.5c0 .8-.7 1.3-1.2 1.6-.3.2-.3.6-.3.9M8 11.5h.01"
+                  stroke="currentColor"
+                  stroke-width="1.3"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
           </div>
-          <div class="tool-grid">
+        </div>
+      </header>
+
+      <!-- ── Main Workspace Body ───────────────────────────────────── -->
+      <div class="studio-body">
+        <!-- ── Left Vertical Tool Dock ─────────────────────────────── -->
+        <nav class="tool-dock" aria-label="Tool Palette">
+          <div class="dock-section">
             <button
               type="button"
               class="tool-btn active"
               data-tool="brush"
-              title="Brush (B)"
+              data-tooltip="Brush (B)"
             >
-              🖌️ Brush
+              <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                <path
+                  d="M14.5 2.5a2.12 2.12 0 0 1 3 3L8.5 14.5l-4 1 1-4 9-9zM12 5l3 3M4.5 15.5c-1 1-2.5 2-2.5 2s1-1.5 2-2.5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
             </button>
             <button
               type="button"
               class="tool-btn"
               data-tool="eraser"
-              title="Eraser (E)"
+              data-tooltip="Eraser (E)"
             >
-              🧹 Eraser
+              <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                <path
+                  d="M15.5 12.5L11 17H5.5l-3-3 8-8 5 6.5zM12.5 6.5l3 3"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
             </button>
             <button
               type="button"
               class="tool-btn"
               data-tool="bucket"
-              title="Bucket Fill (F)"
+              data-tooltip="Bucket Fill (F)"
             >
-              🪣 Bucket
+              <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                <path
+                  d="M2.5 9.5l6-6a2.12 2.12 0 0 1 3 0l4 4a2.12 2.12 0 0 1 0 3l-6 6a2.12 2.12 0 0 1-3 0l-4-4a2.12 2.12 0 0 1 0-3zM4 11l7 7M16.5 14.5c0 1.5-1.5 3-1.5 3s-1.5-1.5-1.5-3a1.5 1.5 0 0 1 3 0z"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
             </button>
+          </div>
+
+          <div class="dock-separator"></div>
+
+          <div class="dock-section">
             <button
               type="button"
               class="tool-btn"
               data-tool="rectangle"
-              title="Rectangle (R)"
+              data-tooltip="Rectangle (R)"
             >
-              🔲 Rect
+              <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                <rect
+                  x="3.5"
+                  y="4.5"
+                  width="13"
+                  height="11"
+                  rx="1.5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                />
+              </svg>
             </button>
             <button
               type="button"
               class="tool-btn"
               data-tool="ellipse"
-              title="Ellipse (C)"
+              data-tooltip="Ellipse (C)"
             >
-              ⭕ Ellipse
+              <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                <ellipse
+                  cx="10"
+                  cy="10"
+                  rx="7"
+                  ry="5.5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                />
+              </svg>
             </button>
             <button
               type="button"
               class="tool-btn"
               data-tool="line"
-              title="Line (L)"
+              data-tooltip="Line (L)"
             >
-              📏 Line
+              <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                <line
+                  x1="3.5"
+                  y1="16.5"
+                  x2="16.5"
+                  y2="3.5"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                />
+              </svg>
             </button>
             <button
               type="button"
               class="tool-btn"
               data-tool="text"
-              title="Text (T)"
+              data-tooltip="Text (T)"
             >
-              🔤 Text
+              <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                <path
+                  d="M4 5h12M10 5v11M7.5 16h5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
             </button>
             <button
               type="button"
               class="tool-btn"
               data-tool="eyedropper"
-              title="Eyedropper (I)"
+              data-tooltip="Eyedropper (I)"
             >
-              💧 Color
+              <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                <path
+                  d="M14.5 2.5l3 3-2 2-3-3 2-2zM12.5 4.5l-8 8v3h3l8-8-3-3zM4.5 15.5l-2 2"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
             </button>
+          </div>
+
+          <div class="dock-separator"></div>
+
+          <div class="dock-section">
             <button
               type="button"
               class="tool-btn"
               data-tool="rectSelect"
-              title="Rect Marquee (M)"
+              data-tooltip="Rect Marquee (M)"
             >
-              ⬚ Rect Sel
+              <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                <rect
+                  x="3.5"
+                  y="4.5"
+                  width="13"
+                  height="11"
+                  rx="1"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-dasharray="3 3"
+                />
+              </svg>
             </button>
             <button
               type="button"
               class="tool-btn"
               data-tool="ellipseSelect"
-              title="Ellipse Marquee"
+              data-tooltip="Ellipse Marquee"
             >
-              ⬭ Ellipse Sel
+              <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                <ellipse
+                  cx="10"
+                  cy="10"
+                  rx="7"
+                  ry="5.5"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-dasharray="3 3"
+                />
+              </svg>
             </button>
             <button
               type="button"
               class="tool-btn"
               data-tool="lassoSelect"
-              title="Freehand Lasso (Q)"
+              data-tooltip="Lasso Select (Q)"
             >
-              ➰ Lasso
+              <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                <path
+                  d="M6 3.5c-2.5 1-3 4-1 6s5 3 7 1 2-4 .5-6-4-1-6.5-1zM12 12c-1 3-3.5 5.5-6 4.5"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-dasharray="3 2"
+                />
+              </svg>
             </button>
             <button
               type="button"
               class="tool-btn"
               data-tool="transform"
-              title="Free Transform (V)"
+              data-tooltip="Free Transform (V)"
             >
-              ✨ Transform
-            </button>
-          </div>
-        </section>
-
-        <section class="panel" id="toolOptionsPanel">
-          <h2>Tool Settings</h2>
-
-          <div class="tool-options-group" id="brushOptions">
-            <label class="field">
-              <span>Color</span>
-              <input id="colorPicker" type="color" value="#111111" />
-            </label>
-
-            <label class="field">
-              <span>Size <output id="sizeValue">25px</output></span>
-              <input
-                id="sizeSlider"
-                type="range"
-                min="1"
-                max="140"
-                value="25"
-              />
-            </label>
-
-            <label class="field">
-              <span>Opacity <output id="opacityValue">100%</output></span>
-              <input
-                id="opacitySlider"
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value="1"
-              />
-            </label>
-
-            <label class="field">
-              <span>Flow <output id="flowValue">60%</output></span>
-              <input
-                id="flowSlider"
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value="0.6"
-              />
-            </label>
-
-            <label class="field">
-              <span>Spacing <output id="spacingValue">0.08</output></span>
-              <input
-                id="spacingSlider"
-                type="range"
-                min="0.01"
-                max="1"
-                step="0.01"
-                value="0.08"
-              />
-            </label>
-
-            <label class="field">
-              <span>Roundness <output id="roundnessValue">1.00</output></span>
-              <input
-                id="roundnessSlider"
-                type="range"
-                min="0.05"
-                max="1"
-                step="0.01"
-                value="1"
-              />
-            </label>
-          </div>
-
-          <div
-            class="tool-options-group"
-            id="bucketOptions"
-            style="display: none"
-          >
-            <label class="field">
-              <span>Tolerance <output id="toleranceValue">15</output></span>
-              <input
-                id="toleranceSlider"
-                type="range"
-                min="0"
-                max="100"
-                value="15"
-              />
-            </label>
-            <button
-              id="fillActiveLayerBtn"
-              type="button"
-              style="width: 100%; margin-top: 6px"
-            >
-              Fill Entire Layer
+              <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                <rect
+                  x="4.5"
+                  y="4.5"
+                  width="11"
+                  height="11"
+                  stroke="currentColor"
+                  stroke-width="1.3"
+                />
+                <rect x="3" y="3" width="3" height="3" fill="currentColor" />
+                <rect x="14" y="3" width="3" height="3" fill="currentColor" />
+                <rect x="14" y="14" width="3" height="3" fill="currentColor" />
+                <rect x="3" y="14" width="3" height="3" fill="currentColor" />
+                <circle cx="10" cy="1" r="1.5" fill="currentColor" />
+                <line
+                  x1="10"
+                  y1="2.5"
+                  x2="10"
+                  y2="4.5"
+                  stroke="currentColor"
+                  stroke-width="1.2"
+                />
+              </svg>
             </button>
           </div>
 
-          <div
-            class="tool-options-group"
-            id="shapeOptions"
-            style="display: none"
-          >
-            <div class="switch-row">
-              <span>Fill Shape</span>
-              <input id="shapeFillToggle" type="checkbox" checked />
-            </div>
-            <div class="switch-row">
-              <span>Stroke Outline</span>
-              <input id="shapeStrokeToggle" type="checkbox" checked />
-            </div>
-            <label class="field">
-              <span
-                >Stroke Width <output id="strokeWidthValue">4px</output></span
-              >
-              <input
-                id="strokeWidthSlider"
-                type="range"
-                min="1"
-                max="50"
-                value="4"
-              />
-            </label>
-            <label class="field" id="cornerRadiusField">
-              <span
-                >Corner Radius <output id="cornerRadiusValue">0px</output></span
-              >
-              <input
-                id="cornerRadiusSlider"
-                type="range"
-                min="0"
-                max="50"
-                value="0"
-              />
-            </label>
-          </div>
+          <div class="dock-spacer"></div>
 
-          <div
-            class="tool-options-group"
-            id="textOptions"
-            style="display: none"
-          >
-            <label class="field">
-              <span>Text</span>
-              <input id="textInput" type="text" value="Fuderu Canvas" />
-            </label>
-            <label class="field">
-              <span>Font Size <output id="fontSizeValue">48px</output></span>
-              <input
-                id="fontSizeSlider"
-                type="range"
-                min="12"
-                max="140"
-                value="48"
-              />
-            </label>
-            <label class="field">
-              <span>Font Family</span>
-              <select id="fontFamilySelect">
-                <option value="sans-serif">Sans-Serif</option>
-                <option value="serif">Serif</option>
-                <option value="monospace">Monospace</option>
-                <option value="cursive">Cursive</option>
-              </select>
-            </label>
-            <div class="switch-row">
-              <span>Bold</span>
-              <input id="textBoldToggle" type="checkbox" />
-            </div>
-          </div>
-
-          <div
-            class="tool-options-group"
-            id="eyedropperOptions"
-            style="display: none"
-          >
-            <p
-              style="font-size: 11.5px; color: var(--ink-dim); margin: 0 0 8px"
-            >
-              Click anywhere on canvas to sample color.
-            </p>
-            <div style="display: flex; align-items: center; gap: 8px">
-              <div
-                id="sampledColorSwatch"
-                style="
-                  width: 24px;
-                  height: 24px;
-                  border-radius: 4px;
-                  border: 1px solid var(--line);
-                  background: #111111;
-                "
-              ></div>
-              <span
-                id="sampledColorLabel"
-                style="font-size: 12px; font-variant-numeric: tabular-nums"
-                >#111111</span
-              >
-            </div>
-          </div>
-
-          <div
-            class="tool-options-group"
-            id="selectionOptions"
-            style="display: none"
-          >
-            <label class="field">
-              <span>Combine Mode</span>
-              <select id="selectionModeSelect">
-                <option value="replace">New (Replace)</option>
-                <option value="add">Add (+)</option>
-                <option value="subtract">Subtract (-)</option>
-                <option value="intersect">Intersect (∩)</option>
-              </select>
-            </label>
+          <!-- Color Swatch at bottom of Dock -->
+          <div class="dock-color-wrap">
             <div
-              style="
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 6px;
-                margin-top: 6px;
-              "
+              id="dockColorButton"
+              class="dock-color-btn"
+              title="Choose Brush Color"
             >
-              <button
-                id="invertSelectionBtn"
-                type="button"
-                style="padding: 6px 8px; font-size: 12px"
-              >
+              <input
+                id="colorPicker"
+                type="color"
+                value="#111111"
+                class="color-picker-input"
+              />
+              <div id="dockColorSwatch" class="dock-color-preview"></div>
+            </div>
+          </div>
+        </nav>
+
+        <!-- ── Middle Canvas Workspace ───────────────────────────────── -->
+        <main class="studio-workspace">
+          <!-- ── Contextual Tool Options Shelf (Auto-updating) ─────── -->
+          <section class="tool-shelf" id="toolOptionsPanel">
+            <div class="shelf-tool-label">
+              <span id="activeToolName" class="tool-name-badge">Brush</span>
+            </div>
+
+            <!-- Brush / Eraser Parameters -->
+            <div class="tool-options-group" id="brushOptions">
+              <div class="shelf-item">
+                <span class="shelf-label">Size</span>
+                <input
+                  id="sizeSlider"
+                  type="range"
+                  min="1"
+                  max="140"
+                  value="25"
+                  class="shelf-slider"
+                />
+                <output id="sizeValue" class="shelf-val">25px</output>
+              </div>
+
+              <div class="shelf-item">
+                <span class="shelf-label">Opacity</span>
+                <input
+                  id="opacitySlider"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="1"
+                  class="shelf-slider"
+                />
+                <output id="opacityValue" class="shelf-val">100%</output>
+              </div>
+
+              <div class="shelf-item">
+                <span class="shelf-label">Flow</span>
+                <input
+                  id="flowSlider"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.6"
+                  class="shelf-slider"
+                />
+                <output id="flowValue" class="shelf-val">60%</output>
+              </div>
+
+              <div class="shelf-item">
+                <span class="shelf-label">Spacing</span>
+                <input
+                  id="spacingSlider"
+                  type="range"
+                  min="0.01"
+                  max="1"
+                  step="0.01"
+                  value="0.08"
+                  class="shelf-slider"
+                />
+                <output id="spacingValue" class="shelf-val">0.08</output>
+              </div>
+
+              <div class="shelf-item">
+                <span class="shelf-label">Round</span>
+                <input
+                  id="roundnessSlider"
+                  type="range"
+                  min="0.05"
+                  max="1"
+                  step="0.01"
+                  value="1"
+                  class="shelf-slider"
+                />
+                <output id="roundnessValue" class="shelf-val">1.00</output>
+              </div>
+
+              <div class="shelf-palette">
+                <span class="shelf-label">Swatches</span>
+                <div class="palette-swatches" id="quickPalette">
+                  <button
+                    type="button"
+                    class="swatch-btn"
+                    style="background: #111111"
+                    data-color="#111111"
+                    title="#111111"
+                  ></button>
+                  <button
+                    type="button"
+                    class="swatch-btn"
+                    style="background: #ffffff"
+                    data-color="#ffffff"
+                    title="#ffffff"
+                  ></button>
+                  <button
+                    type="button"
+                    class="swatch-btn"
+                    style="background: #e11d48"
+                    data-color="#e11d48"
+                    title="Crimson"
+                  ></button>
+                  <button
+                    type="button"
+                    class="swatch-btn"
+                    style="background: #ff7a45"
+                    data-color="#ff7a45"
+                    title="Amber"
+                  ></button>
+                  <button
+                    type="button"
+                    class="swatch-btn"
+                    style="background: #22c55e"
+                    data-color="#22c55e"
+                    title="Green"
+                  ></button>
+                  <button
+                    type="button"
+                    class="swatch-btn"
+                    style="background: #3b82f6"
+                    data-color="#3b82f6"
+                    title="Blue"
+                  ></button>
+                  <button
+                    type="button"
+                    class="swatch-btn"
+                    style="background: #8b5cf6"
+                    data-color="#8b5cf6"
+                    title="Purple"
+                  ></button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bucket Fill Parameters -->
+            <div
+              class="tool-options-group"
+              id="bucketOptions"
+              style="display: none"
+            >
+              <div class="shelf-item">
+                <span class="shelf-label">Tolerance</span>
+                <input
+                  id="toleranceSlider"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="15"
+                  class="shelf-slider"
+                />
+                <output id="toleranceValue" class="shelf-val">15</output>
+              </div>
+              <button id="fillActiveLayerBtn" type="button" class="shelf-btn">
+                Fill Entire Layer
+              </button>
+            </div>
+
+            <!-- Shape Parameters -->
+            <div
+              class="tool-options-group"
+              id="shapeOptions"
+              style="display: none"
+            >
+              <label class="shelf-checkbox-label">
+                <input id="shapeFillToggle" type="checkbox" checked />
+                <span>Fill</span>
+              </label>
+              <label class="shelf-checkbox-label">
+                <input id="shapeStrokeToggle" type="checkbox" checked />
+                <span>Outline</span>
+              </label>
+              <div class="shelf-item">
+                <span class="shelf-label">Stroke</span>
+                <input
+                  id="strokeWidthSlider"
+                  type="range"
+                  min="1"
+                  max="50"
+                  value="4"
+                  class="shelf-slider"
+                />
+                <output id="strokeWidthValue" class="shelf-val">4px</output>
+              </div>
+              <div class="shelf-item" id="cornerRadiusField">
+                <span class="shelf-label">Radius</span>
+                <input
+                  id="cornerRadiusSlider"
+                  type="range"
+                  min="0"
+                  max="50"
+                  value="0"
+                  class="shelf-slider"
+                />
+                <output id="cornerRadiusValue" class="shelf-val">0px</output>
+              </div>
+            </div>
+
+            <!-- Text Parameters -->
+            <div
+              class="tool-options-group"
+              id="textOptions"
+              style="display: none"
+            >
+              <div class="shelf-item">
+                <span class="shelf-label">Text</span>
+                <input
+                  id="textInput"
+                  type="text"
+                  value="Fuderu Canvas"
+                  class="shelf-input"
+                />
+              </div>
+              <div class="shelf-item">
+                <span class="shelf-label">Size</span>
+                <input
+                  id="fontSizeSlider"
+                  type="range"
+                  min="12"
+                  max="140"
+                  value="48"
+                  class="shelf-slider"
+                />
+                <output id="fontSizeValue" class="shelf-val">48px</output>
+              </div>
+              <div class="shelf-item">
+                <span class="shelf-label">Font</span>
+                <select id="fontFamilySelect" class="shelf-select">
+                  <option value="sans-serif">Sans-Serif</option>
+                  <option value="serif">Serif</option>
+                  <option value="monospace">Monospace</option>
+                  <option value="cursive">Cursive</option>
+                </select>
+              </div>
+              <label class="shelf-checkbox-label">
+                <input id="textBoldToggle" type="checkbox" />
+                <span>Bold</span>
+              </label>
+            </div>
+
+            <!-- Eyedropper Parameters -->
+            <div
+              class="tool-options-group"
+              id="eyedropperOptions"
+              style="display: none"
+            >
+              <span class="shelf-hint">Click on canvas to sample color</span>
+              <div class="sampled-color-box">
+                <div id="sampledColorSwatch" class="sampled-swatch"></div>
+                <span id="sampledColorLabel" class="sampled-label"
+                  >#111111</span
+                >
+              </div>
+            </div>
+
+            <!-- Selection Parameters -->
+            <div
+              class="tool-options-group"
+              id="selectionOptions"
+              style="display: none"
+            >
+              <div class="shelf-item">
+                <span class="shelf-label">Combine</span>
+                <select id="selectionModeSelect" class="shelf-select">
+                  <option value="replace">New (Replace)</option>
+                  <option value="add">Add (+)</option>
+                  <option value="subtract">Subtract (-)</option>
+                  <option value="intersect">Intersect (∩)</option>
+                </select>
+              </div>
+              <button id="invertSelectionBtn" type="button" class="shelf-btn">
                 Invert
               </button>
-              <button
-                id="deselectBtn"
-                type="button"
-                style="padding: 6px 8px; font-size: 12px"
-              >
-                Deselect
+              <button id="deselectBtn" type="button" class="shelf-btn">
+                Deselect (Esc)
+              </button>
+              <button id="selectAllBtn" type="button" class="shelf-btn">
+                Select All
+              </button>
+              <button id="copySelectionBtn" type="button" class="shelf-btn">
+                Copy
+              </button>
+              <button id="cutSelectionBtn" type="button" class="shelf-btn">
+                Cut
               </button>
             </div>
-            <div
-              style="
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 6px;
-                margin-top: 6px;
-              "
-            >
-              <button
-                id="copySelectionBtn"
-                type="button"
-                style="padding: 6px 8px; font-size: 12px"
-              >
-                Copy (Ctrl+C)
-              </button>
-              <button
-                id="cutSelectionBtn"
-                type="button"
-                style="padding: 6px 8px; font-size: 12px"
-              >
-                Cut (Ctrl+X)
-              </button>
-            </div>
-            <button
-              id="selectAllBtn"
-              type="button"
-              style="
-                width: 100%;
-                margin-top: 6px;
-                padding: 6px 8px;
-                font-size: 12px;
-              "
-            >
-              Select All
-            </button>
-          </div>
 
-          <div
-            class="tool-options-group"
-            id="transformOptions"
-            style="display: none"
-          >
-            <p
-              style="font-size: 11.5px; color: var(--ink-dim); margin: 0 0 8px"
-            >
-              Drag inside box to move. Use controls to rotate, scale, flip, or
-              apply.
-            </p>
+            <!-- Transform Parameters -->
             <div
-              style="
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 6px;
-                margin-bottom: 6px;
-              "
+              class="tool-options-group"
+              id="transformOptions"
+              style="display: none"
             >
-              <button
-                id="flipHBtn"
-                type="button"
-                style="padding: 6px 8px; font-size: 12px"
-              >
-                Flip Horiz
+              <button id="flipHBtn" type="button" class="shelf-btn">
+                Flip H
               </button>
-              <button
-                id="flipVBtn"
-                type="button"
-                style="padding: 6px 8px; font-size: 12px"
-              >
-                Flip Vert
+              <button id="flipVBtn" type="button" class="shelf-btn">
+                Flip V
               </button>
-            </div>
-            <div
-              style="
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 6px;
-                margin-bottom: 6px;
-              "
-            >
-              <button
-                id="rotateCWBtn"
-                type="button"
-                style="padding: 6px 8px; font-size: 12px"
-              >
-                Rotate +90°
+              <button id="rotateCWBtn" type="button" class="shelf-btn">
+                +90°
               </button>
-              <button
-                id="rotateCCWBtn"
-                type="button"
-                style="padding: 6px 8px; font-size: 12px"
-              >
-                Rotate -90°
+              <button id="rotateCCWBtn" type="button" class="shelf-btn">
+                -90°
               </button>
-            </div>
-            <div
-              style="
-                display: grid;
-                grid-template-columns: 1fr 1fr 1fr;
-                gap: 6px;
-                margin-bottom: 8px;
-              "
-            >
-              <button
-                id="scaleUpBtn"
-                type="button"
-                style="padding: 6px 4px; font-size: 12px"
-              >
+              <button id="scaleUpBtn" type="button" class="shelf-btn">
                 +10%
               </button>
-              <button
-                id="scaleDownBtn"
-                type="button"
-                style="padding: 6px 4px; font-size: 12px"
-              >
+              <button id="scaleDownBtn" type="button" class="shelf-btn">
                 -10%
               </button>
-              <button
-                id="resetTransformBtn"
-                type="button"
-                style="padding: 6px 4px; font-size: 12px"
-              >
+              <button id="resetTransformBtn" type="button" class="shelf-btn">
                 Reset
               </button>
+              <button
+                id="commitTransformBtn"
+                type="button"
+                class="shelf-btn primary"
+              >
+                Apply (Enter)
+              </button>
+              <button id="cancelTransformBtn" type="button" class="shelf-btn">
+                Cancel (Esc)
+              </button>
             </div>
-            <button
-              id="commitTransformBtn"
-              type="button"
-              style="
-                width: 100%;
-                padding: 7px 8px;
-                font-size: 12px;
-                background: var(--accent);
-                color: white;
-                border-color: var(--accent);
-                margin-bottom: 6px;
-              "
-            >
-              Apply Transform (Enter)
+          </section>
+
+          <!-- ── Center Stage & Canvas ─────────────────────────────── -->
+          <div class="canvas-viewport" id="canvasViewport">
+            <div class="canvas-wrapper" id="canvasWrapper">
+              <canvas id="canvas"></canvas>
+              <canvas id="overlayCanvas"></canvas>
+            </div>
+          </div>
+
+          <!-- ── Floating Bottom Viewport HUD ──────────────────────── -->
+          <footer class="viewport-hud">
+            <div class="hud-left">
+              <span id="cursorLabel" class="hud-stat">0, 0 · p 0.00</span>
+            </div>
+
+            <div class="hud-center">
+              <div class="backdrop-switcher" title="Switch Canvas Background">
+                <button
+                  type="button"
+                  class="backdrop-btn active"
+                  data-bg="white"
+                  title="White Paper"
+                ></button>
+                <button
+                  type="button"
+                  class="backdrop-btn"
+                  data-bg="dark"
+                  title="Dark Canvas"
+                ></button>
+                <button
+                  type="button"
+                  class="backdrop-btn"
+                  data-bg="checker"
+                  title="Transparency Grid"
+                ></button>
+              </div>
+            </div>
+
+            <div class="hud-right">
+              <div class="zoom-controls">
+                <button
+                  id="zoomOutBtn"
+                  type="button"
+                  class="zoom-btn"
+                  title="Zoom Out"
+                >
+                  -
+                </button>
+                <button
+                  id="zoomFitBtn"
+                  type="button"
+                  class="zoom-btn text"
+                  title="Fit to View"
+                >
+                  Fit
+                </button>
+                <button
+                  id="zoom100Btn"
+                  type="button"
+                  class="zoom-btn text"
+                  title="Actual Size 100%"
+                >
+                  100%
+                </button>
+                <button
+                  id="zoomInBtn"
+                  type="button"
+                  class="zoom-btn"
+                  title="Zoom In"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </footer>
+        </main>
+
+        <!-- ── Right Studio Sidebar (Tabbed) ────────────────────────── -->
+        <aside class="studio-sidebar" aria-label="Studio Inspector">
+          <div class="sidebar-tabs">
+            <button type="button" class="tab-btn active" data-tab="layers">
+              <span>Layers</span>
             </button>
-            <button
-              id="cancelTransformBtn"
-              type="button"
-              style="width: 100%; padding: 6px 8px; font-size: 12px"
-            >
-              Cancel (Esc)
+            <button type="button" class="tab-btn" data-tab="dynamics">
+              <span>Dynamics</span>
+            </button>
+            <button type="button" class="tab-btn" data-tab="document">
+              <span>Document</span>
+            </button>
+            <button type="button" class="tab-btn" data-tab="replay">
+              <span>Replay</span>
             </button>
           </div>
-        </section>
 
-        <section class="panel">
-          <h2>Stroke Input</h2>
-          <label class="switch-row">
-            <span>Smooth</span>
-            <input id="smoothToggle" type="checkbox" checked />
-          </label>
-          <label class="switch-row">
-            <span>Spacing</span>
-            <input id="spacingToggle" type="checkbox" checked />
-          </label>
-          <label class="switch-row">
-            <span>Pressure simulation</span>
-            <input id="pressureToggle" type="checkbox" />
-          </label>
-          <label class="switch-row">
-            <span>Eraser</span>
-            <input id="eraserToggle" type="checkbox" />
-          </label>
-        </section>
-
-        <section class="panel">
-          <h2>Rotation</h2>
-          <label class="field">
-            <span>Mode</span>
-            <select id="rotationMode">
-              <option value="fixed">Fixed</option>
-              <option value="flow">Flow</option>
-              <option value="random">Random</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Angle <output id="angleValue">0deg</output></span>
-            <input id="angleSlider" type="range" min="0" max="360" value="0" />
-          </label>
-          <label class="field">
-            <span>Jitter <output id="rotationJitterValue">0deg</output></span>
-            <input
-              id="rotationJitter"
-              type="range"
-              min="0"
-              max="180"
-              value="0"
-            />
-          </label>
-        </section>
-
-        <section class="panel">
-          <h2>Modules</h2>
-          <label class="field">
-            <span>Size jitter <output id="sizeJitterValue">0.00</output></span>
-            <input
-              id="sizeJitter"
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value="0"
-            />
-          </label>
-          <label class="field">
-            <span>Flow jitter <output id="flowJitterValue">0.00</output></span>
-            <input
-              id="flowJitter"
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value="0"
-            />
-          </label>
-          <label class="field">
-            <span>Spread <output id="spreadValue">0.00</output></span>
-            <input
-              id="spreadSlider"
-              type="range"
-              min="0"
-              max="2"
-              step="0.01"
-              value="0"
-            />
-          </label>
-        </section>
-
-        <section class="panel">
-          <h2>Document</h2>
-          <div class="preset-grid">
-            <button type="button" data-size="800x600">800 x 600</button>
-            <button type="button" data-size="1280x720">1280 x 720</button>
-            <button type="button" data-size="1920x1080">1920 x 1080</button>
-            <button type="button" data-size="1080x1080">Square</button>
+          <!-- Tab Content 1: Layers -->
+          <div class="tab-content active" id="tabLayers">
+            <div class="panel-head">
+              <div class="panel-title-wrap">
+                <h3>Layer Stack</h3>
+                <span id="layerCount" class="panel-subtitle">1 layer</span>
+              </div>
+              <button id="addLayerBtn" type="button" class="primary-btn">
+                <svg viewBox="0 0 16 16" width="12" height="12" fill="none">
+                  <path
+                    d="M8 3v10M3 8h10"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <span>Add Layer</span>
+              </button>
+            </div>
+            <div id="layerList" class="layer-list"></div>
           </div>
-          <div class="number-row">
-            <input id="docWidth" type="number" min="1" value="1920" />
-            <input id="docHeight" type="number" min="1" value="1080" />
-            <button id="applySizeBtn" type="button">Apply</button>
-          </div>
-        </section>
 
-        <section class="panel">
-          <h2>Persistence (v1.3.0)</h2>
-          <div class="preset-grid">
-            <button id="exportDocBtn" type="button">Export JSON</button>
-            <button id="importDocBtn" type="button">Import JSON</button>
+          <!-- Tab Content 2: Brush Dynamics & Modules -->
+          <div class="tab-content" id="tabDynamics">
+            <section class="inspector-section">
+              <h4>Stroke Physics</h4>
+              <label class="switch-row">
+                <span>Bezier Smoothing</span>
+                <input id="smoothToggle" type="checkbox" checked />
+              </label>
+              <label class="switch-row">
+                <span>Adaptive Spacing</span>
+                <input id="spacingToggle" type="checkbox" checked />
+              </label>
+              <label class="switch-row">
+                <span>Pressure Simulation</span>
+                <input id="pressureToggle" type="checkbox" />
+              </label>
+              <label class="switch-row" style="display: none">
+                <span>Eraser Flag</span>
+                <input id="eraserToggle" type="checkbox" />
+              </label>
+            </section>
+
+            <section class="inspector-section">
+              <h4>Rotation & Angle</h4>
+              <label class="field">
+                <span>Mode</span>
+                <select id="rotationMode" class="form-select">
+                  <option value="fixed">Fixed</option>
+                  <option value="flow">Flow Along Stroke</option>
+                  <option value="random">Randomize</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Angle <output id="angleValue">0°</output></span>
+                <input
+                  id="angleSlider"
+                  type="range"
+                  min="0"
+                  max="360"
+                  value="0"
+                />
+              </label>
+              <label class="field">
+                <span
+                  >Rotation Jitter
+                  <output id="rotationJitterValue">0°</output></span
+                >
+                <input
+                  id="rotationJitter"
+                  type="range"
+                  min="0"
+                  max="180"
+                  value="0"
+                />
+              </label>
+            </section>
+
+            <section class="inspector-section">
+              <h4>Dynamic Modules</h4>
+              <label class="field">
+                <span
+                  >Size Jitter <output id="sizeJitterValue">0.00</output></span
+                >
+                <input
+                  id="sizeJitter"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0"
+                />
+              </label>
+              <label class="field">
+                <span
+                  >Flow Jitter <output id="flowJitterValue">0.00</output></span
+                >
+                <input
+                  id="flowJitter"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0"
+                />
+              </label>
+              <label class="field">
+                <span
+                  >Scatter Spread <output id="spreadValue">0.00</output></span
+                >
+                <input
+                  id="spreadSlider"
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.01"
+                  value="0"
+                />
+              </label>
+            </section>
+
+            <section class="inspector-section">
+              <h4>Image Texture Stamp</h4>
+              <p class="section-hint">
+                Upload custom PNG / WebP image as brush stamp tip
+              </p>
+              <div class="file-upload-row">
+                <input
+                  id="imageInput"
+                  type="file"
+                  accept="image/*"
+                  class="file-input-hidden"
+                />
+                <button
+                  type="button"
+                  class="form-btn"
+                  onclick="document.getElementById('imageInput').click()"
+                >
+                  Choose Image File
+                </button>
+                <button id="removeImageBtn" type="button" class="form-btn">
+                  Clear Stamp
+                </button>
+              </div>
+            </section>
           </div>
-          <input
-            id="docFileInput"
-            type="file"
-            accept=".json,application/json"
-            style="display: none"
-          />
-          <div class="preset-grid">
-            <button id="exportPngBtn" type="button">Export PNG</button>
-            <button id="saveLocalBtn" type="button">Save Local</button>
+
+          <!-- Tab Content 3: Document & Presets -->
+          <div class="tab-content" id="tabDocument">
+            <section class="inspector-section">
+              <h4>Canvas Presets</h4>
+              <div class="preset-grid">
+                <button type="button" data-size="1920x1080" class="preset-btn">
+                  1920 × 1080 (FHD)
+                </button>
+                <button type="button" data-size="1280x720" class="preset-btn">
+                  1280 × 720 (HD)
+                </button>
+                <button type="button" data-size="1080x1080" class="preset-btn">
+                  1080 × 1080 (Square)
+                </button>
+                <button type="button" data-size="800x600" class="preset-btn">
+                  800 × 600 (Compact)
+                </button>
+              </div>
+              <div class="custom-dim-row">
+                <div class="dim-field">
+                  <span>W</span>
+                  <input
+                    id="docWidth"
+                    type="number"
+                    min="1"
+                    value="1920"
+                    class="form-input"
+                  />
+                </div>
+                <div class="dim-field">
+                  <span>H</span>
+                  <input
+                    id="docHeight"
+                    type="number"
+                    min="1"
+                    value="1080"
+                    class="form-input"
+                  />
+                </div>
+                <button id="applySizeBtn" type="button" class="primary-btn">
+                  Apply
+                </button>
+              </div>
+            </section>
+
+            <section class="inspector-section">
+              <h4>Document Persistence (v1.3.0)</h4>
+              <div class="persistence-grid">
+                <button id="exportDocBtn" type="button" class="form-btn">
+                  Export JSON Document
+                </button>
+                <button id="importDocBtn" type="button" class="form-btn">
+                  Import JSON Document
+                </button>
+                <input
+                  id="docFileInput"
+                  type="file"
+                  accept=".json,application/json"
+                  style="display: none"
+                />
+                <button
+                  id="exportPngBtn"
+                  type="button"
+                  class="form-btn highlight"
+                >
+                  Export PNG Image
+                </button>
+              </div>
+            </section>
+
+            <section class="inspector-section">
+              <h4>Local Cache Storage</h4>
+              <div class="persistence-grid">
+                <button id="saveLocalBtn" type="button" class="form-btn">
+                  Save to LocalStorage
+                </button>
+                <button id="loadLocalBtn" type="button" class="form-btn">
+                  Load from LocalStorage
+                </button>
+              </div>
+            </section>
           </div>
-          <button
-            id="loadLocalBtn"
-            type="button"
-            style="width: 100%; margin-top: 6px"
-          >
-            Load Local Storage
+
+          <!-- Tab Content 4: Action Replay (v1.4.0) -->
+          <div class="tab-content" id="tabReplay">
+            <section class="inspector-section">
+              <h4>Action Replay Stream</h4>
+              <p class="section-hint">
+                Play back all recorded drawing strokes, selections, transforms,
+                and layer operations step-by-step.
+              </p>
+
+              <div class="replay-stats-card">
+                <div class="stat-item">
+                  <span class="stat-label">Recorded Actions</span>
+                  <span id="replayActionCount" class="stat-val">0</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Status</span>
+                  <span id="replayStatusText" class="stat-val">Idle</span>
+                </div>
+              </div>
+
+              <div class="replay-controls-group">
+                <label class="field">
+                  <span>Playback Speed</span>
+                  <select id="replaySpeedSelect" class="form-select">
+                    <option value="1">1.0× Normal</option>
+                    <option value="2">2.0× Fast</option>
+                    <option value="4" selected>4.0× Rapid</option>
+                    <option value="8">8.0× Time-Lapse</option>
+                    <option value="16">16.0× Hyper-lapse</option>
+                  </select>
+                </label>
+
+                <button
+                  id="startReplayBtn"
+                  type="button"
+                  class="primary-btn full-width"
+                >
+                  <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+                    <polygon points="5,3 13,8 5,13" fill="currentColor" />
+                  </svg>
+                  <span>Start Full Replay</span>
+                </button>
+              </div>
+            </section>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- ── Keyboard Shortcuts Modal ──────────────────────────────── -->
+    <div id="shortcutsModal" class="modal-backdrop" style="display: none">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>Keyboard Shortcuts</h3>
+          <button id="closeShortcutsBtn" type="button" class="close-btn">
+            &times;
           </button>
-        </section>
-
-        <section class="panel">
-          <h2>Image Brush</h2>
-          <input id="imageInput" type="file" accept="image/*" />
-          <button id="removeImageBtn" type="button">Remove Image</button>
-        </section>
-      </aside>
-
-      <main class="workspace">
-        <header class="topbar">
-          <div>
-            <strong id="documentLabel">1920 x 1080</strong>
-            <span id="cursorLabel">x 0, y 0</span>
-            <span id="status" class="status-badge">Ready</span>
-          </div>
-          <div class="actions">
-            <button id="cutBtn" type="button" title="Cut (Ctrl+X)">Cut</button>
-            <button id="copyBtn" type="button" title="Copy (Ctrl+C)">
-              Copy
-            </button>
-            <button id="pasteBtn" type="button" title="Paste (Ctrl+V)">
-              Paste
-            </button>
-            <button id="undoBtn" type="button" title="Undo (Ctrl+Z)">
-              Undo
-            </button>
-            <button id="redoBtn" type="button" title="Redo (Ctrl+Y)">
-              Redo
-            </button>
-            <button id="clearBtn" type="button" class="danger">
-              Clear Layer
-            </button>
-          </div>
-        </header>
-
-        <div class="canvas-stage">
-          <canvas id="canvas"></canvas>
-          <canvas id="overlayCanvas"></canvas>
         </div>
-      </main>
-
-      <aside class="layer-sidebar">
-        <div class="layer-panel-head">
-          <div>
-            <h2>Layers</h2>
-            <span id="layerCount">1 layer</span>
+        <div class="modal-body">
+          <div class="shortcuts-grid">
+            <div class="shortcut-row"><kbd>B</kbd><span>Brush Tool</span></div>
+            <div class="shortcut-row"><kbd>E</kbd><span>Eraser Tool</span></div>
+            <div class="shortcut-row"><kbd>F</kbd><span>Bucket Fill</span></div>
+            <div class="shortcut-row">
+              <kbd>R</kbd><span>Rectangle Tool</span>
+            </div>
+            <div class="shortcut-row">
+              <kbd>C</kbd><span>Ellipse Tool</span>
+            </div>
+            <div class="shortcut-row"><kbd>L</kbd><span>Line Tool</span></div>
+            <div class="shortcut-row"><kbd>T</kbd><span>Text Tool</span></div>
+            <div class="shortcut-row"><kbd>I</kbd><span>Eyedropper</span></div>
+            <div class="shortcut-row">
+              <kbd>M</kbd><span>Rect Marquee Select</span>
+            </div>
+            <div class="shortcut-row">
+              <kbd>Q</kbd><span>Freehand Lasso</span>
+            </div>
+            <div class="shortcut-row">
+              <kbd>V</kbd><span>Free Transform</span>
+            </div>
+            <div class="shortcut-row">
+              <kbd>Enter</kbd><span>Apply Transform</span>
+            </div>
+            <div class="shortcut-row">
+              <kbd>Esc</kbd><span>Cancel / Deselect</span>
+            </div>
+            <div class="shortcut-row"><kbd>Ctrl+Z</kbd><span>Undo</span></div>
+            <div class="shortcut-row"><kbd>Ctrl+Y</kbd><span>Redo</span></div>
+            <div class="shortcut-row">
+              <kbd>Ctrl+C</kbd><span>Copy Selection</span>
+            </div>
+            <div class="shortcut-row">
+              <kbd>Ctrl+X</kbd><span>Cut Selection</span>
+            </div>
+            <div class="shortcut-row"><kbd>Ctrl+V</kbd><span>Paste</span></div>
           </div>
-          <button id="addLayerBtn" type="button">Add</button>
         </div>
-        <div id="layerList" class="layer-list"></div>
-      </aside>
+      </div>
     </div>
 
     <script type="module" src="/src/main.js"></script>

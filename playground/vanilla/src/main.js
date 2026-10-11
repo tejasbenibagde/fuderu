@@ -8,19 +8,28 @@ import {
 const state = {
   width: 1920,
   height: 1080,
-  activeTool: "brush", // "brush" | "eraser" | "bucket" | "rectangle" | "ellipse" | "line" | "text" | "eyedropper"
+  activeTool: "brush", // "brush" | "eraser" | "bucket" | "rectangle" | "ellipse" | "line" | "text" | "eyedropper" | "rectSelect" | "ellipseSelect" | "lassoSelect" | "transform"
+  zoom: 1,
+  backdrop: "white",
+  isReplaying: false,
 };
 
 const $ = (id) => document.getElementById(id);
 
 const canvasEl = $("canvas");
 const overlayCanvas = $("overlayCanvas");
+const canvasViewport = $("canvasViewport");
+const canvasWrapper = $("canvasWrapper");
 const status = $("status");
 const documentLabel = $("documentLabel");
 const cursorLabel = $("cursorLabel");
 const layerList = $("layerList");
 const layerCount = $("layerCount");
 const activeToolName = $("activeToolName");
+const zoomLevelDisplay = $("zoomLevelDisplay");
+const dockColorSwatch = $("dockColorSwatch");
+const replayActionCount = $("replayActionCount");
+const replayStatusText = $("replayStatusText");
 
 const controls = {
   color: $("colorPicker"),
@@ -84,12 +93,24 @@ painter.on("change", (snapshot) => {
   const redoBtn = $("redoBtn");
   if (undoBtn) undoBtn.disabled = !history.canUndo;
   if (redoBtn) redoBtn.disabled = !history.canRedo;
+  updateActionCount();
+});
+
+painter.on("action:record", () => {
+  updateActionCount();
 });
 
 painter.on("stroke:end", ({ bounds, points }) => {
-  status.textContent = `Stroke ended (${points.length} pts, ${Math.round(bounds.width)}x${Math.round(bounds.height)}px)`;
+  status.textContent = `Stroke ended (${points.length} pts, ${Math.round(bounds.width)}×${Math.round(bounds.height)}px)`;
   refreshLayerPreviews();
+  updateActionCount();
 });
+
+function updateActionCount() {
+  if (replayActionCount) {
+    replayActionCount.textContent = String(painter.getActionLog().length);
+  }
+}
 
 function getActiveLayer() {
   return painter.getActiveLayer();
@@ -99,7 +120,22 @@ function syncOverlayCanvasSize() {
   if (!overlayCanvas) return;
   overlayCanvas.width = state.width;
   overlayCanvas.height = state.height;
-  overlayCanvas.style.aspectRatio = `${state.width} / ${state.height}`;
+  overlayCanvas.style.width = `${state.width}px`;
+  overlayCanvas.style.height = `${state.height}px`;
+}
+
+function setCanvasDimensions(width, height) {
+  canvasEl.width = width;
+  canvasEl.height = height;
+  canvasEl.style.width = `${width}px`;
+  canvasEl.style.height = `${height}px`;
+  if (overlayCanvas) {
+    overlayCanvas.width = width;
+    overlayCanvas.height = height;
+    overlayCanvas.style.width = `${width}px`;
+    overlayCanvas.style.height = `${height}px`;
+  }
+  documentLabel.textContent = `${width} × ${height}`;
 }
 
 function drawLayerPreview(layer, preview) {
@@ -135,8 +171,16 @@ const BLEND_MODES = [
   "overlay",
   "darken",
   "lighten",
+  "color-dodge",
+  "color-burn",
+  "hard-light",
+  "soft-light",
   "difference",
   "exclusion",
+  "hue",
+  "saturation",
+  "color",
+  "luminosity",
 ];
 
 // ───────────────────────────────────────────────────────────
@@ -178,7 +222,7 @@ function buildLayerRow(layer, index, totalLayers, activeLayerId) {
   name.addEventListener("click", (e) => e.stopPropagation());
   name.addEventListener("change", () => {
     painter.updateLayer(layer.id, { name: name.value || "Layer" });
-    status.textContent = "Renamed";
+    status.textContent = "Renamed layer";
   });
   name.addEventListener("keydown", (e) => {
     if (e.key === "Enter") name.blur();
@@ -203,7 +247,7 @@ function buildLayerRow(layer, index, totalLayers, activeLayerId) {
       nextVisible ? "Hide layer" : "Show layer",
     );
     row.classList.toggle("dimmed", !nextVisible);
-    status.textContent = nextVisible ? "Layer shown" : "Layer hidden";
+    status.textContent = nextVisible ? "Layer visible" : "Layer hidden";
   });
 
   header.append(name, visibility);
@@ -233,7 +277,7 @@ function buildLayerRow(layer, index, totalLayers, activeLayerId) {
   layerLockBtn.type = "button";
   layerLockBtn.className = `lock-toggle-btn${layer.locked ? " active" : ""}`;
   layerLockBtn.innerHTML = `<span>🔒</span> Lock`;
-  layerLockBtn.title = "Locks layer from drawing or deletion";
+  layerLockBtn.title = "Protects layer from accidental edits or deletion";
   layerLockBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
   layerLockBtn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -283,7 +327,7 @@ function buildLayerRow(layer, index, totalLayers, activeLayerId) {
   const blendWrap = document.createElement("label");
   blendWrap.className = "layer-blend-wrap";
   const blendCaption = document.createElement("span");
-  blendCaption.textContent = "Blend";
+  blendCaption.textContent = "Blend Mode";
   const blendMode = document.createElement("select");
   blendMode.className = "layer-blend";
   BLEND_MODES.forEach((mode) => {
@@ -312,35 +356,35 @@ function buildLayerRow(layer, index, totalLayers, activeLayerId) {
   up.type = "button";
   up.className = "icon-btn";
   up.innerHTML = CHEVRON_UP_ICON;
-  up.title = "Move up";
+  up.title = "Move Up";
   up.disabled = index === totalLayers - 1;
   up.addEventListener("pointerdown", (e) => e.stopPropagation());
   up.addEventListener("click", (e) => {
     e.stopPropagation();
     painter.moveLayer(layer.id, index + 1);
     renderLayerList();
-    status.textContent = "Layer moved";
+    status.textContent = "Layer moved up";
   });
 
   const down = document.createElement("button");
   down.type = "button";
   down.className = "icon-btn";
   down.innerHTML = CHEVRON_DOWN_ICON;
-  down.title = "Move down";
+  down.title = "Move Down";
   down.disabled = index === 0;
   down.addEventListener("pointerdown", (e) => e.stopPropagation());
   down.addEventListener("click", (e) => {
     e.stopPropagation();
     painter.moveLayer(layer.id, index - 1);
     renderLayerList();
-    status.textContent = "Layer moved";
+    status.textContent = "Layer moved down";
   });
 
   const duplicate = document.createElement("button");
   duplicate.type = "button";
   duplicate.className = "icon-btn";
   duplicate.innerHTML = DUPLICATE_ICON;
-  duplicate.title = "Duplicate layer";
+  duplicate.title = "Duplicate Layer";
   duplicate.addEventListener("pointerdown", (e) => e.stopPropagation());
   duplicate.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -353,7 +397,7 @@ function buildLayerRow(layer, index, totalLayers, activeLayerId) {
   remove.type = "button";
   remove.className = "icon-btn danger";
   remove.innerHTML = TRASH_ICON;
-  remove.title = "Delete layer";
+  remove.title = "Delete Layer";
   remove.disabled = totalLayers === 1 || layer.locked;
   remove.addEventListener("pointerdown", (e) => e.stopPropagation());
   remove.addEventListener("click", (e) => {
@@ -400,12 +444,6 @@ function syncLayers() {
   renderLayerList();
 }
 
-function setCanvasAspect(width, height) {
-  canvasEl.style.aspectRatio = `${width} / ${height}`;
-  documentLabel.textContent = `${width} × ${height}`;
-  syncOverlayCanvasSize();
-}
-
 function degreesToTurns(value) {
   return Number(value) / 360;
 }
@@ -434,6 +472,10 @@ function syncLabels() {
     $("cornerRadiusValue").textContent = `${$("cornerRadiusSlider").value}px`;
   if ($("fontSizeValue"))
     $("fontSizeValue").textContent = `${$("fontSizeSlider").value}px`;
+
+  if (dockColorSwatch) {
+    dockColorSwatch.style.background = controls.color.value;
+  }
 }
 
 function syncBrush() {
@@ -490,6 +532,10 @@ function syncBrush() {
     countJitter: 0,
     countJitterTrigger: "none",
   });
+
+  if (dockColorSwatch) {
+    dockColorSwatch.style.background = controls.color.value;
+  }
 }
 
 function setTool(tool) {
@@ -517,20 +563,20 @@ function setTool(tool) {
   if (activeToolName) activeToolName.textContent = toolLabels[tool] || tool;
 
   $("brushOptions").style.display =
-    tool === "brush" || tool === "eraser" ? "block" : "none";
-  $("bucketOptions").style.display = tool === "bucket" ? "block" : "none";
+    tool === "brush" || tool === "eraser" ? "flex" : "none";
+  $("bucketOptions").style.display = tool === "bucket" ? "flex" : "none";
   $("shapeOptions").style.display =
     tool === "rectangle" || tool === "ellipse" || tool === "line"
-      ? "block"
+      ? "flex"
       : "none";
-  $("cornerRadiusField").style.display = tool === "rectangle" ? "grid" : "none";
-  $("textOptions").style.display = tool === "text" ? "block" : "none";
+  $("cornerRadiusField").style.display = tool === "rectangle" ? "flex" : "none";
+  $("textOptions").style.display = tool === "text" ? "flex" : "none";
   $("eyedropperOptions").style.display =
-    tool === "eyedropper" ? "block" : "none";
+    tool === "eyedropper" ? "flex" : "none";
   const isSelectionTool =
     tool === "rectSelect" || tool === "ellipseSelect" || tool === "lassoSelect";
-  $("selectionOptions").style.display = isSelectionTool ? "block" : "none";
-  $("transformOptions").style.display = tool === "transform" ? "block" : "none";
+  $("selectionOptions").style.display = isSelectionTool ? "flex" : "none";
+  $("transformOptions").style.display = tool === "transform" ? "flex" : "none";
 
   if (tool === "transform" && !painter.isTransforming()) {
     try {
@@ -566,7 +612,7 @@ function getCanvasCoords(event) {
 }
 
 // ───────────────────────────────────────────────────────────
-// Custom Tools Pointer Handling (Capture Phase)
+// Custom Tools Pointer Handling
 // ───────────────────────────────────────────────────────────
 
 let isDrawingShape = false;
@@ -598,8 +644,8 @@ function animateMarchingAnts() {
       if (painter.isTransforming()) {
         painter.renderTransformBox(ctx, {
           handleSize: 10,
-          boxColor: "#0088ff",
-          handleStrokeColor: "#0088ff",
+          boxColor: "#ff7a45",
+          handleStrokeColor: "#ff7a45",
           handleColor: "#ffffff",
         });
       }
@@ -668,18 +714,16 @@ canvasEl.addEventListener(
     const activeLayer = getActiveLayer();
 
     if (activeLayer.locked) {
-      status.textContent = "Layer is locked!";
+      status.textContent = "Active layer is locked";
       e.stopImmediatePropagation();
       e.preventDefault();
       return;
     }
 
-    // Brush and Eraser use Fuderu's native drawing engine
     if (state.activeTool === "brush" || state.activeTool === "eraser") {
       return;
     }
 
-    // Intercept all other custom tools
     e.stopImmediatePropagation();
     e.preventDefault();
 
@@ -747,7 +791,7 @@ canvasEl.addEventListener(
           $("sampledColorLabel").textContent =
             `${sampled.hex} (a: ${sampled.a})`;
         syncBrush();
-        status.textContent = `Sampled color: ${sampled.hex}`;
+        status.textContent = `Sampled: ${sampled.hex}`;
       } catch (err) {
         console.error(err);
         status.textContent = "Color sampling failed";
@@ -765,7 +809,7 @@ canvasEl.addEventListener(
           color: controls.color.value,
         });
         refreshLayerPreviews();
-        status.textContent = "Text drawn";
+        status.textContent = "Text rendered";
       } catch (err) {
         console.error(err);
         status.textContent = err instanceof Error ? err.message : "Text failed";
@@ -878,8 +922,8 @@ canvasEl.addEventListener(
 
         ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
         ctx.save();
-        ctx.strokeStyle = "#0088ff";
-        ctx.fillStyle = "rgba(0, 136, 255, 0.15)";
+        ctx.strokeStyle = "#ff7a45";
+        ctx.fillStyle = "rgba(255, 122, 69, 0.15)";
         ctx.lineWidth = 1.5;
         ctx.setLineDash([4, 4]);
 
@@ -936,7 +980,7 @@ canvasEl.addEventListener(
             const h = Math.abs(endCoords.y - selectionStartCoords.y);
             if (w > 2 && h > 2) {
               painter.selectRectangle(minX, minY, w, h, mode);
-              status.textContent = `Selected rect: ${Math.round(w)}x${Math.round(h)}px (${mode})`;
+              status.textContent = `Selected rect: ${Math.round(w)}×${Math.round(h)}px (${mode})`;
             }
           } else if (state.activeTool === "ellipseSelect") {
             const minX = Math.min(selectionStartCoords.x, endCoords.x);
@@ -952,7 +996,7 @@ canvasEl.addEventListener(
                 0,
                 mode,
               );
-              status.textContent = `Selected ellipse: ${Math.round(w)}x${Math.round(h)}px (${mode})`;
+              status.textContent = `Selected ellipse: ${Math.round(w)}×${Math.round(h)}px (${mode})`;
             }
           } else if (state.activeTool === "lassoSelect") {
             lassoPoints.push(endCoords);
@@ -974,7 +1018,7 @@ canvasEl.addEventListener(
   true,
 );
 
-// Direct Layer Actions (v1.3.0 / v1.4.0)
+// Direct Layer Actions
 if ($("fillActiveLayerBtn")) {
   $("fillActiveLayerBtn").addEventListener("click", () => {
     try {
@@ -989,17 +1033,66 @@ if ($("fillActiveLayerBtn")) {
   });
 }
 
+// ───────────────────────────────────────────────────────────
+// Viewport Zoom & Fit Controls
+// ───────────────────────────────────────────────────────────
+
+function setZoom(newZoom) {
+  state.zoom = Math.max(0.1, Math.min(5, newZoom));
+  if (canvasWrapper) {
+    canvasWrapper.style.transform = `scale(${state.zoom})`;
+  }
+  if (zoomLevelDisplay) {
+    zoomLevelDisplay.textContent = `${Math.round(state.zoom * 100)}%`;
+  }
+}
+
+function fitCanvasToViewport() {
+  if (!canvasViewport) return;
+  const padding = 72;
+  const availW = canvasViewport.clientWidth - padding;
+  const availH = canvasViewport.clientHeight - padding;
+  if (availW <= 0 || availH <= 0) return;
+
+  const scale = Math.min(availW / state.width, availH / state.height, 1);
+  setZoom(scale);
+}
+
+$("zoomOutBtn")?.addEventListener("click", () => setZoom(state.zoom * 0.8));
+$("zoomInBtn")?.addEventListener("click", () => setZoom(state.zoom * 1.25));
+$("zoom100Btn")?.addEventListener("click", () => setZoom(1));
+$("zoomFitBtn")?.addEventListener("click", fitCanvasToViewport);
+
+window.addEventListener("resize", () => {
+  if (state.zoom < 1) fitCanvasToViewport();
+});
+
+// Canvas Background Modes
+document.querySelectorAll(".backdrop-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document
+      .querySelectorAll(".backdrop-btn")
+      .forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.backdrop = btn.dataset.bg;
+    canvasEl.classList.remove("bg-dark", "bg-checker");
+    if (state.backdrop === "dark") canvasEl.classList.add("bg-dark");
+    if (state.backdrop === "checker") canvasEl.classList.add("bg-checker");
+  });
+});
+
 function applyDocumentSize(width, height) {
   if (width <= 0 || height <= 0) return;
 
   state.width = width;
   state.height = height;
   painter.setDocumentSize(width, height);
-  setCanvasAspect(width, height);
+  setCanvasDimensions(width, height);
   syncLayers();
   $("docWidth").value = String(width);
   $("docHeight").value = String(height);
-  status.textContent = "Document resized";
+  fitCanvasToViewport();
+  status.textContent = `Resized to ${width} × ${height}`;
 }
 
 function updateCursorLabel(event) {
@@ -1032,6 +1125,20 @@ Object.values(controls).forEach((control) => {
     el.addEventListener("input", syncLabels);
     el.addEventListener("change", syncLabels);
   }
+});
+
+// Quick Color Swatches in Shelf
+document.querySelectorAll(".swatch-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const color = btn.dataset.color;
+    controls.color.value = color;
+    syncBrush();
+    syncLabels();
+  });
+});
+
+$("dockColorButton")?.addEventListener("click", () => {
+  controls.color.click();
 });
 
 $("clearBtn").addEventListener("click", () => {
@@ -1074,10 +1181,32 @@ document.querySelectorAll("[data-size]").forEach((button) => {
   });
 });
 
-// ── Persistence API (v1.3.0) ───────────────────────────────────
+// ───────────────────────────────────────────────────────────
+// Sidebar Tab Navigation
+// ───────────────────────────────────────────────────────────
+
+document.querySelectorAll(".tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document
+      .querySelectorAll(".tab-btn")
+      .forEach((b) => b.classList.remove("active"));
+    document
+      .querySelectorAll(".tab-content")
+      .forEach((c) => c.classList.remove("active"));
+    btn.classList.add("active");
+    const targetId = `tab${btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)}`;
+    const content = $(targetId);
+    if (content) content.classList.add("active");
+  });
+});
+
+// ───────────────────────────────────────────────────────────
+// Persistence API (v1.3.0)
+// ───────────────────────────────────────────────────────────
+
 $("exportDocBtn").addEventListener("click", async () => {
   try {
-    status.textContent = "Exporting...";
+    status.textContent = "Exporting JSON...";
     const doc = await painter.exportDocument();
     const jsonStr = JSON.stringify(doc, null, 2);
     const blob = new Blob([jsonStr], { type: "application/json" });
@@ -1102,16 +1231,17 @@ $("docFileInput").addEventListener("change", async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
   try {
-    status.textContent = "Importing...";
+    status.textContent = "Importing JSON...";
     const text = await file.text();
     const doc = JSON.parse(text);
     await painter.importDocument(doc);
     state.width = doc.width;
     state.height = doc.height;
-    setCanvasAspect(doc.width, doc.height);
+    setCanvasDimensions(doc.width, doc.height);
     $("docWidth").value = String(doc.width);
     $("docHeight").value = String(doc.height);
     syncLayers();
+    fitCanvasToViewport();
     status.textContent = "Document imported";
   } catch (err) {
     console.error(err);
@@ -1124,7 +1254,9 @@ $("docFileInput").addEventListener("change", async (e) => {
 $("exportPngBtn").addEventListener("click", async () => {
   try {
     status.textContent = "Exporting PNG...";
-    const pngUrl = await painter.exportPNG({ includeBackground: true });
+    const pngUrl = await painter.exportPNG({
+      includeBackground: state.backdrop !== "checker",
+    });
     const a = document.createElement("a");
     a.href = pngUrl;
     a.download = "fuderu-artwork.png";
@@ -1160,10 +1292,11 @@ $("loadLocalBtn").addEventListener("click", async () => {
     await painter.importDocument(doc);
     state.width = doc.width;
     state.height = doc.height;
-    setCanvasAspect(doc.width, doc.height);
+    setCanvasDimensions(doc.width, doc.height);
     $("docWidth").value = String(doc.width);
     $("docHeight").value = String(doc.height);
     syncLayers();
+    fitCanvasToViewport();
     status.textContent = "Loaded from localStorage";
   } catch (err) {
     console.error(err);
@@ -1171,18 +1304,71 @@ $("loadLocalBtn").addEventListener("click", async () => {
   }
 });
 
-$("imageInput").addEventListener("change", async (event) => {
+// ───────────────────────────────────────────────────────────
+// Action Replay Engine (v1.4.0)
+// ───────────────────────────────────────────────────────────
+
+async function triggerReplay() {
+  const actions = painter.getActionLog();
+  if (actions.length === 0) {
+    status.textContent = "No recorded actions to replay";
+    return;
+  }
+
+  if (state.isReplaying) return;
+  state.isReplaying = true;
+
+  const speed = Number($("replaySpeedSelect")?.value || 4);
+  if (replayStatusText) replayStatusText.textContent = "Replaying...";
+  status.textContent = `Replaying ${actions.length} actions (${speed}×)...`;
+
+  try {
+    // Replay on clean canvas
+    painter.clear();
+    await painter.replay(actions, {
+      speed,
+      onProgress: (current, total) => {
+        status.textContent = `Replaying ${current}/${total}...`;
+        if (replayStatusText)
+          replayStatusText.textContent = `${Math.round((current / total) * 100)}%`;
+      },
+    });
+    refreshLayerPreviews();
+    status.textContent = "Replay complete!";
+    if (replayStatusText) replayStatusText.textContent = "Finished";
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Replay encountered error";
+    if (replayStatusText) replayStatusText.textContent = "Error";
+  } finally {
+    state.isReplaying = false;
+  }
+}
+
+$("startReplayBtn")?.addEventListener("click", triggerReplay);
+$("headerReplayBtn")?.addEventListener("click", triggerReplay);
+
+// ───────────────────────────────────────────────────────────
+// Image Brush
+// ───────────────────────────────────────────────────────────
+
+$("imageInput")?.addEventListener("change", async (event) => {
   const file = event.target.files?.[0];
   if (!file) return;
 
   try {
-    status.textContent = "Loading image";
+    status.textContent = "Loading image stamp...";
     await painter.loadImage(URL.createObjectURL(file));
-    status.textContent = "Image brush";
+    status.textContent = "Image brush ready";
   } catch (error) {
     console.error(error);
-    status.textContent = "Image failed";
+    status.textContent = "Image failed to load";
   }
+});
+
+$("removeImageBtn")?.addEventListener("click", () => {
+  painter.brush.removeImage();
+  status.textContent = "Image stamp removed";
 });
 
 function refreshLayerPreviews() {
@@ -1196,11 +1382,6 @@ function refreshLayerPreviews() {
   });
 }
 
-$("removeImageBtn").addEventListener("click", () => {
-  painter.brush.removeImage();
-  status.textContent = "Image removed";
-});
-
 canvasEl.addEventListener("pointermove", updateCursorLabel);
 window.addEventListener("pointerup", () => {
   refreshLayerPreviews();
@@ -1212,29 +1393,67 @@ canvasEl.addEventListener("pointerleave", () => {
   cursorLabel.textContent = "—";
 });
 
+// ───────────────────────────────────────────────────────────
+// Keyboard Shortcuts & Modal
+// ───────────────────────────────────────────────────────────
+
+const shortcutsModal = $("shortcutsModal");
+$("shortcutsModalBtn")?.addEventListener("click", () => {
+  if (shortcutsModal) shortcutsModal.style.display = "grid";
+});
+$("closeShortcutsBtn")?.addEventListener("click", () => {
+  if (shortcutsModal) shortcutsModal.style.display = "none";
+});
+shortcutsModal?.addEventListener("click", (e) => {
+  if (e.target === shortcutsModal) shortcutsModal.style.display = "none";
+});
+
 window.addEventListener("keydown", (event) => {
   if (
     event.target instanceof HTMLInputElement ||
-    event.target instanceof HTMLSelectElement
+    event.target instanceof HTMLSelectElement ||
+    event.target instanceof HTMLTextAreaElement
   ) {
     return;
   }
   const key = event.key.toLowerCase();
+
+  if (key === "?") {
+    if (shortcutsModal) {
+      shortcutsModal.style.display =
+        shortcutsModal.style.display === "none" ? "grid" : "none";
+    }
+    return;
+  }
+
+  if (
+    event.key === "Escape" &&
+    shortcutsModal &&
+    shortcutsModal.style.display !== "none"
+  ) {
+    shortcutsModal.style.display = "none";
+    return;
+  }
+
   if ((event.ctrlKey || event.metaKey) && key === "z") {
-    painter.undo();
+    if (event.shiftKey) {
+      painter.redo();
+    } else {
+      painter.undo();
+    }
     renderLayerList();
   } else if ((event.ctrlKey || event.metaKey) && key === "y") {
     painter.redo();
     renderLayerList();
   } else if ((event.ctrlKey || event.metaKey) && key === "c") {
     const data = painter.copy();
-    if (data) status.textContent = `Copied (${data.width}x${data.height}px)`;
+    if (data) status.textContent = `Copied (${data.width}×${data.height}px)`;
   } else if ((event.ctrlKey || event.metaKey) && key === "x") {
     try {
       const data = painter.cut();
       if (data) {
         refreshLayerPreviews();
-        status.textContent = `Cut (${data.width}x${data.height}px)`;
+        status.textContent = `Cut (${data.width}×${data.height}px)`;
       }
     } catch (err) {
       status.textContent = err instanceof Error ? err.message : "Cut failed";
@@ -1244,7 +1463,7 @@ window.addEventListener("keydown", (event) => {
       const res = painter.paste();
       if (res) {
         refreshLayerPreviews();
-        status.textContent = `Pasted (${res.width}x${res.height}px)`;
+        status.textContent = `Pasted (${res.width}×${res.height}px)`;
       }
     } catch (err) {
       status.textContent = err instanceof Error ? err.message : "Paste failed";
@@ -1271,6 +1490,16 @@ window.addEventListener("keydown", (event) => {
     setTool("lassoSelect");
   } else if (key === "v") {
     setTool("transform");
+  } else if (key === "[") {
+    controls.size.value = String(Math.max(1, Number(controls.size.value) - 4));
+    syncBrush();
+    syncLabels();
+  } else if (key === "]") {
+    controls.size.value = String(
+      Math.min(140, Number(controls.size.value) + 4),
+    );
+    syncBrush();
+    syncLabels();
   } else if (key === "enter") {
     if (painter.isTransforming()) {
       painter.commitTransform();
@@ -1292,6 +1521,7 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
+// Transform buttons
 $("flipHBtn")?.addEventListener("click", () => {
   if (!painter.isTransforming()) {
     try {
@@ -1397,6 +1627,7 @@ $("cancelTransformBtn")?.addEventListener("click", () => {
   setTool("brush");
 });
 
+// Selection buttons
 $("invertSelectionBtn")?.addEventListener("click", () => {
   painter.invertSelection();
   status.textContent = "Inverted selection";
@@ -1418,7 +1649,7 @@ function handleCut() {
     const data = painter.cut();
     if (data) {
       refreshLayerPreviews();
-      status.textContent = `Cut (${data.width}x${data.height}px)`;
+      status.textContent = `Cut (${data.width}×${data.height}px)`;
     } else {
       status.textContent = "Nothing to cut";
     }
@@ -1430,7 +1661,7 @@ function handleCut() {
 function handleCopy() {
   const data = painter.copy();
   if (data) {
-    status.textContent = `Copied (${data.width}x${data.height}px)`;
+    status.textContent = `Copied (${data.width}×${data.height}px)`;
   } else {
     status.textContent = "Nothing to copy";
   }
@@ -1441,7 +1672,7 @@ function handlePaste() {
     const res = painter.paste();
     if (res) {
       refreshLayerPreviews();
-      status.textContent = `Pasted (${res.width}x${res.height}px)`;
+      status.textContent = `Pasted (${res.width}×${res.height}px)`;
     } else {
       status.textContent = "Clipboard is empty";
     }
@@ -1456,16 +1687,19 @@ $("copyBtn")?.addEventListener("click", handleCopy);
 $("copySelectionBtn")?.addEventListener("click", handleCopy);
 $("pasteBtn")?.addEventListener("click", handlePaste);
 
-// Inline icons
-const EYE_OPEN_ICON = `<svg viewBox="0 0 20 20" fill="none"><path d="M1.5 10S4.5 4 10 4s8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.4" stroke="currentColor" stroke-width="1.4"/></svg>`;
-const EYE_CLOSED_ICON = `<svg viewBox="0 0 20 20" fill="none"><path d="M2.5 2.5l15 15M8.3 8.4a2.4 2.4 0 0 0 3.3 3.3M5.6 5.7C3.4 7 1.5 10 1.5 10s3 6 8.5 6c1.5 0 2.8-.4 3.9-1M16 14.3c1.6-1.4 2.5-3.5 2.5-4.3 0 0-1.3-2.6-3.9-4.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const CHEVRON_UP_ICON = `<svg viewBox="0 0 16 16" fill="none"><path d="M4 10l4-4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const CHEVRON_DOWN_ICON = `<svg viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const DUPLICATE_ICON = `<svg viewBox="0 0 16 16" fill="none"><rect x="5.5" y="5.5" width="8" height="8" rx="1.3" stroke="currentColor" stroke-width="1.4"/><path d="M3 10.5V3.8A1.3 1.3 0 0 1 4.3 2.5h6.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
-const TRASH_ICON = `<svg viewBox="0 0 16 16" fill="none"><path d="M3 4.5h10M6.3 4.5V3.3A1 1 0 0 1 7.3 2.3h1.4a1 1 0 0 1 1 1V4.5M4.5 4.5l.6 8.2a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+// SVG Icons for Layers
+const EYE_OPEN_ICON = `<svg viewBox="0 0 20 20" width="14" height="14" fill="none"><path d="M1.5 10S4.5 4 10 4s8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.4" stroke="currentColor" stroke-width="1.4"/></svg>`;
+const EYE_CLOSED_ICON = `<svg viewBox="0 0 20 20" width="14" height="14" fill="none"><path d="M2.5 2.5l15 15M8.3 8.4a2.4 2.4 0 0 0 3.3 3.3M5.6 5.7C3.4 7 1.5 10 1.5 10s3 6 8.5 6c1.5 0 2.8-.4 3.9-1M16 14.3c1.6-1.4 2.5-3.5 2.5-4.3 0 0-1.3-2.6-3.9-4.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const CHEVRON_UP_ICON = `<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M4 10l4-4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const CHEVRON_DOWN_ICON = `<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const DUPLICATE_ICON = `<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><rect x="5.5" y="5.5" width="8" height="8" rx="1.3" stroke="currentColor" stroke-width="1.4"/><path d="M3 10.5V3.8A1.3 1.3 0 0 1 4.3 2.5h6.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+const TRASH_ICON = `<svg viewBox="0 0 16 16" width="12" height="12" fill="none"><path d="M3 4.5h10M6.3 4.5V3.3A1 1 0 0 1 7.3 2.3h1.4a1 1 0 0 1 1 1V4.5M4.5 4.5l.6 8.2a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-setCanvasAspect(state.width, state.height);
+// Initialize
+setCanvasDimensions(state.width, state.height);
 syncBrush();
 syncLabels();
 syncLayers();
 setTool("brush");
+updateActionCount();
+setTimeout(fitCanvasToViewport, 50);

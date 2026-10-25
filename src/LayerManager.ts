@@ -269,4 +269,19 @@ export class LayerManager {
     this.activeLayerId = targetActive;
     this.invalidateSnapshotCache();
   }
+
+  /**
+   * Resets layers back to a single fresh background layer at current dimensions.
+   */
+  resetToSingleLayer(): Layer {
+    const baseLayer = new Layer({
+      name: "Background",
+      width: this.width,
+      height: this.height,
+    });
+    this.layers = [baseLayer];
+    this.activeLayerId = baseLayer.id;
+    this.invalidateSnapshotCache();
+    return baseLayer;
+  }
 }

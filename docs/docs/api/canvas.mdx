@@ -248,6 +248,19 @@ Starting in version 1.1.0, `Canvas` manages a unified history stack via `History
 
 Because history is managed at the high-level `Canvas` wrapper, **switching the active layer no longer wipes the undo/redo stack**. Users can switch layers freely and still undo/redo their strokes across layers seamlessly.
 
+### `resetArtwork()`
+
+Replace the current layer stack with a single empty Background layer, clear
+selection and transform state, and reset undo/redo history. Unlike `clear()`,
+this also removes the other layers. The recorded action log is preserved, so
+this is useful before replaying actions from the beginning:
+
+```ts
+const actions = painter.getActionLog();
+painter.resetArtwork();
+await painter.replay(actions);
+```
+
 ### `history`
 
 The `HistoryManager` instance on the canvas. It provides low-level control over the undo/redo stack:

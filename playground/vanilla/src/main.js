@@ -1323,16 +1323,31 @@ async function triggerReplay() {
   status.textContent = `Replaying ${actions.length} actions (${speed}×)...`;
 
   try {
-    // Replay on clean canvas
-    painter.clear();
+    // Reset layers and document cleanly without mutating recorded actions
+    painter.resetArtwork();
+    syncLayers();
+
     await painter.replay(actions, {
       speed,
-      onProgress: (current, total) => {
-        status.textContent = `Replaying ${current}/${total}...`;
-        if (replayStatusText)
-          replayStatusText.textContent = `${Math.round((current / total) * 100)}%`;
+      onAction: (action) => {
+        if (
+          action.type === "createLayer" ||
+          action.type === "deleteLayer" ||
+          action.type === "moveLayer" ||
+          action.type === "duplicateLayer" ||
+          action.type === "setLayerProperties"
+        ) {
+          syncLayers();
+        }
+      },
+      onProgress: (progress, current, total) => {
+        const pct = Math.round(progress * 100);
+        status.textContent = `Replaying ${current}/${total} (${pct}%)...`;
+        if (replayStatusText) replayStatusText.textContent = `${pct}%`;
       },
     });
+
+    syncLayers();
     refreshLayerPreviews();
     status.textContent = "Replay complete!";
     if (replayStatusText) replayStatusText.textContent = "Finished";

@@ -4,6 +4,17 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
+## [1.5.2] - 2026-10-25
+
+- **Reliable Stroke Replay**:
+  - Added `Brush.flush()` to finish pending brush points synchronously and await completion before a replayed stroke is committed.
+  - Updated `Canvas.replay()` to remap recorded layer IDs that are not present on the destination canvas to its active starting layer. Layer IDs created by `createLayer` actions remain unchanged so later actions continue to target the right layer.
+  - Updated the vanilla playground replay flow to reset artwork before playback, keep layer UI state in sync during playback, and report progress using the replay callbacks.
+- **Artwork Reset API**:
+  - Added `Canvas.resetArtwork()` to replace the layer stack with a clean Background layer, clear selection and transform state, reset history, and preserve the recorded action log.
+- **Replay Regression Coverage**:
+  - Added tests for replaying strokes onto a canvas with a different initial layer ID, flushing brush work before commit, and resetting artwork without clearing the action log.
+
 ## [1.5.1] - 2026-10-04
 
 - **Single-Argument Layer Constructor & Signature Alignment**:

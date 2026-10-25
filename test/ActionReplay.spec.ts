@@ -8,6 +8,7 @@ const mockBrushInstance = {
   config: { size: 10 },
   putPoint: vi.fn(),
   render: vi.fn(),
+  flush: vi.fn(async () => {}),
   finalizeStroke: vi.fn((cb: () => void) => cb()),
   clear: vi.fn(),
   loadConfig: vi.fn(),
@@ -132,7 +133,11 @@ describe("Operation Log & Action Replay API", () => {
       expect(log[2].type).toBe("drawLine");
       expect(log[3].type).toBe("drawText");
 
-      expect(log[0].layerId).toBe(activeLayer.id);
+      const rectangleAction = log[0];
+      if (rectangleAction.type !== "drawRectangle") {
+        throw new Error("Expected first action to be a rectangle");
+      }
+      expect(rectangleAction.layerId).toBe(activeLayer.id);
     });
 
     it("records fill and flood fill actions", () => {
@@ -228,6 +233,31 @@ describe("Operation Log & Action Replay API", () => {
 
       // Verify target canvas has 2 layers now (initial default + created Background)
       expect(targetPainter.getLayers().length).toBe(2);
+    });
+
+    it("replays strokes recorded on a different initial layer ID", async () => {
+      const sourceLayer = painter.getActiveLayer();
+      const action: StrokeAction = {
+        type: "stroke",
+        layerId: sourceLayer.id,
+        brushConfig: { size: 10 },
+        points: [
+          { x: 10, y: 10, pressure: 0.5 },
+          { x: 20, y: 20, pressure: 0.8 },
+        ],
+      };
+
+      const targetCanvasEl = document.createElement("canvas");
+      const targetPainter = new Canvas({
+        canvas: targetCanvasEl,
+        document: { width: 500, height: 400 },
+      });
+
+      await targetPainter.replay([action]);
+
+      expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(10, 10, 0.5);
+      expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(20, 20, 0.8);
+      expect(targetPainter.getActionLog()).toHaveLength(0);
     });
   });
 });

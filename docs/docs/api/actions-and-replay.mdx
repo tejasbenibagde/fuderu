@@ -22,11 +22,22 @@ Returns the array of all serializable actions executed in the current session.
 
 ### `replay(actions: CanvasAction[], options?: ReplayOptions): Promise<void>`
 
-Replays an array of actions sequentially on the canvas.
+Replays an array of actions sequentially on the canvas and waits for each action
+to finish. When an action references a layer ID that does not exist on the
+destination and is not declared by a `createLayer` action in the replay stream,
+it targets the destination's active layer as it was when replay began. Layer IDs
+declared by `createLayer` actions are preserved. Include layer-creation actions
+in the stream when later actions target those layers.
 
-### `replayAction(action: CanvasAction): void`
+### `replayAction(action: CanvasAction): Promise<void>`
 
-Replays a single action immediately.
+Replays a single action. Await the returned promise when subsequent work depends
+on the action finishing; for strokes, it resolves after queued brush points are
+flushed and committed.
+
+### `clearActionLog(): void`
+
+Clears the internal recorded-action log.
 
 ---
 
@@ -61,9 +72,26 @@ type CanvasAction =
 
 ```typescript
 interface ReplayOptions {
-  /** Speed multiplier (e.g. 1 = real-time, 2 = 2x speed, 0 = instant) */
+  /** Playback speed; 0 (default) skips delays, positive values set inter-action delay */
   speed?: number;
-  /** Callback invoked on each action step during replay */
-  onProgress?: (progress: number, action: CanvasAction) => void;
+  /** Fixed delay between actions, used when speed is not set */
+  delayMs?: number;
+  /** Called before each action */
+  onAction?: (action: CanvasAction, index: number, total: number) => void;
+  /** Called as progress advances; progress is between 0 and 1 */
+  onProgress?: (progress: number, current: number, total: number) => void;
 }
+```
+
+### Resetting artwork before replay
+
+`canvas.resetArtwork(): void` resets the canvas to one empty Background layer,
+clears selection and transform state, and clears undo/redo history without
+clearing the action log. Use it to replay a saved log from a clean starting
+state:
+
+```ts
+const actions = painter.getActionLog();
+painter.resetArtwork();
+await painter.replay(actions);
 ```

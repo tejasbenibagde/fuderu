@@ -71,6 +71,16 @@ render(): void;
 
 Renders queued points. It is safe to call repeatedly while drawing.
 
+### `flush`
+
+```ts
+flush(): Promise<void>;
+```
+
+Finishes processing queued points and resolves when pending rendering work is
+complete. This is useful when code must ensure that a stroke has reached the
+target canvas before continuing.
+
 ### `finalizeStroke`
 
 ```ts

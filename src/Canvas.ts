@@ -1175,6 +1175,38 @@ export class Canvas implements HistoryContext {
   }
 
   /**
+   * Resets all layers to a single clean base layer without mutating the saved action log.
+   * Clears selections, transformations, and undo/redo history.
+   */
+  public resetArtwork(): void {
+    if (this.transformSession) {
+      try {
+        this.cancelTransform();
+      } catch {
+        // ignore
+      }
+      this.transformSession = null;
+    }
+
+    if (this.selection.isActive()) {
+      this.selection.clear();
+    }
+
+    const baseLayer = this.layers.resetToSingleLayer();
+    this.brush.loadContext(baseLayer.canvas);
+    this.brush.setSelectionMask(null);
+    this.brush.clear();
+
+    this.history.clear();
+    this.cacheBelowValid = false;
+
+    this.renderLayers();
+    this.emit("layer:change", this.layers.getAll(), baseLayer.id);
+    this.emitHistoryChange();
+    this.emitStateChange();
+  }
+
+  /**
    * Export the complete canvas document state including width, height,
    * layer metadata, and serialized layer bitmaps.
    */
@@ -2032,6 +2064,7 @@ export class Canvas implements HistoryContext {
               this.brush.putPoint(p.x, p.y, p.pressure ?? 1);
             }
             this.brush.render();
+            await this.brush.flush();
             this.renderLayers();
             this.commitStroke();
           }
@@ -2211,14 +2244,46 @@ export class Canvas implements HistoryContext {
     const total = actionLog.length;
     if (total === 0) return;
 
+    const initialLayerIds = new Set(this.getLayers().map((layer) => layer.id));
+    const createdLayerIds = new Set(
+      actionLog.flatMap((action) =>
+        action.type === "createLayer" && action.layerId ? [action.layerId] : [],
+      ),
+    );
+    const fallbackLayerId = this.layers.getActiveId();
+    const replayLayerIds = new Map<string, string>();
+
+    if (fallbackLayerId) {
+      for (const action of actionLog) {
+        const sourceLayerId = "layerId" in action ? action.layerId : undefined;
+        if (typeof sourceLayerId !== "string") continue;
+        if (
+          !initialLayerIds.has(sourceLayerId) &&
+          !createdLayerIds.has(sourceLayerId)
+        ) {
+          replayLayerIds.set(sourceLayerId, fallbackLayerId);
+        }
+      }
+    }
+
     const speed = options?.speed ?? 0;
     const delayMs =
       options?.delayMs ??
       (speed > 0 ? Math.max(10, Math.floor(100 / speed)) : 0);
 
     for (let i = 0; i < total; i++) {
-      const action = actionLog[i];
-      options?.onAction?.(action, i, total);
+      const recordedAction = actionLog[i];
+      const sourceLayerId =
+        "layerId" in recordedAction ? recordedAction.layerId : undefined;
+      const targetLayerId =
+        typeof sourceLayerId === "string"
+          ? replayLayerIds.get(sourceLayerId)
+          : undefined;
+      const action =
+        targetLayerId !== undefined && "layerId" in recordedAction
+          ? { ...recordedAction, layerId: targetLayerId }
+          : recordedAction;
+      options?.onAction?.(recordedAction, i, total);
       options?.onProgress?.((i + 1) / total, i + 1, total);
 
       await this.replayAction(action);

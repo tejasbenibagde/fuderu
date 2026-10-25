@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Stable 1.5.1 canvas drawing engine for the web.
+  Stable 1.5.2 canvas drawing engine for the web.
 </p>
 
 <p align="center">
@@ -25,6 +25,7 @@
 
 - **Artist Tools: Selection, Transformation & Clipboard (v1.5.0 / v1.5.1)** – Marquee and freehand lasso selections (`selectRectangle`, `selectEllipse`, `selectLasso`, `renderSelectionOutline`); floating interactive transformations with move, rotate, scale, and flip (`beginTransform`, `commitTransform`, `renderTransformBox`); cross-layer and cross-document clipboard pipeline (`copy`, `cut`, `paste`, `ClipboardStore`); typed mask caching for scanline fills.
 - **Reactive State & Layer Snapshots (v1.5.1)** – Clean single-argument `Layer` constructor contract, public `canvas.getLayerSnapshots()` returning cached immutable `LayerSnapshot` DTOs, and persistent offscreen stroke canvas reuse.
+- **Reliable Replay & Artwork Reset (v1.5.2)** – Flush queued brush points before replayed strokes commit, replay recorded strokes when the destination canvas has a different initial layer ID, and reset the artwork with `resetArtwork()` while preserving the action log.
 - **Operation Log & Action Replay Engine (v1.4.0)** – Serializable stroke/action event stream (`action:record`, `stroke:record`), full log recording (`getActionLog`), and programmatic replay (`replay`, `replayAction`) with speed control and progress callbacks.
 - **Document Persistence API** – Export and import complete canvas state as versioned JSON with layer metadata and serialized bitmaps (`exportDocument`, `importDocument`, `exportPNG`).
 - **Advanced Layer Controls** – Full layer stack with visibility, opacity, 16 blend modes, **Alpha Lock** (clip strokes to opaque pixels), and **Layer Lock** (protect layers from modifications).
@@ -37,9 +38,16 @@
 
 ## Release Focus
 
-For Fuderu 1.5.1, the engine delivers stability refinements, strict type signature alignment, high-frequency scanline fill optimizations, and active transform preservation in exports, building upon the complete artist tools suite (bitmask selections, floating transformations, and cross-layer clipboard pipeline) introduced in 1.5.0.
+For Fuderu 1.5.2, the engine improves replay reliability across canvases, ensures replayed strokes finish rendering before commit, and adds an artwork reset API that preserves the action log.
 
 ## Releases
+
+### 1.5.2
+
+- **Replay Stroke Completion**: Added `Brush.flush()` and awaited it during stroke replay so queued brush points are rendered before the stroke is committed.
+- **Replay Across Canvas Instances**: `Canvas.replay()` maps recorded layer IDs absent from the destination canvas to its active starting layer. IDs declared by `createLayer` actions are preserved so subsequent actions still address the layers created during playback.
+- **Artwork Reset**: Added `canvas.resetArtwork()` to reset layers, selection, transform state, and history without clearing the action log.
+- **Vanilla Replay Experience**: Updated the playground to use the artwork reset API, keep layer controls synchronized during playback, and display replay progress.
 
 ### 1.5.1
 
@@ -220,7 +228,7 @@ brush.useModule(
 
 ## Status
 
-Fuderu 1.5.1 is the current stable release, providing a complete canvas engine with serializable operation logs & action replay stream API, layer controls (including Alpha Lock and Layer Lock), native raster commands, multi-pointer gesture safety, state events, document persistence with lock state serialization, pressure sensitivity, and extensible brush modules.
+Fuderu 1.5.2 is the current stable release, providing a complete canvas engine with reliable serializable action replay, artwork reset support, layer controls (including Alpha Lock and Layer Lock), native raster commands, multi-pointer gesture safety, state events, document persistence with lock state serialization, pressure sensitivity, and extensible brush modules.
 
 The library is fully verified with robust unit testing via Vitest, browser-style canvas rendering tests, and various local playground environments across multiple web frameworks.
 

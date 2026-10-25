@@ -402,6 +402,8 @@ export class Brush {
    * If the rendering is not completed and the render is called repeatedly,
    * it will not produce any effect, so feel free to call it
    */
+  private flushResolvers: Array<() => void> = [];
+
   render() {
     if (this.isRender) return;
     this.isRender = true;
@@ -418,6 +420,13 @@ export class Brush {
         run();
       } else {
         this.isRender = false;
+        const resolvers = this.flushResolvers.splice(
+          0,
+          this.flushResolvers.length,
+        );
+        for (const resolve of resolvers) {
+          resolve();
+        }
       }
     };
 
@@ -430,6 +439,28 @@ export class Brush {
     };
 
     run();
+  }
+
+  /**
+   * Flushes all currently pending points synchronously or awaits any active animation frame loop
+   * to ensure all points in the queue have been rendered to the canvas.
+   */
+  async flush(): Promise<void> {
+    if (this.points.length === 0 && !this.isRender) {
+      return;
+    }
+
+    // Process remaining points synchronously if needed (e.g., in headless / fast replay environments)
+    while (this.points.length > 0) {
+      this.draw();
+    }
+    this.onRender?.();
+    this.isRender = false;
+
+    const resolvers = this.flushResolvers.splice(0, this.flushResolvers.length);
+    for (const resolve of resolvers) {
+      resolve();
+    }
   }
 
   /**
@@ -581,6 +612,10 @@ export class Brush {
     this._strokeOpacity = 1;
     this.drawCount = 0;
     this.isRender = false;
+    const resolvers = this.flushResolvers.splice(0, this.flushResolvers.length);
+    for (const resolve of resolvers) {
+      resolve();
+    }
   }
 
   private imageInitColoring() {

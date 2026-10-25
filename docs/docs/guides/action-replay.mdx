@@ -46,21 +46,44 @@ painter.on("stroke:record", (point) => {
 
 ## 2. Programmatic Replay
 
-You can replay any recorded action log on any `Canvas` instance:
+You can replay a recorded action log on another `Canvas` instance. Actions that
+refer to a source layer ID not present on the destination are applied to the
+destination's active layer at the start of replay. Layer IDs introduced by
+`createLayer` actions are preserved, so include those actions in the log when
+later actions target those layers.
 
 ```typescript
 // Instant replay (speed = 0)
 await painter.replay(actions);
 
-// Animated playback (speed = 1.5x) with live progress callback
+// Animated playback with live progress and per-action callbacks
 await painter.replay(actions, {
-  speed: 1.5,
-  onProgress: (progress, currentAction) => {
+  speed: 2,
+  onAction: (action, index, total) => {
+    console.log(`Playing ${action.type} (${index + 1}/${total})`);
+  },
+  onProgress: (progress, current, total) => {
     progressBar.style.width = `${Math.round(progress * 100)}%`;
-    statusText.textContent = `Replaying ${currentAction.type}...`;
+    statusText.textContent = `Replaying ${current}/${total}...`;
   },
 });
 ```
+
+`speed: 0` replays without a delay between actions. A positive `speed` controls
+the delay between actions. `onAction` runs before each action, and `onProgress`
+receives the normalized progress value (0 to 1), the number of completed
+actions, and the total action count.
+
+For replaying from the beginning while retaining the recorded action log, reset
+the destination artwork first:
+
+```typescript
+painter.resetArtwork();
+await painter.replay(actions);
+```
+
+Stroke replay waits for queued brush points to finish rendering before it
+commits each stroke.
 
 ---
 
@@ -69,7 +92,10 @@ await painter.replay(actions, {
 If you are receiving actions one-by-one from a server or multiplayer room:
 
 ```typescript
-socket.on("remote_canvas_action", (action) => {
-  painter.replayAction(action);
+socket.on("remote_canvas_action", async (action) => {
+  await painter.replayAction(action);
 });
 ```
+
+`replayAction()` returns a `Promise<void>`. Await it when later work depends on
+the action—including completion of a stroke—being finished.

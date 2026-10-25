@@ -8,11 +8,13 @@ const mockBrushInstance = {
   putPoint: vi.fn(),
   render: vi.fn(),
   finalizeStroke: vi.fn(),
+  flush: vi.fn().mockResolvedValue(undefined),
   clear: vi.fn(),
   loadConfig: vi.fn(),
   loadImageAsync: vi.fn(),
   loadContext: vi.fn(),
   syncOriCanvas: vi.fn(),
+  setSelectionMask: vi.fn(),
 };
 
 vi.mock("../src/Brush", () => {
@@ -879,6 +881,56 @@ describe("Canvas", () => {
         "Cannot delete locked layer",
       );
       expect(instance.getLayers().some((l) => l.id === layer2.id)).toBe(true);
+    });
+  });
+
+  describe("Action Replay & Artwork Reset", () => {
+    it("resetArtwork resets layers to a single base layer and clears history while preserving action log", () => {
+      const canvas = createCanvas();
+      const instance = new Canvas({ canvas });
+
+      instance.createLayer({ name: "Layer 2" });
+      instance.createLayer({ name: "Layer 3" });
+      expect(instance.getLayers().length).toBe(3);
+
+      instance.recordAction({
+        type: "createLayer",
+        layerId: "test-layer",
+        name: "Test Layer",
+      });
+      const initialLog = instance.getActionLog();
+      expect(initialLog.length).toBeGreaterThan(0);
+
+      instance.resetArtwork();
+
+      expect(instance.getLayers().length).toBe(1);
+      expect(instance.getActiveLayer().name).toBe("Background");
+      expect(instance.getActionLog()).toEqual(initialLog);
+      expect(mockBrushInstance.clear).toHaveBeenCalled();
+      expect(mockBrushInstance.loadContext).toHaveBeenCalled();
+    });
+
+    it("replayAction flushes brush strokes before committing", async () => {
+      const canvas = createCanvas();
+      const instance = new Canvas({ canvas });
+      const layer = instance.getActiveLayer();
+
+      const strokeAction = {
+        type: "stroke" as const,
+        layerId: layer.id,
+        brushConfig: { size: 12 },
+        points: [
+          { x: 10, y: 10, pressure: 0.5 },
+          { x: 20, y: 20, pressure: 0.8 },
+        ],
+      };
+
+      await instance.replayAction(strokeAction);
+
+      expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(10, 10, 0.5);
+      expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(20, 20, 0.8);
+      expect(mockBrushInstance.render).toHaveBeenCalled();
+      expect(mockBrushInstance.flush).toHaveBeenCalled();
     });
   });
 });

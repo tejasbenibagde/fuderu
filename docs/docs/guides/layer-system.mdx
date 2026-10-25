@@ -144,4 +144,4 @@ for (const snap of layerSnapshots) {
 }
 ```
 
-Each item in the returned array is an immutable, frozen `LayerSnapshot` Data Transfer Object (DTO). Snapshots are cached internally, ensuring `painter.getLayerSnapshots()` executes in $\mathcal{O}(1)$ time without re-allocating objects unless a layer property has mutated.
+Each item in the returned array is an immutable, frozen `LayerSnapshot` Data Transfer Object (DTO). Snapshots are cached internally, ensuring `painter.getLayerSnapshots()` executes in constant time, O(1), without re-allocating objects unless a layer property has mutated.

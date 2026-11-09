@@ -27,6 +27,7 @@ export class LayerManager {
   private activeLayerId: LayerId | null = null;
   private width: number;
   private height: number;
+  private initialLayerId: LayerId;
   private cachedSnapshots: readonly LayerSnapshot[] | null = null;
 
   public invalidateSnapshotCache = (): void => {
@@ -58,6 +59,7 @@ export class LayerManager {
 
     this.layers.push(baseLayer);
     this.activeLayerId = baseLayer.id;
+    this.initialLayerId = baseLayer.id;
   }
 
   getAll(): readonly Layer[] {
@@ -272,9 +274,33 @@ export class LayerManager {
 
   /**
    * Resets layers back to a single fresh background layer at current dimensions.
+   * Reuses the original base layer ID if available to preserve recorded action log references.
    */
-  resetToSingleLayer(): Layer {
+  resetToSingleLayer(preservedId?: LayerId): Layer {
+    const targetId =
+      preservedId ?? this.initialLayerId ?? this.layers[0]?.id ?? undefined;
+
+    const existingBase =
+      this.layers.find((l) => l.id === targetId) ?? this.layers[0];
+    if (existingBase) {
+      existingBase.clear();
+      existingBase.name = "Background";
+      existingBase.visible = true;
+      existingBase.setOpacity(1);
+      existingBase.blendMode = "source-over";
+      existingBase.alphaLock = false;
+      existingBase.locked = false;
+      if (targetId && existingBase.id !== targetId) {
+        (existingBase as { id: LayerId }).id = targetId;
+      }
+      this.layers = [existingBase];
+      this.activeLayerId = existingBase.id;
+      this.invalidateSnapshotCache();
+      return existingBase;
+    }
+
     const baseLayer = new Layer({
+      id: targetId,
       name: "Background",
       width: this.width,
       height: this.height,

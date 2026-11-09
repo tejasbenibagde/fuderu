@@ -4,6 +4,23 @@ All notable changes to the **fuderu** drawing library will be documented in this
 
 ---
 
+## [1.5.3] - 2026-10-25
+
+- **Reliable Action Replay & Vanishing Stroke Fix**:
+  - **Base Layer ID Preservation**: Fixed base layer UUID mutation during `resetArtwork()` by having `LayerManager.resetToSingleLayer(preservedId)` reuse and clear the existing base layer, preserving `initialBaseLayerId` so recorded actions correctly resolve their target layers.
+  - **Stroke Finalization Execution Order**: Reordered `replayAction("stroke")` to call `commitStroke()` before `brush.render()` and `await brush.flush()`, ensuring single-point clicks/dots and end-of-stroke callbacks execute within the synchronous flush cycle.
+  - **Missing Layer Fallbacks**: Added fallback to `this.layers.getActive()` across all replay action handlers (`stroke`, `floodFill`, shapes, text, and fills) so recorded actions targeting mismatched or external layer IDs execute cleanly.
+  - **Layer Operation Replay Guards**: Protected `createLayer`, `deleteLayer`, `moveLayer`, and `duplicateLayer` against duplicate IDs or missing targets during playback.
+- **Brush Flush & Single-Point Rendering**:
+  - Added awaitable `Brush.flush(): Promise<void>` to synchronously drain and resolve all queued points before completing a stroke.
+  - Updated `Brush.finalizeStroke()` to process single-point clicks/taps directly via `processPoint()` when no subsequent drag events exist.
+- **Artwork Reset API**:
+  - Added `Canvas.resetArtwork()` to reset the layer stack to a single clean base layer, clear active selection and transform sessions, reset history, and preserve the recorded action log.
+- **Vanilla Playground Enhancements**:
+  - Updated `triggerReplay()` to refresh layer lists and preview thumbnails dynamically during playback without mutating the recorded action log.
+- **Test Coverage**:
+  - Added integration test verifying multi-point strokes, single-point dots, `resetArtwork()` layer preservation, and lossless replay.
+
 ## [1.5.2] - 2026-10-25
 
 - **Reliable Stroke Replay**:

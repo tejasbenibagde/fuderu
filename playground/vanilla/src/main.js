@@ -1339,6 +1339,7 @@ async function triggerReplay() {
         ) {
           syncLayers();
         }
+        refreshLayerPreviews();
       },
       onProgress: (progress, current, total) => {
         const pct = Math.round(progress * 100);

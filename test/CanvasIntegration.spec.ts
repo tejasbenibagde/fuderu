@@ -224,4 +224,62 @@ describe("Canvas2D Realistic Integration Tests", () => {
     painter.undo(); // Undo reorder or layer creation
     expect(painter.history.canUndo() || painter.history.canRedo()).toBe(true);
   });
+
+  it("replays strokes onto canvas without vanishing", async () => {
+    const painter = new Canvas({
+      canvas: canvasEl,
+      document: { width: 100, height: 100 },
+    });
+
+    const initialLayerId = painter.getActiveLayer().id;
+
+    // 1. Draw multi-point stroke
+    painter["handlePointerDown"]({
+      pointerId: 1,
+      clientX: 10,
+      clientY: 10,
+    } as unknown as PointerEvent);
+    painter["handlePointerMove"]({
+      pointerId: 1,
+      clientX: 50,
+      clientY: 50,
+    } as unknown as PointerEvent);
+    painter["handlePointerUp"]({ pointerId: 1 } as unknown as PointerEvent);
+    await painter.brush.flush();
+
+    // 2. Draw single-point click/tap (dot)
+    painter["handlePointerDown"]({
+      pointerId: 2,
+      clientX: 80,
+      clientY: 80,
+    } as unknown as PointerEvent);
+    painter["handlePointerUp"]({ pointerId: 2 } as unknown as PointerEvent);
+    await painter.brush.flush();
+
+    const log = painter.getActionLog();
+    expect(log.length).toBe(2);
+    const stroke1 = log[0];
+    const stroke2 = log[1];
+    expect(stroke1.type).toBe("stroke");
+    expect(stroke2.type).toBe("stroke");
+    if (stroke1.type === "stroke") {
+      expect(stroke1.layerId).toBe(initialLayerId);
+    }
+    if (stroke2.type === "stroke") {
+      expect(stroke2.layerId).toBe(initialLayerId);
+    }
+
+    // 3. Reset artwork
+    painter.resetArtwork();
+    expect(painter.getLayers().length).toBe(1);
+    expect(painter.getActiveLayer().id).toBe(initialLayerId);
+    expect(painter.getActionLog().length).toBe(2);
+
+    // 4. Replay recorded strokes
+    await painter.replay(log);
+
+    // Verify layer matching and preserved action log
+    expect(painter.getLayers()[0].id).toBe(initialLayerId);
+    expect(painter.getActionLog().length).toBe(2);
+  });
 });

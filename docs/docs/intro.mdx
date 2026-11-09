@@ -68,9 +68,9 @@ Built-in scanline **flood fill** (`floodFill`), vector shape primitives (`drawRe
 
 Subscribe to typed state events (`change`, `stroke:start`, `stroke:end`, `layer:change`, `history:change`, `selection:change`, `transform:start`, `clipboard:copy`) with immutable `getSnapshot()`, and navigate history timeline directly with `canvas.history.goTo(index)` or sparse memory patches.
 
-#### 🎬 Action Replay Stream
+#### 🎬 Reliable Action Replay Stream & Artwork Reset (v1.5.3)
 
-Record every user interaction as a serializable action log and play it back programmatically at adjustable speeds (`canvas.replay()`), ideal for animated time-lapses, tutorials, or multiplayer canvas synchronization.
+Record every user interaction as a serializable action log and play it back programmatically at adjustable speeds (`canvas.replay()`), with synchronous point flushing (`Brush.flush()`), base layer identity preservation across resets (`canvas.resetArtwork()`), and active layer fallbacks for multiplayer or cross-canvas playback.
 
 #### ✨ Smooth Interpolation & Adaptive Spacing
 

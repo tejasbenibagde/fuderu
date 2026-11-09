@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  Stable 1.5.2 canvas drawing engine for the web.
+  Stable 1.5.3 canvas drawing engine for the web.
 </p>
 
 <p align="center">
@@ -25,7 +25,7 @@
 
 - **Artist Tools: Selection, Transformation & Clipboard (v1.5.0 / v1.5.1)** – Marquee and freehand lasso selections (`selectRectangle`, `selectEllipse`, `selectLasso`, `renderSelectionOutline`); floating interactive transformations with move, rotate, scale, and flip (`beginTransform`, `commitTransform`, `renderTransformBox`); cross-layer and cross-document clipboard pipeline (`copy`, `cut`, `paste`, `ClipboardStore`); typed mask caching for scanline fills.
 - **Reactive State & Layer Snapshots (v1.5.1)** – Clean single-argument `Layer` constructor contract, public `canvas.getLayerSnapshots()` returning cached immutable `LayerSnapshot` DTOs, and persistent offscreen stroke canvas reuse.
-- **Reliable Replay & Artwork Reset (v1.5.2)** – Flush queued brush points before replayed strokes commit, replay recorded strokes when the destination canvas has a different initial layer ID, and reset the artwork with `resetArtwork()` while preserving the action log.
+- **Reliable Action Replay & Artwork Reset (v1.5.3)** – Synchronous brush point flushing (`Brush.flush()`), stroke commit ordering for dots and multi-point paths, base layer ID preservation across `resetArtwork()`, robust active-layer fallbacks for external action logs, and safe layer management playback.
 - **Operation Log & Action Replay Engine (v1.4.0)** – Serializable stroke/action event stream (`action:record`, `stroke:record`), full log recording (`getActionLog`), and programmatic replay (`replay`, `replayAction`) with speed control and progress callbacks.
 - **Document Persistence API** – Export and import complete canvas state as versioned JSON with layer metadata and serialized bitmaps (`exportDocument`, `importDocument`, `exportPNG`).
 - **Advanced Layer Controls** – Full layer stack with visibility, opacity, 16 blend modes, **Alpha Lock** (clip strokes to opaque pixels), and **Layer Lock** (protect layers from modifications).
@@ -38,16 +38,21 @@
 
 ## Release Focus
 
-For Fuderu 1.5.2, the engine improves replay reliability across canvases, ensures replayed strokes finish rendering before commit, and adds an artwork reset API that preserves the action log.
+For Fuderu 1.5.3, the engine improves replay reliability across canvases, eliminates vanishing strokes on replay, ensures replayed strokes and single-point taps finish rendering before commit, preserves base layer identities across resets, and adds an artwork reset API that preserves the action log.
 
 ## Releases
 
-### 1.5.2
+### 1.5.3
 
-- **Replay Stroke Completion**: Added `Brush.flush()` and awaited it during stroke replay so queued brush points are rendered before the stroke is committed.
-- **Replay Across Canvas Instances**: `Canvas.replay()` maps recorded layer IDs absent from the destination canvas to its active starting layer. IDs declared by `createLayer` actions are preserved so subsequent actions still address the layers created during playback.
-- **Artwork Reset**: Added `canvas.resetArtwork()` to reset layers, selection, transform state, and history without clearing the action log.
-- **Vanilla Replay Experience**: Updated the playground to use the artwork reset API, keep layer controls synchronized during playback, and display replay progress.
+- **Vanishing Stroke Fix & Replay Robustness**:
+  - **Base Layer ID Preservation**: `LayerManager.resetToSingleLayer()` reuses and clears the existing base layer without regenerating a random UUID, preserving the document's `initialBaseLayerId` so recorded actions find their target layers upon replay.
+  - **Stroke Execution & Flush Ordering**: Reordered `replayAction("stroke")` to invoke `commitStroke()` prior to `brush.render()` and `await brush.flush()`, guaranteeing single-dot clicks/taps and end-of-stroke callbacks execute within the flush cycle before compositing.
+  - **Active Layer Fallbacks**: Added fallback to `this.layers.getActive()` across all raster replay handlers (`stroke`, `floodFill`, shapes, text, fills) so external action logs targeting missing or mismatched layer IDs replay cleanly.
+  - **Layer Operation Replay Guards**: Protected `createLayer`, `deleteLayer`, `moveLayer`, and `duplicateLayer` against duplicate IDs or missing targets during playback.
+- **Brush Flush API**: Added awaitable `Brush.flush(): Promise<void>` to synchronously drain and resolve all queued points before completing a stroke.
+- **Single-Point Touch & Click Handling**: Updated `Brush.finalizeStroke()` to process single points directly via `processPoint()` when no subsequent drag events exist.
+- **Artwork Reset API**: Added `canvas.resetArtwork()` to reset layers, selection, transform state, and history without clearing the action log.
+- **Vanilla Replay Experience**: Updated the playground to use `resetArtwork()`, synchronize layer controls during playback, and display live replay progress.
 
 ### 1.5.1
 
@@ -228,7 +233,7 @@ brush.useModule(
 
 ## Status
 
-Fuderu 1.5.2 is the current stable release, providing a complete canvas engine with reliable serializable action replay, artwork reset support, layer controls (including Alpha Lock and Layer Lock), native raster commands, multi-pointer gesture safety, state events, document persistence with lock state serialization, pressure sensitivity, and extensible brush modules.
+Fuderu 1.5.3 is the current stable release, providing a complete canvas engine with reliable serializable action replay, artwork reset support, layer controls (including Alpha Lock and Layer Lock), native raster commands, multi-pointer gesture safety, state events, document persistence with lock state serialization, pressure sensitivity, and extensible brush modules.
 
 The library is fully verified with robust unit testing via Vitest, browser-style canvas rendering tests, and various local playground environments across multiple web frameworks.
 

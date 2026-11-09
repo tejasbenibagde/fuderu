@@ -472,6 +472,14 @@ export class Brush {
    * and the beginning of the current pen, as well as other bugs
    */
   finalizeStroke(callback?: PointCallBack) {
+    if (this.prePoint && this.points.length === 0) {
+      this.processPoint(
+        this.prePoint.x,
+        this.prePoint.y,
+        this.prePoint.pressure,
+      );
+    }
+
     this.prePoint = void 0;
     this.prePrePoint = void 0;
     this.previousRotationAngle = 0;

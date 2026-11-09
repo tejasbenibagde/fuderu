@@ -151,6 +151,7 @@ export class Canvas implements HistoryContext {
 
   private actionLog: CanvasAction[] = [];
   private isReplaying = false;
+  private initialBaseLayerId: LayerId | null = null;
 
   constructor(options: CanvasOptions) {
     if (typeof options.canvas === "string") {
@@ -312,6 +313,7 @@ export class Canvas implements HistoryContext {
     }
 
     this.layers = new LayerManager(this.documentWidth, this.documentHeight);
+    this.initialBaseLayerId = this.layers.getActive().id;
     this.selection = new Selection(this.documentWidth, this.documentHeight);
     this.selection.onSelectionChange = (snap) => {
       this.brush?.setSelectionMask?.(
@@ -1192,7 +1194,9 @@ export class Canvas implements HistoryContext {
       this.selection.clear();
     }
 
-    const baseLayer = this.layers.resetToSingleLayer();
+    const baseLayer = this.layers.resetToSingleLayer(
+      this.initialBaseLayerId ?? undefined,
+    );
     this.brush.loadContext(baseLayer.canvas);
     this.brush.setSelectionMask(null);
     this.brush.clear();
@@ -2029,7 +2033,8 @@ export class Canvas implements HistoryContext {
     try {
       switch (action.type) {
         case "stroke": {
-          const layer = this.getLayerById(action.layerId);
+          const layer =
+            this.getLayerById(action.layerId) ?? this.layers.getActive();
           if (!layer || layer.locked) break;
           this.setActiveLayer(layer.id);
           const savedConfig = { ...this.brush.config };
@@ -2063,16 +2068,17 @@ export class Canvas implements HistoryContext {
               this.updateStrokeBounds(p.x, p.y);
               this.brush.putPoint(p.x, p.y, p.pressure ?? 1);
             }
+            this.commitStroke();
             this.brush.render();
             await this.brush.flush();
             this.renderLayers();
-            this.commitStroke();
           }
           this.loadConfig(savedConfig);
           break;
         }
         case "floodFill": {
-          const layer = this.getLayerById(action.layerId);
+          const layer =
+            this.getLayerById(action.layerId) ?? this.layers.getActive();
           if (layer) {
             this.setActiveLayer(layer.id);
             this.floodFill(action.x, action.y, action.color, action.tolerance);
@@ -2080,7 +2086,8 @@ export class Canvas implements HistoryContext {
           break;
         }
         case "drawRectangle": {
-          const layer = this.getLayerById(action.layerId);
+          const layer =
+            this.getLayerById(action.layerId) ?? this.layers.getActive();
           if (layer) {
             this.setActiveLayer(layer.id);
             this.drawRectangle(action.options);
@@ -2088,7 +2095,8 @@ export class Canvas implements HistoryContext {
           break;
         }
         case "drawEllipse": {
-          const layer = this.getLayerById(action.layerId);
+          const layer =
+            this.getLayerById(action.layerId) ?? this.layers.getActive();
           if (layer) {
             this.setActiveLayer(layer.id);
             this.drawEllipse(action.options);
@@ -2096,7 +2104,8 @@ export class Canvas implements HistoryContext {
           break;
         }
         case "drawLine": {
-          const layer = this.getLayerById(action.layerId);
+          const layer =
+            this.getLayerById(action.layerId) ?? this.layers.getActive();
           if (layer) {
             this.setActiveLayer(layer.id);
             this.drawLine(action.options);
@@ -2104,7 +2113,8 @@ export class Canvas implements HistoryContext {
           break;
         }
         case "drawText": {
-          const layer = this.getLayerById(action.layerId);
+          const layer =
+            this.getLayerById(action.layerId) ?? this.layers.getActive();
           if (layer) {
             this.setActiveLayer(layer.id);
             this.drawText(action.text, action.x, action.y, action.options);
@@ -2112,7 +2122,8 @@ export class Canvas implements HistoryContext {
           break;
         }
         case "clearLayer": {
-          const layer = this.getLayerById(action.layerId);
+          const layer =
+            this.getLayerById(action.layerId) ?? this.layers.getActive();
           if (layer) {
             this.setActiveLayer(layer.id);
             this.clearActiveLayer();
@@ -2120,7 +2131,8 @@ export class Canvas implements HistoryContext {
           break;
         }
         case "fillLayer": {
-          const layer = this.getLayerById(action.layerId);
+          const layer =
+            this.getLayerById(action.layerId) ?? this.layers.getActive();
           if (layer) {
             this.setActiveLayer(layer.id);
             this.fillActiveLayer(action.color);
@@ -2128,30 +2140,39 @@ export class Canvas implements HistoryContext {
           break;
         }
         case "createLayer": {
-          this.createLayer({
-            id: action.layerId,
-            name: action.name,
-            ...action.options,
-          });
+          if (!action.layerId || !this.getLayerById(action.layerId)) {
+            this.createLayer({
+              id: action.layerId,
+              name: action.name,
+              ...action.options,
+            });
+          }
           break;
         }
         case "deleteLayer": {
-          this.deleteLayer(action.layerId);
+          if (this.getLayerById(action.layerId)) {
+            this.deleteLayer(action.layerId);
+          }
           break;
         }
         case "moveLayer": {
-          this.moveLayer(action.layerId, action.targetIndex);
+          if (this.getLayerById(action.layerId)) {
+            this.moveLayer(action.layerId, action.targetIndex);
+          }
           break;
         }
         case "setLayerProperties": {
-          const layer = this.getLayerById(action.layerId);
+          const layer =
+            this.getLayerById(action.layerId) ?? this.layers.getActive();
           if (layer) {
-            this.updateLayer(action.layerId, action.properties);
+            this.updateLayer(layer.id, action.properties);
           }
           break;
         }
         case "duplicateLayer": {
-          this.duplicateLayer(action.layerId);
+          if (this.getLayerById(action.layerId)) {
+            this.duplicateLayer(action.layerId);
+          }
           break;
         }
         case "selectRectangle": {
@@ -2244,46 +2265,14 @@ export class Canvas implements HistoryContext {
     const total = actionLog.length;
     if (total === 0) return;
 
-    const initialLayerIds = new Set(this.getLayers().map((layer) => layer.id));
-    const createdLayerIds = new Set(
-      actionLog.flatMap((action) =>
-        action.type === "createLayer" && action.layerId ? [action.layerId] : [],
-      ),
-    );
-    const fallbackLayerId = this.layers.getActiveId();
-    const replayLayerIds = new Map<string, string>();
-
-    if (fallbackLayerId) {
-      for (const action of actionLog) {
-        const sourceLayerId = "layerId" in action ? action.layerId : undefined;
-        if (typeof sourceLayerId !== "string") continue;
-        if (
-          !initialLayerIds.has(sourceLayerId) &&
-          !createdLayerIds.has(sourceLayerId)
-        ) {
-          replayLayerIds.set(sourceLayerId, fallbackLayerId);
-        }
-      }
-    }
-
     const speed = options?.speed ?? 0;
     const delayMs =
       options?.delayMs ??
       (speed > 0 ? Math.max(10, Math.floor(100 / speed)) : 0);
 
     for (let i = 0; i < total; i++) {
-      const recordedAction = actionLog[i];
-      const sourceLayerId =
-        "layerId" in recordedAction ? recordedAction.layerId : undefined;
-      const targetLayerId =
-        typeof sourceLayerId === "string"
-          ? replayLayerIds.get(sourceLayerId)
-          : undefined;
-      const action =
-        targetLayerId !== undefined && "layerId" in recordedAction
-          ? { ...recordedAction, layerId: targetLayerId }
-          : recordedAction;
-      options?.onAction?.(recordedAction, i, total);
+      const action = actionLog[i];
+      options?.onAction?.(action, i, total);
       options?.onProgress?.((i + 1) / total, i + 1, total);
 
       await this.replayAction(action);

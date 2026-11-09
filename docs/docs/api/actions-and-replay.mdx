@@ -14,30 +14,47 @@ import type { CanvasAction, ReplayOptions } from "fuderu";
 
 ---
 
-## Canvas Replay Methods
+# Actions & Replay API 🎬
+
+Fuderu provides a serializable event log and replay engine for canvas operations. Every user action (brush strokes, shape primitives, flood fills, text, selections, transformations, and clipboard pastes) is recorded as a structured, serializable JSON action.
+
+```typescript
+import type { CanvasAction, ReplayOptions } from "fuderu";
+```
+
+---
+
+## Canvas Replay & Session Methods
 
 ### `getActionLog(): readonly CanvasAction[]`
 
-Returns the array of all serializable actions executed in the current session.
-
-### `replay(actions: CanvasAction[], options?: ReplayOptions): Promise<void>`
-
-Replays an array of actions sequentially on the canvas and waits for each action
-to finish. When an action references a layer ID that does not exist on the
-destination and is not declared by a `createLayer` action in the replay stream,
-it targets the destination's active layer as it was when replay began. Layer IDs
-declared by `createLayer` actions are preserved. Include layer-creation actions
-in the stream when later actions target those layers.
-
-### `replayAction(action: CanvasAction): Promise<void>`
-
-Replays a single action. Await the returned promise when subsequent work depends
-on the action finishing; for strokes, it resolves after queued brush points are
-flushed and committed.
+Returns a copy of all serializable actions executed in the current session.
 
 ### `clearActionLog(): void`
 
-Clears the internal recorded-action log.
+Clears the session action log without modifying the current canvas artwork or layers.
+
+### `resetArtwork(): void`
+
+Resets the canvas document to a single clean base layer:
+
+- Cancels any active floating transform sessions.
+- Clears active selection masks.
+- Resets the layer stack to a single clean base layer, **preserving the original base layer ID** (`initialBaseLayerId`).
+- Clears the undo/redo history stack.
+- **Preserves the recorded action log** so that playback can be executed cleanly from a blank canvas.
+
+### `replay(actions: CanvasAction[], options?: ReplayOptions): Promise<void>`
+
+Replays an array of actions sequentially on the canvas. Guarantees that:
+
+- Layer references not found on the canvas fall back to the active layer.
+- Brush points for strokes and single-dot taps are completely flushed and composited before advancing to subsequent actions.
+- Progress and action callbacks run at each step.
+
+### `replayAction(action: CanvasAction): Promise<void>`
+
+Replays a single action immediately and asynchronously awaits stroke completion.
 
 ---
 
@@ -50,12 +67,16 @@ type CanvasAction =
   | StrokeAction
   | FloodFillAction
   | ClearLayerAction
+  | FillLayerAction
   | DrawRectangleAction
   | DrawEllipseAction
   | DrawLineAction
   | DrawTextAction
   | CreateLayerAction
   | DeleteLayerAction
+  | MoveLayerAction
+  | SetLayerPropertiesAction
+  | DuplicateLayerAction
   | SelectRectangleAction
   | SelectEllipseAction
   | SelectLassoAction
@@ -72,26 +93,25 @@ type CanvasAction =
 
 ```typescript
 interface ReplayOptions {
-  /** Playback speed; 0 (default) skips delays, positive values set inter-action delay */
+  /** Speed multiplier (e.g., 1 = 100ms delay, 4 = 25ms delay, 0 = instant synchronous replay) */
   speed?: number;
-  /** Fixed delay between actions, used when speed is not set */
+
+  /** Explicit millisecond delay between sequential actions (overrides speed calculation) */
   delayMs?: number;
-  /** Called before each action */
+
+  /** Callback invoked as each individual action begins replaying */
   onAction?: (action: CanvasAction, index: number, total: number) => void;
-  /** Called as progress advances; progress is between 0 and 1 */
+
+  /** Callback reporting normalized progress (0.0 to 1.0) and step counts */
   onProgress?: (progress: number, current: number, total: number) => void;
 }
 ```
 
-### Resetting artwork before replay
+---
 
-`canvas.resetArtwork(): void` resets the canvas to one empty Background layer,
-clears selection and transform state, and clears undo/redo history without
-clearing the action log. Use it to replay a saved log from a clean starting
-state:
+## Replay Guarantees (v1.5.3)
 
-```ts
-const actions = painter.getActionLog();
-painter.resetArtwork();
-await painter.replay(actions);
-```
+1. **Base Layer ID Preservation**: `resetArtwork()` preserves the canvas's initial base layer UUID instead of generating a random ID, ensuring strokes drawn on the background layer replay seamlessly.
+2. **Synchronous Point Flushing**: `Brush.flush()` is awaited during stroke replay so that multi-point paths and single-dot taps finish rendering before the stroke commits.
+3. **Active Layer Fallback**: If an action targets a layer ID that does not exist in the destination canvas, the engine falls back to `canvas.getActiveLayer()` rather than discarding the stroke.
+4. **Operation Guarding**: Layer deletion, movement, and duplication actions verify target layer existence before executing during replay.

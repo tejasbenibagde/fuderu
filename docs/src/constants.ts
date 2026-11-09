@@ -2,7 +2,7 @@
  * Single source of truth for documentation constants, release versions, and package metadata.
  * Whenever Fuderu publishes a new version, update `CURRENT_VERSION` here to sync the entire portal.
  */
-export const CURRENT_VERSION = "1.5.2";
+export const CURRENT_VERSION = "1.5.3";
 export const PACKAGE_NAME = "fuderu";
 export const RELEASE_DATE = "2026-10-25";
 export const TAGLINE =

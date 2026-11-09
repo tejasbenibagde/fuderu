@@ -44,46 +44,39 @@ painter.on("stroke:record", (point) => {
 
 ---
 
+---
+
 ## 2. Programmatic Replay
 
-You can replay a recorded action log on another `Canvas` instance. Actions that
-refer to a source layer ID not present on the destination are applied to the
-destination's active layer at the start of replay. Layer IDs introduced by
-`createLayer` actions are preserved, so include those actions in the log when
-later actions target those layers.
+You can replay any recorded action log on any `Canvas` instance.
+
+### Starting from a Clean Slate (`resetArtwork`)
+
+Before beginning a replay, reset the canvas to a clean background layer without losing your recorded history using `resetArtwork()`:
 
 ```typescript
-// Instant replay (speed = 0)
-await painter.replay(actions);
+// 1. Grab all recorded actions
+const actions = painter.getActionLog();
 
-// Animated playback with live progress and per-action callbacks
+// 2. Reset the artwork layers without clearing the recorded action log
+painter.resetArtwork();
+
+// 3. Replay with animated playback and live progress reporting
 await painter.replay(actions, {
-  speed: 2,
+  speed: 2, // 2x playback speed (0 = instant synchronous render)
   onAction: (action, index, total) => {
-    console.log(`Playing ${action.type} (${index + 1}/${total})`);
+    // Keep layer list or sidebar UI in sync when layers are created/modified
+    if (action.type === "createLayer" || action.type === "deleteLayer") {
+      updateLayerSidebar();
+    }
   },
   onProgress: (progress, current, total) => {
-    progressBar.style.width = `${Math.round(progress * 100)}%`;
-    statusText.textContent = `Replaying ${current}/${total}...`;
+    const percent = Math.round(progress * 100);
+    progressBar.style.width = `${percent}%`;
+    statusText.textContent = `Replaying ${current}/${total} (${percent}%)...`;
   },
 });
 ```
-
-`speed: 0` replays without a delay between actions. A positive `speed` controls
-the delay between actions. `onAction` runs before each action, and `onProgress`
-receives the normalized progress value (0 to 1), the number of completed
-actions, and the total action count.
-
-For replaying from the beginning while retaining the recorded action log, reset
-the destination artwork first:
-
-```typescript
-painter.resetArtwork();
-await painter.replay(actions);
-```
-
-Stroke replay waits for queued brush points to finish rendering before it
-commits each stroke.
 
 ---
 
@@ -97,5 +90,10 @@ socket.on("remote_canvas_action", async (action) => {
 });
 ```
 
-`replayAction()` returns a `Promise<void>`. Await it when later work depends on
-the action—including completion of a stroke—being finished.
+---
+
+## 4. Replay Reliability Guarantees (v1.5.3)
+
+- **Preserved Base Layer ID**: `resetArtwork()` resets layers while retaining the canvas's original base layer ID (`initialBaseLayerId`), preventing ID mismatches when replaying strokes.
+- **Synchronous Point Draining**: `Brush.flush()` is automatically awaited during stroke replay, ensuring all points and single-dot taps render completely before proceeding.
+- **Mismatched Layer Fallback**: If an action specifies a layer ID that does not exist on the canvas, the action automatically falls back to `canvas.getActiveLayer()` instead of being discarded.

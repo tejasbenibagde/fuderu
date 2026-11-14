@@ -14,9 +14,11 @@ export default defineConfig([
   globalIgnores([
     "dist",
     "build",
+    "coverage",
     "playground",
     "**/dist/**",
     "**/build/**",
+    "**/coverage/**",
     "**/.docusaurus/**",
     "**/.cache/**",
     "**/*.d.ts",

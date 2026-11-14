@@ -246,7 +246,8 @@ describe("Observable State Model & Change Event System", () => {
         width: 100,
         height: 100,
       });
-    });
+      expect(painter.getColorAt(100, 150, "activeLayer").a).toBeGreaterThan(0);
+    }, 15000);
 
     it("clears event listeners and stops pointer handling on destroy", () => {
       const listener = vi.fn();

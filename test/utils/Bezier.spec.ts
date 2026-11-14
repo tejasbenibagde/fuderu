@@ -1,182 +1,115 @@
-// tests/bezier.spec.ts
-
-import { describe, it, expect } from "vitest";
-
+import { describe, expect, it } from "vitest";
 import {
-  quadraticBezier,
-  getQuadraticBezierDistance,
-  getEquidistantBezierPoints,
-  getControlPoint,
-  getAllControlPoint,
   findTForLength,
+  getAllControlPoint,
+  getControlPoint,
+  getEquidistantBezierPoints,
+  getQuadraticBezierDistance,
+  quadraticBezier,
 } from "../../src/utils/bezier";
 
 describe("quadraticBezier", () => {
-  it("should return start point at t = 0", () => {
-    const point = quadraticBezier(0, 0, 0, 50, 100, 100, 0);
-
-    expect(point).toEqual({
-      x: 0,
-      y: 0,
-    });
-  });
-
-  it("should return end point at t = 1", () => {
-    const point = quadraticBezier(1, 0, 0, 50, 100, 100, 0);
-
-    expect(point).toEqual({
+  it("evaluates exact start, end, midpoint, and clamped t values", () => {
+    expect(quadraticBezier(0, 0, 0, 50, 100, 100, 0)).toEqual({ x: 0, y: 0 });
+    expect(quadraticBezier(1, 0, 0, 50, 100, 100, 0)).toEqual({
       x: 100,
       y: 0,
     });
-  });
-
-  it("should clamp t below 0", () => {
-    const point = quadraticBezier(-10, 0, 0, 50, 100, 100, 0);
-
-    expect(point).toEqual({
+    expect(quadraticBezier(-10, 0, 0, 50, 100, 100, 0)).toEqual({
       x: 0,
       y: 0,
     });
-  });
-
-  it("should clamp t above 1", () => {
-    const point = quadraticBezier(10, 0, 0, 50, 100, 100, 0);
-
-    expect(point).toEqual({
+    expect(quadraticBezier(10, 0, 0, 50, 100, 100, 0)).toEqual({
       x: 100,
       y: 0,
     });
-  });
 
-  it("should correctly evaluate midpoint", () => {
-    const point = quadraticBezier(0.5, 0, 0, 50, 100, 100, 0);
+    const mid = quadraticBezier(0.5, 0, 0, 50, 100, 100, 0);
+    expect(mid.x).toBeCloseTo(50);
+    expect(mid.y).toBeCloseTo(50);
 
-    expect(point.x).toBeCloseTo(50);
-    expect(point.y).toBeCloseTo(50);
+    const quarter = quadraticBezier(0.25, 0, 0, 50, 100, 100, 0);
+    expect(quarter.x).toBeCloseTo(25);
+    expect(quarter.y).toBeCloseTo(37.5);
   });
 });
 
 describe("getQuadraticBezierDistance", () => {
-  it("should return 0 for invalid segment count", () => {
-    const length = getQuadraticBezierDistance(0, 0, 50, 100, 100, 0, 0);
+  it("computes exact straight-line length, partial maxT length, and zero on invalid/degenerate inputs", () => {
+    expect(getQuadraticBezierDistance(0, 0, 50, 100, 100, 0, 0)).toBe(0);
+    expect(getQuadraticBezierDistance(10, 10, 10, 10, 10, 10)).toBeCloseTo(0);
 
-    expect(length).toBe(0);
-  });
+    // Collinear control point at midpoint produces exact straight distance 100
+    expect(getQuadraticBezierDistance(0, 0, 50, 0, 100, 0, 100, 1)).toBeCloseTo(
+      100,
+    );
+    expect(
+      getQuadraticBezierDistance(0, 0, 50, 0, 100, 0, 100, 0.35),
+    ).toBeCloseTo(35);
 
-  it("should calculate a positive curve length", () => {
-    const length = getQuadraticBezierDistance(0, 0, 50, 100, 100, 0);
-
-    expect(length).toBeGreaterThan(100);
-  });
-
-  it("should support partial curve length", () => {
-    const full = getQuadraticBezierDistance(0, 0, 50, 100, 100, 0);
-
-    const half = getQuadraticBezierDistance(0, 0, 50, 100, 100, 0, 100, 0.5);
-
-    expect(half).toBeLessThan(full);
-    expect(half).toBeGreaterThan(0);
-  });
-
-  it("should return 0 length for degenerate curve", () => {
-    const length = getQuadraticBezierDistance(10, 10, 10, 10, 10, 10);
-
-    expect(length).toBeCloseTo(0);
+    const curved = getQuadraticBezierDistance(0, 0, 50, 100, 100, 0);
+    expect(curved).toBeGreaterThan(100);
   });
 });
 
 describe("getEquidistantBezierPoints", () => {
-  it("should return empty array for invalid spacing", () => {
-    const points = getEquidistantBezierPoints(0, 0, 50, 100, 100, 0, 0);
-
-    expect(points).toEqual([]);
+  it("returns empty array for invalid spacing or degenerate curves", () => {
+    expect(getEquidistantBezierPoints(0, 0, 50, 100, 100, 0, 0)).toEqual([]);
+    expect(getEquidistantBezierPoints(0, 0, 50, 100, 100, 0, -5)).toEqual([]);
+    expect(getEquidistantBezierPoints(10, 10, 10, 10, 10, 10, 10)).toEqual([]);
   });
 
-  it("should generate equidistant points", () => {
-    const points = getEquidistantBezierPoints(0, 0, 50, 100, 100, 0, 10);
+  it("generates monotonic approximately equidistant points along the curve", () => {
+    const space = 10;
+    const points = getEquidistantBezierPoints(0, 0, 50, 0, 100, 0, space, 200);
 
-    expect(points.length).toBeGreaterThan(0);
+    expect(points.length).toBeGreaterThanOrEqual(9);
+    expect(points.length).toBeLessThanOrEqual(10);
 
-    for (let i = 1; i < points.length; i++) {
-      const dx = points[i].x - points[i - 1].x;
-
-      const dy = points[i].y - points[i - 1].y;
-
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      expect(distance).toBeGreaterThan(5);
+    let prev = { x: 0, y: 0 };
+    for (const p of points) {
+      const dist = Math.hypot(p.x - prev.x, p.y - prev.y);
+      expect(dist).toBeGreaterThanOrEqual(space - 1e-6);
+      expect(dist).toBeLessThanOrEqual(space + 1.5);
+      expect(p.x).toBeGreaterThan(prev.x);
+      expect(p.y).toBeCloseTo(0);
+      prev = p;
     }
   });
-
-  it("should return empty array for degenerate curve", () => {
-    const points = getEquidistantBezierPoints(10, 10, 10, 10, 10, 10, 10);
-
-    expect(points).toEqual([]);
-  });
 });
 
-describe("getControlPoint", () => {
-  it("should generate control point", () => {
-    const point = getControlPoint(0, 0, 50, 50, 100, 0);
+describe("getControlPoint & getAllControlPoint", () => {
+  it("computes exact control point coordinates and scales linearly with ratio", () => {
+    const cpDefault = getControlPoint(0, 0, 50, 50, 100, 20);
+    // p2x + (p1x - p3x)*0.25 = 50 + (-100)*0.25 = 25
+    // p2y + (p1y - p3y)*0.25 = 50 + (-20)*0.25 = 45
+    expect(cpDefault).toEqual({ x: 25, y: 45 });
 
-    expect(point).toHaveProperty("x");
-    expect(point).toHaveProperty("y");
-  });
+    const cpHalf = getControlPoint(0, 0, 50, 50, 100, 20, 0.5);
+    expect(cpHalf).toEqual({ x: 0, y: 40 });
 
-  it("should respect ratio", () => {
-    const pointA = getControlPoint(0, 0, 50, 50, 100, 0, 0.25);
-
-    const pointB = getControlPoint(0, 0, 50, 50, 100, 0, 0.5);
-
-    expect(pointA.x).not.toBe(pointB.x);
-  });
-});
-
-describe("getAllControlPoint", () => {
-  it("should return two control points", () => {
-    const points = getAllControlPoint(0, 0, 50, 50, 100, 0);
-
-    expect(points.length).toBe(2);
-
-    expect(points[0]).toHaveProperty("x");
-    expect(points[0]).toHaveProperty("y");
-
-    expect(points[1]).toHaveProperty("x");
-    expect(points[1]).toHaveProperty("y");
+    const [cp1, cp2] = getAllControlPoint(10, 20, 50, 60, 90, 40, 0.25);
+    expect(cp1).toEqual({ x: 30, y: 55 });
+    expect(cp2).toEqual({ x: 20, y: 30 });
   });
 });
 
 describe("findTForLength", () => {
-  it("should return 0 for target length <= 0", () => {
-    const t = findTForLength(0, 0, 50, 100, 100, 0, 0);
+  it("solves arc-length parameter t accurately across boundaries and interior points", () => {
+    expect(findTForLength(0, 0, 50, 100, 100, 0, 0)).toBe(0);
+    expect(findTForLength(0, 0, 50, 100, 100, 0, -10)).toBe(0);
+    expect(findTForLength(0, 0, 50, 100, 100, 0, 999999)).toBe(1);
 
-    expect(t).toBe(0);
-  });
+    // Exact analytical check on linear curve of length 100
+    expect(findTForLength(0, 0, 50, 0, 100, 0, 25)).toBeCloseTo(0.25, 2);
 
-  it("should return 1 for target length greater than curve length", () => {
-    const t = findTForLength(0, 0, 50, 100, 100, 0, 999999);
-
-    expect(t).toBe(1);
-  });
-
-  it("should return a valid t for half curve length", () => {
     const totalLength = getQuadraticBezierDistance(0, 0, 50, 100, 100, 0);
-
-    const t = findTForLength(0, 0, 50, 100, 100, 0, totalLength / 2);
+    const target = totalLength * 0.25;
+    const t = findTForLength(0, 0, 50, 100, 100, 0, target);
+    const computed = getQuadraticBezierDistance(0, 0, 50, 100, 100, 0, 100, t);
 
     expect(t).toBeGreaterThan(0);
     expect(t).toBeLessThan(1);
-  });
-
-  it("should produce approximately correct arc length", () => {
-    const totalLength = getQuadraticBezierDistance(0, 0, 50, 100, 100, 0);
-
-    const target = totalLength * 0.25;
-
-    const t = findTForLength(0, 0, 50, 100, 100, 0, target);
-
-    const computed = getQuadraticBezierDistance(0, 0, 50, 100, 100, 0, 100, t);
-
     expect(computed).toBeCloseTo(target, 1);
   });
 });

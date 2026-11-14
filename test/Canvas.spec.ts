@@ -1,13 +1,19 @@
-import { describe, expect, it, beforeAll, beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Canvas } from "../src/Canvas";
+import {
+  installCanvas2DMock,
+  type Canvas2DMockEnvironment,
+} from "./helpers/mockCanvas2D";
 
 const mockBrushInstance = {
   isSmooth: true,
   isSpacing: true,
+  isEraser: false,
+  isAlphaLocked: false,
   config: { size: 10 },
   putPoint: vi.fn(),
   render: vi.fn(),
-  finalizeStroke: vi.fn(),
+  finalizeStroke: vi.fn((cb?: () => void) => cb?.()),
   flush: vi.fn().mockResolvedValue(undefined),
   clear: vi.fn(),
   loadConfig: vi.fn(),
@@ -25,47 +31,25 @@ vi.mock("../src/Brush", () => {
   };
 });
 
-beforeAll(() => {
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
-    function (contextId: string) {
-      if (contextId === "2d") {
-        return {
-          scale: vi.fn(),
-          setTransform: vi.fn(),
-          clearRect: vi.fn(),
-          drawImage: vi.fn(),
-          getImageData: vi.fn(() => ({
-            data: [],
-            width: 100,
-            height: 100,
-          })),
-          putImageData: vi.fn(),
-          save: vi.fn(),
-          restore: vi.fn(),
-          beginPath: vi.fn(),
-          closePath: vi.fn(),
-          fill: vi.fn(),
-          ellipse: vi.fn(),
-          translate: vi.fn(),
-          rotate: vi.fn(),
-          fillRect: vi.fn(),
-          rect: vi.fn(),
-          globalAlpha: 1,
-          globalCompositeOperation: "source-over",
-          filter: "none",
-          fillStyle: "#000000",
-        } as unknown as CanvasRenderingContext2D;
-      }
+describe("Canvas", () => {
+  let canvasEnv: Canvas2DMockEnvironment;
 
-      return null;
-    },
-  );
+  beforeEach(() => {
+    vi.clearAllMocks();
+    canvasEnv = installCanvas2DMock();
+    document.body.replaceChildren();
+    mockBrushInstance.isSmooth = true;
+    mockBrushInstance.isSpacing = true;
+    mockBrushInstance.isEraser = false;
+    mockBrushInstance.isAlphaLocked = false;
+    mockBrushInstance.finalizeStroke.mockImplementation((cb?: () => void) =>
+      cb?.(),
+    );
 
-  vi.spyOn(
-    HTMLCanvasElement.prototype,
-    "getBoundingClientRect",
-  ).mockImplementation(function () {
-    return {
+    vi.spyOn(
+      HTMLCanvasElement.prototype,
+      "getBoundingClientRect",
+    ).mockImplementation(() => ({
       width: 500,
       height: 500,
       top: 0,
@@ -75,81 +59,48 @@ beforeAll(() => {
       x: 0,
       y: 0,
       toJSON: () => {},
-    };
+    }));
   });
-});
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  document.body.replaceChildren();
-  mockBrushInstance.isSmooth = true;
-  mockBrushInstance.isSpacing = true;
-});
+  afterEach(() => {
+    canvasEnv.restore();
+    vi.restoreAllMocks();
+  });
 
-describe("Canvas", () => {
   const createCanvas = () => {
     const canvas = document.createElement("canvas");
-
     document.body.appendChild(canvas);
-
     return canvas;
   };
 
-  it("should create canvas instance", () => {
+  it("should create canvas instance and accept selector string", () => {
     const canvas = createCanvas();
-
-    const instance = new Canvas({
-      canvas,
-    });
-
-    expect(instance).toBeInstanceOf(Canvas);
-  });
-
-  it("should accept selector string", () => {
-    const canvas = createCanvas();
-
     canvas.id = "my-canvas";
 
-    const instance = new Canvas({
-      canvas: "#my-canvas",
-    });
+    const byElement = new Canvas({ canvas });
+    const bySelector = new Canvas({ canvas: "#my-canvas" });
 
-    expect(instance).toBeInstanceOf(Canvas);
+    expect(byElement).toBeInstanceOf(Canvas);
+    expect(bySelector).toBeInstanceOf(Canvas);
+    expect(() => new Canvas({ canvas: "#missing" })).toThrow();
   });
 
-  it("should throw if selector does not exist", () => {
-    expect(() => {
-      new Canvas({
-        canvas: "#missing",
-      });
-    }).toThrow();
-  });
-
-  it("should resize canvas correctly", () => {
+  it("should resize canvas buffer correctly including devicePixelRatio", () => {
     const canvas = createCanvas();
-
-    new Canvas({
-      canvas,
-    });
-
+    new Canvas({ canvas });
     expect(canvas.width).toBe(500);
     expect(canvas.height).toBe(500);
-  });
 
-  it("should scale canvas by devicePixelRatio", () => {
-    const canvas = createCanvas();
+    const dprCanvas = createCanvas();
     const originalRatio = window.devicePixelRatio;
     Object.defineProperty(window, "devicePixelRatio", {
       value: 2,
       configurable: true,
     });
 
-    new Canvas({
-      canvas,
-    });
-
-    expect(canvas.width).toBe(1000);
-    expect(canvas.height).toBe(1000);
+    new Canvas({ canvas: dprCanvas });
+    expect(dprCanvas.width).toBe(1000);
+    expect(dprCanvas.height).toBe(1000);
 
     Object.defineProperty(window, "devicePixelRatio", {
       value: originalRatio,
@@ -159,9 +110,7 @@ describe("Canvas", () => {
 
   it("should resize and reload brush context when resize is called", () => {
     const canvas = createCanvas();
-    const instance = new Canvas({
-      canvas,
-    });
+    const instance = new Canvas({ canvas });
 
     const rectSpy = vi
       .spyOn(canvas, "getBoundingClientRect")
@@ -188,41 +137,51 @@ describe("Canvas", () => {
     rectSpy.mockRestore();
   });
 
-  it("should disable pressure simulation by default", () => {
+  it("should disable pressure simulation by default and toggle brush flags", () => {
     const canvas = createCanvas();
-
-    const instance = new Canvas({
-      canvas,
-    });
+    const instance = new Canvas({ canvas });
 
     expect(instance.pressureSimulation).toBe(false);
+
+    instance.setSmooth(false);
+    instance.setSpacing(false);
+    instance.setEraser(true);
+
+    expect(mockBrushInstance.isSmooth).toBe(false);
+    expect(mockBrushInstance.isSpacing).toBe(false);
+    expect(mockBrushInstance.isEraser).toBe(true);
   });
 
   it("should expose clear method", () => {
     const canvas = createCanvas();
-
-    const instance = new Canvas({
-      canvas,
-    });
+    const instance = new Canvas({ canvas });
 
     instance.clear();
 
     expect(mockBrushInstance.clear).toHaveBeenCalledTimes(1);
+    expect(instance.getActionLog().at(-1)).toMatchObject({
+      type: "clearLayer",
+      layerId: instance.getActiveLayer().id,
+    });
   });
 
   it("should finalize a stroke when pointer input is cancelled", () => {
     const canvas = createCanvas();
-    const instance = new Canvas({
-      canvas,
-    });
+    const instance = new Canvas({ canvas });
+    mockBrushInstance.finalizeStroke.mockClear();
 
-    (instance as unknown as { isDrawing: boolean }).isDrawing = true;
-
-    (
-      instance as unknown as { handlePointerCancel: (e: PointerEvent) => void }
-    ).handlePointerCancel({
-      pointerId: 1,
-    } as PointerEvent);
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        clientX: 10,
+        clientY: 10,
+        pointerId: 7,
+      }),
+    );
+    canvas.dispatchEvent(
+      new PointerEvent("pointercancel", {
+        pointerId: 7,
+      }),
+    );
 
     expect(mockBrushInstance.finalizeStroke).toHaveBeenCalledTimes(1);
     expect((instance as unknown as { isDrawing: boolean }).isDrawing).toBe(
@@ -230,67 +189,75 @@ describe("Canvas", () => {
     );
   });
 
-  it("should expose layer management methods", () => {
+  it("should manage layers and sync brush alphaLock/context accurately", () => {
     const canvas = createCanvas();
-
-    const instance = new Canvas({
-      canvas,
-    });
+    const instance = new Canvas({ canvas });
 
     const baseLayer = instance.getActiveLayer();
     const inkLayer = instance.createLayer({
       name: "Ink",
       opacity: 0.5,
       blendMode: "multiply",
+      alphaLock: true,
     });
 
     expect(instance.getLayers()).toHaveLength(2);
     expect(instance.getActiveLayer()).toBe(inkLayer);
     expect(mockBrushInstance.loadContext).toHaveBeenCalledWith(inkLayer.canvas);
+    expect(mockBrushInstance.isAlphaLocked).toBe(true);
+
+    // Identical updateLayer should not push redundant history/action entries
+    const historyLenBefore = instance.history.getHistoryState().length;
+    const actionLenBefore = instance.getActionLog().length;
+    instance.updateLayer(inkLayer.id, { opacity: 0.5 });
+    expect(instance.history.getHistoryState().length).toBe(historyLenBefore);
+    expect(instance.getActionLog().length).toBe(actionLenBefore);
 
     const updatedLayer = instance.updateLayer(inkLayer.id, {
       opacity: 0.25,
       visible: false,
+      alphaLock: false,
     });
-
     expect(updatedLayer.opacity).toBe(0.25);
     expect(updatedLayer.visible).toBe(false);
+    expect(mockBrushInstance.isAlphaLocked).toBe(false);
 
     const duplicate = instance.duplicateLayer(inkLayer.id);
     expect(instance.getActiveLayer()).toBe(duplicate);
 
+    // Moving layer to its current index should not add history/action entries
+    const lenBeforeNoopMove = instance.history.getHistoryState().length;
+    const dupIndex = instance.getLayers().indexOf(duplicate);
+    instance.moveLayer(duplicate.id, dupIndex);
+    expect(instance.history.getHistoryState().length).toBe(lenBeforeNoopMove);
+
     instance.moveLayer(duplicate.id, 0);
     expect(instance.getLayers()[0]).toBe(duplicate);
+    expect(instance.history.getHistoryState().length).toBe(
+      lenBeforeNoopMove + 1,
+    );
 
+    // Deleting active layer switches brush context back cleanly
     instance.deleteLayer(duplicate.id);
     instance.setActiveLayer(baseLayer.id);
-
     expect(instance.getActiveLayer()).toBe(baseLayer);
+
+    // Cannot delete the last remaining layer
+    instance.deleteLayer(inkLayer.id);
+    expect(() => instance.deleteLayer(baseLayer.id)).toThrow();
   });
 
-  it("should expose undo/redo methods", () => {
+  it("should expose undo/redo/loadConfig/loadImage methods", async () => {
     const canvas = createCanvas();
-
-    const instance = new Canvas({
-      canvas,
-    });
+    const instance = new Canvas({ canvas });
 
     const undoSpy = vi.spyOn(instance.history, "undo");
     const redoSpy = vi.spyOn(instance.history, "redo");
 
     instance.undo();
     instance.redo();
-
     expect(undoSpy).toHaveBeenCalledTimes(1);
     expect(redoSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it("should expose loadConfig method", () => {
-    const canvas = createCanvas();
-
-    const instance = new Canvas({
-      canvas,
-    });
 
     const config = {
       size: 50,
@@ -301,22 +268,38 @@ describe("Canvas", () => {
       roundness: 1,
       spacing: 1,
     };
-
     instance.loadConfig(config);
-
-    expect(mockBrushInstance.loadConfig).toHaveBeenCalledTimes(1);
     expect(mockBrushInstance.loadConfig).toHaveBeenCalledWith(config);
+
+    const imageCanvas = document.createElement("canvas");
+    mockBrushInstance.loadImageAsync.mockResolvedValueOnce(undefined);
+    await expect(instance.loadImage(imageCanvas)).resolves.toBeUndefined();
+    expect(mockBrushInstance.loadImageAsync).toHaveBeenCalledWith(imageCanvas);
   });
 
-  it("should bind and remove pointer event listeners", () => {
+  it("should bind and remove pointer event listeners and isolate listener errors", () => {
     const canvas = createCanvas();
     const addCanvasSpy = vi.spyOn(canvas, "addEventListener");
     const removeCanvasSpy = vi.spyOn(canvas, "removeEventListener");
     const removeWindowSpy = vi.spyOn(window, "removeEventListener");
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const instance = new Canvas({
-      canvas,
+    const instance = new Canvas({ canvas });
+    const failingListener = vi.fn(() => {
+      throw new Error("boom");
     });
+    const healthyListener = vi.fn();
+    instance.on("change", failingListener);
+    instance.on("change", healthyListener);
+
+    instance.createLayer("L2");
+    expect(failingListener).toHaveBeenCalledTimes(1);
+    expect(healthyListener).toHaveBeenCalledTimes(1);
+    expect(errorSpy).toHaveBeenCalled();
+
+    instance.off("change", healthyListener);
+    instance.createLayer("L3");
+    expect(healthyListener).toHaveBeenCalledTimes(1);
 
     expect(addCanvasSpy).toHaveBeenCalledWith(
       "pointerdown",
@@ -343,76 +326,40 @@ describe("Canvas", () => {
     );
   });
 
-  it("should handle pointer drawing events and call brush lifecycle methods", () => {
-    const canvas = createCanvas();
-    new Canvas({
-      canvas,
-    });
-
-    const pointerDown = new PointerEvent("pointerdown", {
-      clientX: 10,
-      clientY: 20,
-      pointerType: "mouse",
-      pressure: 0,
-      button: 0,
-      buttons: 1,
-      bubbles: true,
-    });
-
-    canvas.dispatchEvent(pointerDown);
-
-    expect(mockBrushInstance.putPoint).toHaveBeenCalledTimes(1);
-    expect(mockBrushInstance.render).toHaveBeenCalledTimes(1);
-
-    const pointerMove = new PointerEvent("pointermove", {
-      clientX: 15,
-      clientY: 25,
-      pointerType: "mouse",
-      pressure: 0,
-      buttons: 1,
-      bubbles: true,
-    });
-
-    canvas.dispatchEvent(pointerMove);
-
-    expect(mockBrushInstance.putPoint).toHaveBeenCalledTimes(2);
-    expect(mockBrushInstance.render).toHaveBeenCalledTimes(2);
-
-    window.dispatchEvent(new PointerEvent("pointerup"));
-    expect(mockBrushInstance.finalizeStroke).toHaveBeenCalledTimes(1);
-  });
-
-  it("should only process events from the pointer that started the stroke", () => {
+  it("should handle pointer drawing events and pointerId isolation", () => {
     const canvas = createCanvas();
     new Canvas({ canvas });
 
     canvas.dispatchEvent(
       new PointerEvent("pointerdown", {
         clientX: 10,
-        clientY: 10,
+        clientY: 20,
+        pointerType: "mouse",
+        pressure: 0,
         pointerId: 1,
-        bubbles: true,
       }),
     );
+
+    expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(10, 20, 1);
+    expect(mockBrushInstance.render).toHaveBeenCalledTimes(1);
+
+    // Secondary pointer is ignored while pointer 1 is active
     canvas.dispatchEvent(
       new PointerEvent("pointermove", {
-        clientX: 20,
-        clientY: 20,
+        clientX: 99,
+        clientY: 99,
         pointerId: 2,
-        bubbles: true,
       }),
     );
     window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 2 }));
-
     expect(mockBrushInstance.putPoint).toHaveBeenCalledTimes(1);
     expect(mockBrushInstance.finalizeStroke).not.toHaveBeenCalled();
 
     canvas.dispatchEvent(
       new PointerEvent("pointermove", {
-        clientX: 20,
-        clientY: 20,
+        clientX: 15,
+        clientY: 25,
         pointerId: 1,
-        bubbles: true,
       }),
     );
     window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1 }));
@@ -421,7 +368,7 @@ describe("Canvas", () => {
     expect(mockBrushInstance.finalizeStroke).toHaveBeenCalledTimes(1);
   });
 
-  it("should scale pointer coordinates to the canvas document buffer", () => {
+  it("should scale pointer coordinates to canvas buffer and process coalesced events", () => {
     const canvas = createCanvas();
     vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
       width: 500,
@@ -451,164 +398,29 @@ describe("Canvas", () => {
     );
 
     expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(500, 250, 1);
-  });
-
-  it("should expose smoothing and spacing toggles", () => {
-    const canvas = createCanvas();
-
-    const instance = new Canvas({
-      canvas,
-    });
-
-    instance.setSmooth(false);
-    instance.setSpacing(false);
-
-    expect(mockBrushInstance.isSmooth).toBe(false);
-    expect(mockBrushInstance.isSpacing).toBe(false);
-  });
-
-  it("should expose loadImage method", async () => {
-    const canvas = createCanvas();
-    const imageCanvas = document.createElement("canvas");
-
-    mockBrushInstance.loadImageAsync.mockResolvedValueOnce(undefined);
-
-    const instance = new Canvas({
-      canvas,
-    });
-
-    await expect(instance.loadImage(imageCanvas)).resolves.toBeUndefined();
-    expect(mockBrushInstance.loadImageAsync).toHaveBeenCalledWith(imageCanvas);
-  });
-
-  it("should destroy event listeners safely", () => {
-    const canvas = createCanvas();
-
-    const instance = new Canvas({
-      canvas,
-    });
-
-    expect(() => {
-      instance.destroy();
-    }).not.toThrow();
-  });
-
-  it("should process coalesced pointer events", () => {
-    const canvas = createCanvas();
-
-    new Canvas({
-      canvas,
-    });
-
-    canvas.dispatchEvent(
-      new PointerEvent("pointerdown", {
-        clientX: 0,
-        clientY: 0,
-        bubbles: true,
-      }),
-    );
 
     const moveEvent = new PointerEvent("pointermove", {
       clientX: 10,
-      clientY: 10,
-      bubbles: true,
+      clientY: 20,
     });
-
-    const coalescedEvents = [
-      new PointerEvent("pointermove", {
-        clientX: 20,
-        clientY: 20,
-        bubbles: true,
-      }),
-      new PointerEvent("pointermove", {
-        clientX: 30,
-        clientY: 30,
-        bubbles: true,
-      }),
-    ];
-
     Object.defineProperty(moveEvent, "getCoalescedEvents", {
-      value: () => coalescedEvents,
+      value: () => [
+        new PointerEvent("pointermove", { clientX: 60, clientY: 70 }),
+        new PointerEvent("pointermove", { clientX: 110, clientY: 120 }),
+      ],
     });
 
     canvas.dispatchEvent(moveEvent);
-
     expect(mockBrushInstance.putPoint).toHaveBeenCalledTimes(3);
-    expect(mockBrushInstance.render).toHaveBeenCalledTimes(2);
+    expect(mockBrushInstance.putPoint).toHaveBeenNthCalledWith(2, 100, 100, 1);
+    expect(mockBrushInstance.putPoint).toHaveBeenNthCalledWith(3, 200, 200, 1);
   });
 
-  it("should fallback to original event when coalesced events are unavailable", () => {
-    const canvas = createCanvas();
+  it("should use real pen pressure and optional mouse pressure simulation", () => {
+    const penCanvas = createCanvas();
+    new Canvas({ canvas: penCanvas });
 
-    new Canvas({
-      canvas,
-    });
-
-    canvas.dispatchEvent(
-      new PointerEvent("pointerdown", {
-        clientX: 0,
-        clientY: 0,
-        button: 0,
-        buttons: 1,
-        pointerId: 1,
-        bubbles: true,
-      }),
-    );
-
-    canvas.dispatchEvent(
-      new PointerEvent("pointermove", {
-        clientX: 10,
-        clientY: 10,
-        buttons: 1,
-        pointerId: 1,
-        bubbles: true,
-      }),
-    );
-
-    expect(mockBrushInstance.putPoint).toHaveBeenCalledTimes(2);
-    expect(mockBrushInstance.render).toHaveBeenCalledTimes(2);
-  });
-
-  it("should handle pointer events", () => {
-    const canvas = createCanvas();
-
-    new Canvas({
-      canvas,
-    });
-
-    canvas.dispatchEvent(
-      new PointerEvent("pointerdown", {
-        clientX: 100,
-        clientY: 100,
-        pressure: 1,
-      }),
-    );
-
-    canvas.dispatchEvent(
-      new PointerEvent("pointermove", {
-        clientX: 120,
-        clientY: 120,
-        pressure: 1,
-      }),
-    );
-
-    window.dispatchEvent(new PointerEvent("pointerup"));
-
-    expect(mockBrushInstance.putPoint).toHaveBeenCalled();
-
-    expect(mockBrushInstance.render).toHaveBeenCalled();
-
-    expect(mockBrushInstance.finalizeStroke).toHaveBeenCalled();
-  });
-
-  it("should use real pen pressure when available", () => {
-    const canvas = createCanvas();
-
-    new Canvas({
-      canvas,
-    });
-
-    canvas.dispatchEvent(
+    penCanvas.dispatchEvent(
       new PointerEvent("pointerdown", {
         clientX: 100,
         clientY: 100,
@@ -616,23 +428,17 @@ describe("Canvas", () => {
         pressure: 0.42,
       }),
     );
-
     expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(
       100,
       100,
       expect.closeTo(0.42),
     );
-  });
 
-  it("should simulate mouse pressure when enabled", () => {
-    const canvas = createCanvas();
+    mockBrushInstance.putPoint.mockClear();
 
-    new Canvas({
-      canvas,
-      pressureSimulation: true,
-    });
-
-    canvas.dispatchEvent(
+    const simCanvas = createCanvas();
+    new Canvas({ canvas: simCanvas, pressureSimulation: true });
+    simCanvas.dispatchEvent(
       new PointerEvent("pointerdown", {
         clientX: 100,
         clientY: 100,
@@ -640,67 +446,14 @@ describe("Canvas", () => {
         pressure: 0,
       }),
     );
-
-    expect(mockBrushInstance.putPoint).toHaveBeenCalled();
-
-    const pressure = mockBrushInstance.putPoint.mock.calls[0][2];
-
-    expect(pressure).toBeGreaterThan(0);
-    expect(pressure).toBeLessThanOrEqual(1);
+    expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(100, 100, 0.5);
   });
 
-  it("should use flat pressure when no option is provided", () => {
+  it("should track sparse stroke bounds and leverage cacheBelowCanvas during strokes", () => {
     const canvas = createCanvas();
+    const instance = new Canvas({ canvas });
+    instance.createLayer({ name: "Layer 2" });
 
-    new Canvas({
-      canvas,
-    });
-
-    canvas.dispatchEvent(
-      new PointerEvent("pointerdown", {
-        clientX: 50,
-        clientY: 50,
-        pointerType: "mouse",
-        pressure: 0,
-      }),
-    );
-
-    expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(50, 50, 1);
-  });
-
-  it("should use flat pressure when pressure simulation is disabled", () => {
-    const canvas = createCanvas();
-
-    new Canvas({
-      canvas,
-      pressureSimulation: false,
-    });
-
-    canvas.dispatchEvent(
-      new PointerEvent("pointerdown", {
-        clientX: 100,
-        clientY: 100,
-        pointerType: "mouse",
-        pressure: 0,
-      }),
-    );
-
-    expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(100, 100, 1);
-  });
-
-  it("should calculate sparse stroke bounding box and track bounds", () => {
-    const canvas = createCanvas();
-    const instance = new Canvas({
-      canvas,
-    });
-
-    mockBrushInstance.finalizeStroke.mockImplementationOnce(
-      (cb: () => void) => {
-        cb();
-      },
-    );
-
-    // Start a stroke
     canvas.dispatchEvent(
       new PointerEvent("pointerdown", {
         clientX: 50,
@@ -709,7 +462,22 @@ describe("Canvas", () => {
       }),
     );
 
-    // Drag pointer
+    const internal = instance as unknown as {
+      isDrawing: boolean;
+      cacheBelowCanvas: HTMLCanvasElement;
+      cacheBelowValid: boolean;
+      strokeMinX: number;
+      strokeMinY: number;
+      strokeMaxX: number;
+      strokeMaxY: number;
+    };
+
+    expect(internal.isDrawing).toBe(true);
+    expect(internal.cacheBelowCanvas).toBeDefined();
+
+    instance.renderLayers();
+    expect(internal.cacheBelowValid).toBe(true);
+
     canvas.dispatchEvent(
       new PointerEvent("pointermove", {
         clientX: 150,
@@ -717,193 +485,111 @@ describe("Canvas", () => {
         pointerType: "mouse",
       }),
     );
-
-    // End stroke
     window.dispatchEvent(new PointerEvent("pointerup"));
 
-    const internal = instance as unknown as {
-      strokeMinX: number;
-      strokeMinY: number;
-      strokeMaxX: number;
-      strokeMaxY: number;
-    };
     expect(internal.strokeMinX).toBe(50);
     expect(internal.strokeMinY).toBe(60);
     expect(internal.strokeMaxX).toBe(150);
     expect(internal.strokeMaxY).toBe(180);
-  });
-
-  it("should pre-composite and leverage cacheBelowCanvas during active stroke drawing", () => {
-    const canvas = createCanvas();
-    const instance = new Canvas({
-      canvas,
-    });
-
-    // Create layers and set layer2 as active
-    instance.createLayer({ name: "Layer 2" });
-
-    // Start drawing
-    canvas.dispatchEvent(
-      new PointerEvent("pointerdown", {
-        clientX: 50,
-        clientY: 50,
-        pointerType: "mouse",
-      }),
-    );
-
-    const internal = instance as unknown as {
-      isDrawing: boolean;
-      cacheBelowCanvas: HTMLCanvasElement;
-      cacheBelowValid: boolean;
-    };
-    expect(internal.isDrawing).toBe(true);
-    expect(internal.cacheBelowCanvas).toBeDefined();
-
-    // Trigger render layers which populates the cache
-    instance.renderLayers();
-    expect(internal.cacheBelowValid).toBe(true);
-
-    // End drawing which resets the cache validity
-    window.dispatchEvent(new PointerEvent("pointerup"));
     expect(internal.isDrawing).toBe(false);
     expect(internal.cacheBelowValid).toBe(false);
   });
 
-  it("should change document size and optionally clear artwork or crop/pad it", () => {
+  it("should resize document with preserve vs clearArtwork and reject non-positive dimensions", () => {
     const canvas = createCanvas();
     const instance = new Canvas({
       canvas,
+      document: { width: 40, height: 40 },
+    });
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    instance.drawRectangle({
+      x: 5,
+      y: 5,
+      width: 10,
+      height: 10,
+      fillColor: "#00ff00",
     });
 
-    const internal = instance as unknown as {
-      layers: { resize: (w: number, h: number) => void; clear: () => void };
-    };
-    const layersSpy = vi.spyOn(internal.layers, "resize");
-    const clearSpy = vi.spyOn(internal.layers, "clear");
+    // Invalid dimensions are rejected with warning
+    instance.setDocumentSize(0, 100);
+    instance.setDocumentSize(100, -10);
+    expect(warnSpy).toHaveBeenCalledTimes(2);
+    expect(canvas.width).toBe(40);
+    expect(canvas.height).toBe(40);
 
-    // Test with clearArtwork = true
-    instance.setDocumentSize(800, 600, true);
+    // clearArtwork = false preserves existing pixels and clears history
+    expect(instance.history.canUndo()).toBe(true);
+    instance.setDocumentSize(80, 60, false);
+    expect(canvas.width).toBe(80);
+    expect(canvas.height).toBe(60);
+    expect(instance.history.canUndo()).toBe(false);
+    expect(instance.getColorAt(10, 10, "activeLayer").hex).toBe("#00ff00");
 
-    expect(clearSpy).toHaveBeenCalledTimes(1);
-    expect(layersSpy).toHaveBeenCalledWith(800, 600);
-    expect(canvas.width).toBe(800);
-    expect(canvas.height).toBe(600);
-
-    // Test with clearArtwork = false (default)
-    clearSpy.mockClear();
-    instance.setDocumentSize(400, 300);
-
-    expect(clearSpy).not.toHaveBeenCalled();
-    expect(layersSpy).toHaveBeenCalledWith(400, 300);
-    expect(canvas.width).toBe(400);
-    expect(canvas.height).toBe(300);
+    // clearArtwork = true wipes pixels
+    instance.setDocumentSize(50, 50, true);
+    expect(canvas.width).toBe(50);
+    expect(canvas.height).toBe(50);
+    expect(instance.getColorAt(10, 10, "activeLayer").a).toBe(0);
   });
 
   describe("Locked Layer Enforcement Matrix", () => {
-    it("should reject brush drawing on a locked layer", () => {
+    it("should reject brush drawing, raster ops, and deletion on locked layers", () => {
       const canvas = createCanvas();
       const instance = new Canvas({ canvas });
-
       const active = instance.getActiveLayer();
       instance.updateLayer(active.id, { locked: true });
 
       mockBrushInstance.putPoint.mockClear();
-      mockBrushInstance.render.mockClear();
-
-      // Trigger pointerdown
       canvas.dispatchEvent(
-        new PointerEvent("pointerdown", {
-          clientX: 50,
-          clientY: 50,
-          pointerId: 1,
-        }),
+        new PointerEvent("pointerdown", { clientX: 50, clientY: 50 }),
       );
-
-      // Brush methods should NOT have been invoked
       expect(mockBrushInstance.putPoint).not.toHaveBeenCalled();
-      expect(mockBrushInstance.render).not.toHaveBeenCalled();
-      const internal = instance as unknown as { isDrawing: boolean };
-      expect(internal.isDrawing).toBe(false);
-    });
 
-    it("should throw an error and reject raster operations on locked layers", () => {
-      const canvas = createCanvas();
-      const instance = new Canvas({ canvas });
-
-      const active = instance.getActiveLayer();
-      instance.updateLayer(active.id, { locked: true });
-
-      // 1. clear() / clearActiveLayer()
       expect(() => instance.clear()).toThrow("Active layer is locked");
       expect(() => instance.clearActiveLayer()).toThrow(
         "Active layer is locked",
       );
-
-      // 2. fillActiveLayer()
       expect(() => instance.fillActiveLayer("#ff0000")).toThrow(
         "Active layer is locked",
       );
-
-      // 3. floodFill()
       expect(() => instance.floodFill(10, 10, "#00ff00")).toThrow(
         "Active layer is locked",
       );
-
-      // 4. drawRectangle()
       expect(() =>
         instance.drawRectangle({ x: 0, y: 0, width: 20, height: 20 }),
       ).toThrow("Active layer is locked");
-
-      // 5. drawEllipse()
       expect(() =>
         instance.drawEllipse({ x: 10, y: 10, radiusX: 5, radiusY: 5 }),
       ).toThrow("Active layer is locked");
-
-      // 6. drawLine()
       expect(() => instance.drawLine({ x1: 0, y1: 0, x2: 10, y2: 10 })).toThrow(
         "Active layer is locked",
       );
-
-      // 7. drawText()
       expect(() => instance.drawText("Hello", 10, 10)).toThrow(
         "Active layer is locked",
       );
-    });
-
-    it("should reject deleting a locked layer", () => {
-      const canvas = createCanvas();
-      const instance = new Canvas({ canvas });
 
       const layer2 = instance.createLayer({ name: "Second Layer" });
       instance.updateLayer(layer2.id, { locked: true });
-
       expect(() => instance.deleteLayer(layer2.id)).toThrow(
         "Cannot delete locked layer",
       );
-      expect(instance.getLayers().some((l) => l.id === layer2.id)).toBe(true);
     });
   });
 
   describe("Action Replay & Artwork Reset", () => {
-    it("resetArtwork resets layers to a single base layer and clears history while preserving action log", () => {
+    it("resetArtwork resets layers to base layer while preserving action log", () => {
       const canvas = createCanvas();
       const instance = new Canvas({ canvas });
 
       instance.createLayer({ name: "Layer 2" });
       instance.createLayer({ name: "Layer 3" });
-      expect(instance.getLayers().length).toBe(3);
-
-      instance.recordAction({
-        type: "createLayer",
-        layerId: "test-layer",
-        name: "Test Layer",
-      });
       const initialLog = instance.getActionLog();
-      expect(initialLog.length).toBeGreaterThan(0);
+      expect(initialLog).toHaveLength(2);
 
       instance.resetArtwork();
 
-      expect(instance.getLayers().length).toBe(1);
+      expect(instance.getLayers()).toHaveLength(1);
       expect(instance.getActiveLayer().name).toBe("Background");
       expect(instance.getActionLog()).toEqual(initialLog);
       expect(mockBrushInstance.clear).toHaveBeenCalled();
@@ -915,17 +601,15 @@ describe("Canvas", () => {
       const instance = new Canvas({ canvas });
       const layer = instance.getActiveLayer();
 
-      const strokeAction = {
-        type: "stroke" as const,
+      await instance.replayAction({
+        type: "stroke",
         layerId: layer.id,
         brushConfig: { size: 12 },
         points: [
           { x: 10, y: 10, pressure: 0.5 },
           { x: 20, y: 20, pressure: 0.8 },
         ],
-      };
-
-      await instance.replayAction(strokeAction);
+      });
 
       expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(10, 10, 0.5);
       expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(20, 20, 0.8);

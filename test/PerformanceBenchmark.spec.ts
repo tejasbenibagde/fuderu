@@ -1,8 +1,12 @@
-import { describe, expect, it, beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Canvas } from "../src/Canvas";
 
 describe("Performance Benchmarking Suite", () => {
   let canvasEl: HTMLCanvasElement;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   beforeEach(() => {
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(

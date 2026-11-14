@@ -1,168 +1,17 @@
-import { describe, expect, it, beforeAll, beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Canvas } from "../src/Canvas";
-
-const pixelBuffers = new WeakMap<HTMLCanvasElement, Uint8ClampedArray>();
-
-function getContextMock(this: HTMLCanvasElement, contextId: string) {
-  if (contextId === "2d") {
-    let buffer = pixelBuffers.get(this);
-    if (!buffer) {
-      buffer = new Uint8ClampedArray(
-        (this.width || 100) * (this.height || 100) * 4,
-      );
-      pixelBuffers.set(this, buffer);
-    }
-
-    const ctx = {
-      canvas: this,
-      scale: vi.fn(),
-      setTransform: vi.fn(),
-      clearRect: vi.fn((x: number, y: number, w: number, h: number) => {
-        const buf = pixelBuffers.get(this)!;
-        const cw = this.width || 100;
-        for (let cy = y; cy < y + h; cy++) {
-          for (let cx = x; cx < x + w; cx++) {
-            const idx = (cy * cw + cx) * 4;
-            buf[idx] = 0;
-            buf[idx + 1] = 0;
-            buf[idx + 2] = 0;
-            buf[idx + 3] = 0;
-          }
-        }
-      }),
-      drawImage: vi.fn(),
-      getImageData: vi.fn((x: number, y: number, w: number, h: number) => {
-        const buf = pixelBuffers.get(this)!;
-        const cw = this.width || 100;
-        const out = new Uint8ClampedArray(w * h * 4);
-        for (let row = 0; row < h; row++) {
-          for (let col = 0; col < w; col++) {
-            const srcIdx = ((y + row) * cw + (x + col)) * 4;
-            const dstIdx = (row * w + col) * 4;
-            out[dstIdx] = buf[srcIdx] || 0;
-            out[dstIdx + 1] = buf[srcIdx + 1] || 0;
-            out[dstIdx + 2] = buf[srcIdx + 2] || 0;
-            out[dstIdx + 3] = buf[srcIdx + 3] || 0;
-          }
-        }
-        return { data: out, width: w, height: h };
-      }),
-      putImageData: vi.fn((imgData: ImageData, x: number, y: number) => {
-        const buf = pixelBuffers.get(this)!;
-        const cw = this.width || 100;
-        const w = imgData.width;
-        const h = imgData.height;
-        for (let row = 0; row < h; row++) {
-          for (let col = 0; col < w; col++) {
-            const srcIdx = (row * w + col) * 4;
-            const dstIdx = ((y + row) * cw + (x + col)) * 4;
-            buf[dstIdx] = imgData.data[srcIdx];
-            buf[dstIdx + 1] = imgData.data[srcIdx + 1];
-            buf[dstIdx + 2] = imgData.data[srcIdx + 2];
-            buf[dstIdx + 3] = imgData.data[srcIdx + 3];
-          }
-        }
-      }),
-      save: vi.fn(),
-      restore: vi.fn(),
-      beginPath: vi.fn(),
-      closePath: vi.fn(),
-      fill: vi.fn(),
-      stroke: vi.fn(),
-      ellipse: vi.fn(),
-      rect: vi.fn(),
-      moveTo: vi.fn(),
-      lineTo: vi.fn(),
-      translate: vi.fn(),
-      rotate: vi.fn(),
-      fillRect: vi.fn((x: number, y: number, w: number, h: number) => {
-        const buf = pixelBuffers.get(this)!;
-        const cw = this.width || 100;
-        let r = 0;
-        let g = 0;
-        let b = 0;
-        let a = 255;
-        const fs = ctx.fillStyle as string;
-        if (fs === "#ff0000" || fs === "#f00") {
-          r = 255;
-        } else if (fs === "#00ff00" || fs === "#0f0") {
-          g = 255;
-        } else if (fs === "#0000ff" || fs === "#00f") {
-          b = 255;
-        } else if (fs === "#ffff00") {
-          r = 255;
-          g = 255;
-        } else if (fs === "#00ffff") {
-          g = 255;
-          b = 255;
-        } else if (fs === "#ff00ff") {
-          r = 255;
-          b = 255;
-        } else if (fs.startsWith("rgba(")) {
-          const parts = fs
-            .replace("rgba(", "")
-            .replace(")", "")
-            .split(",")
-            .map((p) => p.trim());
-          r = parseInt(parts[0], 10) || 0;
-          g = parseInt(parts[1], 10) || 0;
-          b = parseInt(parts[2], 10) || 0;
-          a = Math.round((parseFloat(parts[3]) || 1) * 255);
-        }
-
-        for (
-          let cy = Math.max(0, Math.floor(y));
-          cy < Math.min(this.height || 100, Math.floor(y + h));
-          cy++
-        ) {
-          for (
-            let cx = Math.max(0, Math.floor(x));
-            cx < Math.min(cw, Math.floor(x + w));
-            cx++
-          ) {
-            const idx = (cy * cw + cx) * 4;
-            buf[idx] = r;
-            buf[idx + 1] = g;
-            buf[idx + 2] = b;
-            buf[idx + 3] = a;
-          }
-        }
-      }),
-      fillText: vi.fn((_text: string, x: number, y: number) => {
-        const buf = pixelBuffers.get(this)!;
-        const cw = this.width || 100;
-        const idx = (Math.floor(y) * cw + Math.floor(x)) * 4;
-        buf[idx] = 100;
-        buf[idx + 1] = 100;
-        buf[idx + 2] = 100;
-        buf[idx + 3] = 255;
-      }),
-      measureText: vi.fn(() => ({ width: 40 })),
-      fillStyle: "#000000",
-      strokeStyle: "#000000",
-      lineWidth: 1,
-      font: "10px sans-serif",
-      textAlign: "left",
-      textBaseline: "top",
-      globalAlpha: 1,
-      globalCompositeOperation: "source-over",
-    };
-    return ctx as unknown as CanvasRenderingContext2D;
-  }
-  return null;
-}
-
-beforeAll(() => {
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
-    getContextMock,
-  );
-});
+import {
+  installCanvas2DMock,
+  type Canvas2DMockEnvironment,
+} from "./helpers/mockCanvas2D";
 
 describe("Native Commands for Raster Operations", () => {
+  let canvasEnv: Canvas2DMockEnvironment;
   let canvasEl: HTMLCanvasElement;
   let canvas: Canvas;
 
   beforeEach(() => {
+    canvasEnv = installCanvas2DMock();
     canvasEl = document.createElement("canvas");
     canvasEl.width = 100;
     canvasEl.height = 100;
@@ -174,208 +23,243 @@ describe("Native Commands for Raster Operations", () => {
     });
   });
 
-  it("should clear active layer using clearActiveLayer()", () => {
+  afterEach(() => {
+    canvasEnv.restore();
+    vi.restoreAllMocks();
+  });
+
+  it("clears and restores active layer pixels with clearActiveLayer() + undo/redo", () => {
     canvas.fillActiveLayer("#ff0000");
-    let color = canvas.getColorAt(10, 10, "activeLayer");
-    expect(color.hex).toBe("#ff0000");
+    expect(canvas.getColorAt(10, 10, "activeLayer").hex).toBe("#ff0000");
 
     canvas.clearActiveLayer();
-    color = canvas.getColorAt(10, 10, "activeLayer");
-    expect(color.a).toBe(0);
+    expect(canvas.getColorAt(10, 10, "activeLayer").a).toBe(0);
     expect(canvas.history.canUndo()).toBe(true);
+
+    canvas.undo();
+    expect(canvas.getColorAt(10, 10, "activeLayer").hex).toBe("#ff0000");
+
+    canvas.redo();
+    expect(canvas.getColorAt(10, 10, "activeLayer").a).toBe(0);
   });
 
-  it("should fill active layer with fillActiveLayer(color)", () => {
-    canvas.fillActiveLayer("#00ff00");
-    const color = canvas.getColorAt(50, 50, "activeLayer");
-    expect(color.hex).toBe("#00ff00");
-    expect(color.a).toBe(255);
+  it("fills active layer and distinguishes composite vs activeLayer and out-of-bounds in getColorAt()", () => {
+    canvas.fillActiveLayer("#ff0000");
+    const layer2 = canvas.createLayer("Top");
+    canvas.setActiveLayer(layer2.id);
+    canvas.drawRectangle({
+      x: 20,
+      y: 20,
+      width: 20,
+      height: 20,
+      fillColor: "#0000ff",
+      stroke: false,
+    });
 
-    const entries = canvas.history.getEntries();
-    expect(entries[entries.length - 1].description).toContain("Fill layer");
+    // At (30,30) both activeLayer and composite are blue
+    expect(canvas.getColorAt(30, 30, "activeLayer")).toMatchObject({
+      r: 0,
+      g: 0,
+      b: 255,
+      a: 255,
+      hex: "#0000ff",
+      rgba: "rgba(0, 0, 255, 1)",
+    });
+    expect(canvas.getColorAt(30, 30, "composite").hex).toBe("#0000ff");
+
+    // At (5,5) activeLayer is transparent, composite reveals red base layer
+    expect(canvas.getColorAt(5, 5, "activeLayer")).toMatchObject({
+      a: 0,
+      rgba: "rgba(0, 0, 0, 0)",
+    });
+    expect(canvas.getColorAt(5, 5, "composite").hex).toBe("#ff0000");
+
+    // Out-of-bounds returns zeroed transparent black
+    expect(canvas.getColorAt(-5, 50, "composite")).toEqual({
+      r: 0,
+      g: 0,
+      b: 0,
+      a: 0,
+      hex: "#000000",
+      rgba: "rgba(0, 0, 0, 0)",
+    });
+    expect(canvas.getColorAt(100, 100, "activeLayer").a).toBe(0);
   });
 
-  it("should sample colors with getColorAt(x, y, scope)", () => {
-    canvas.fillActiveLayer("#0000ff");
-    const sampleActive = canvas.getColorAt(20, 20, "activeLayer");
-    expect(sampleActive.hex).toBe("#0000ff");
-    expect(sampleActive.r).toBe(0);
-    expect(sampleActive.g).toBe(0);
-    expect(sampleActive.b).toBe(255);
-    expect(sampleActive.rgba).toContain("rgba(0, 0, 255");
-  });
-
-  it("should perform bucket fill with floodFill(x, y, color, tolerance)", () => {
+  it("performs enclosed bucket fill with floodFill(), tolerance matching, same-color no-op, and undo/redo", () => {
+    // Draw red rect [10..50] with slightly different red core and enclosing boundary
     canvas.drawRectangle({
       x: 10,
       y: 10,
       width: 40,
       height: 40,
       fillColor: "#ff0000",
-      fill: true,
+      stroke: false,
+    });
+    canvas.drawRectangle({
+      x: 20,
+      y: 20,
+      width: 10,
+      height: 10,
+      fillColor: "#fa0505", // within tolerance=10 of #ff0000
       stroke: false,
     });
 
-    let sample = canvas.getColorAt(20, 20, "activeLayer");
-    expect(sample.hex).toBe("#ff0000");
+    // Flood fill with tolerance=0 replaces only #fa0505 inner square
+    canvas.floodFill(25, 25, "#ffff00", 0);
+    expect(canvas.getColorAt(25, 25, "activeLayer").hex).toBe("#ffff00");
+    expect(canvas.getColorAt(12, 12, "activeLayer").hex).toBe("#ff0000");
 
-    canvas.floodFill(20, 20, "#ffff00");
-    sample = canvas.getColorAt(20, 20, "activeLayer");
-    expect(sample.hex).toBe("#ffff00");
-
-    // Outside rectangle should remain transparent
-    const outsideSample = canvas.getColorAt(5, 5, "activeLayer");
-    expect(outsideSample.a).toBe(0);
-
-    // Should push patch to history
-    expect(canvas.history.canUndo()).toBe(true);
+    // Undo and re-run with tolerance=10 to cross both shades while staying outside [0..9] transparent zone
     canvas.undo();
-    sample = canvas.getColorAt(20, 20, "activeLayer");
-    expect(sample.hex).toBe("#ff0000");
+    canvas.floodFill(25, 25, "#ffff00", 10);
+    expect(canvas.getColorAt(25, 25, "activeLayer").hex).toBe("#ffff00");
+    expect(canvas.getColorAt(12, 12, "activeLayer").hex).toBe("#ffff00");
+    expect(canvas.getColorAt(5, 5, "activeLayer").a).toBe(0);
+
+    // Same-color floodFill should not push a duplicate history entry
+    const countBeforeSame = canvas.history.getEntries().length;
+    canvas.floodFill(25, 25, "#ffff00", 0);
+    expect(canvas.history.getEntries().length).toBe(countBeforeSame);
+
+    // Out-of-bounds floodFill is ignored
+    canvas.floodFill(-1, 50, "#00ff00");
+    expect(canvas.history.getEntries().length).toBe(countBeforeSame);
   });
 
-  it("should preserve existing pixel alpha channel and leave zero-alpha transparent pixels untouched when alphaLock is true", () => {
-    // 1. Draw a semi-transparent red rectangle (alpha = 0.5 -> 128/255)
+  it("preserves pixel alpha channel and leaves zero-alpha pixels untouched when alphaLock is true", () => {
     const active = canvas.getActiveLayer();
     const ctx = active.canvas.getContext("2d")!;
     ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
     ctx.fillRect(10, 10, 40, 40);
 
-    const initialRectSample = canvas.getColorAt(20, 20, "activeLayer");
-    expect(initialRectSample.r).toBe(255);
-    expect(initialRectSample.g).toBe(0);
-    expect(initialRectSample.b).toBe(0);
-    // Alpha should be approx 128 (non-zero)
-    const initialA = initialRectSample.a;
+    const initialSample = canvas.getColorAt(20, 20, "activeLayer");
+    const initialA = initialSample.a;
     expect(initialA).toBeGreaterThan(0);
     expect(initialA).toBeLessThan(255);
 
-    // 2. Enable Alpha Lock on active layer
     canvas.updateLayer(active.id, { alphaLock: true });
 
-    // Attempting floodFill on a transparent pixel (0, 0) should do nothing
-    const transparentSampleBefore = canvas.getColorAt(0, 0, "activeLayer");
-    expect(transparentSampleBefore.a).toBe(0);
+    // Transparent pixel flood fill is ignored under alphaLock
     canvas.floodFill(0, 0, "#00ff00");
-    const transparentSampleAfter = canvas.getColorAt(0, 0, "activeLayer");
-    expect(transparentSampleAfter.a).toBe(0);
+    expect(canvas.getColorAt(0, 0, "activeLayer").a).toBe(0);
 
-    // 3. Flood fill the semi-transparent area with solid blue (#0000ff)
-    // Tolerance is 10 to match slight variations
+    // Semi-transparent rectangle receives new RGB while preserving exact alpha
     canvas.floodFill(20, 20, "#0000ff", 10);
+    const filled = canvas.getColorAt(20, 20, "activeLayer");
+    expect(filled.hex).toBe("#0000ff");
+    expect(filled.a).toBe(initialA);
+    expect(canvas.getColorAt(5, 5, "activeLayer").a).toBe(0);
 
-    const filledSample = canvas.getColorAt(20, 20, "activeLayer");
-    expect(filledSample.hex).toBe("#0000ff");
-    expect(filledSample.r).toBe(0);
-    expect(filledSample.g).toBe(0);
-    expect(filledSample.b).toBe(255);
-    // CRITICAL: Alpha must remain exactly the original alpha, NOT mutated to 255
-    expect(filledSample.a).toBe(initialA);
+    // Also fillActiveLayer under alphaLock keeps transparent outside untouched
+    canvas.fillActiveLayer("#00ff00");
+    expect(canvas.getColorAt(20, 20, "activeLayer").hex).toBe("#00ff00");
+    expect(canvas.getColorAt(20, 20, "activeLayer").a).toBe(initialA);
+    expect(canvas.getColorAt(5, 5, "activeLayer").a).toBe(0);
 
-    // Pixels outside the rectangle must remain completely transparent (alpha = 0)
-    const outsideSample = canvas.getColorAt(5, 5, "activeLayer");
-    expect(outsideSample.a).toBe(0);
-
-    // Undo should restore original red color while retaining alpha
     canvas.undo();
-    const undoneSample = canvas.getColorAt(20, 20, "activeLayer");
-    expect(undoneSample.r).toBe(255);
-    expect(undoneSample.b).toBe(0);
-    expect(undoneSample.a).toBe(initialA);
+    expect(canvas.getColorAt(20, 20, "activeLayer").hex).toBe("#0000ff");
+    canvas.undo();
+    expect(canvas.getColorAt(20, 20, "activeLayer").hex).toBe("#ff0000");
+    expect(canvas.getColorAt(20, 20, "activeLayer").a).toBe(initialA);
   });
 
-  it("should sync brush isAlphaLocked when updateLayer or setActiveLayer is called", () => {
+  it("syncs brush isAlphaLocked when updateLayer or setActiveLayer is called", () => {
     const active = canvas.getActiveLayer();
     expect(canvas.getBrush().isAlphaLocked).toBe(false);
 
     canvas.updateLayer(active.id, { alphaLock: true });
     expect(canvas.getBrush().isAlphaLocked).toBe(true);
 
-    canvas.updateLayer(active.id, { alphaLock: false });
+    const layer2 = canvas.createLayer({ name: "L2", alphaLock: false });
     expect(canvas.getBrush().isAlphaLocked).toBe(false);
+
+    canvas.setActiveLayer(active.id);
+    expect(canvas.getBrush().isAlphaLocked).toBe(true);
+    expect(layer2.alphaLock).toBe(false);
   });
 
-  it("should preserve flood fill state when drawing brush strokes afterwards", () => {
+  it("preserves fill pixels when drawing brush strokes afterwards", () => {
     canvas.fillActiveLayer("#ff0000");
-    let sample = canvas.getColorAt(20, 20, "activeLayer");
-    expect(sample.hex).toBe("#ff0000");
+    expect(canvas.getColorAt(20, 20, "activeLayer").hex).toBe("#ff0000");
 
-    // Simulate pointer down and brush rendering
-    const pointerEvent = new PointerEvent("pointerdown", {
-      clientX: 50,
-      clientY: 50,
-      pointerId: 1,
-    });
-    canvasEl.dispatchEvent(pointerEvent);
+    canvasEl.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        clientX: 50,
+        clientY: 50,
+        pointerId: 1,
+      }),
+    );
 
-    // Verify the filled color was NOT erased by brush stroke initialization
-    sample = canvas.getColorAt(20, 20, "activeLayer");
-    expect(sample.hex).toBe("#ff0000");
+    expect(canvas.getColorAt(20, 20, "activeLayer").hex).toBe("#ff0000");
   });
 
-  it("should draw rectangle with drawRectangle(options)", () => {
+  it("draws filled/stroked rectangle, ellipse, line, and text with verified geometry and undo", () => {
+    // 1. Rectangle with fill + stroke
     canvas.drawRectangle({
-      x: 5,
-      y: 5,
+      x: 10,
+      y: 10,
       width: 30,
-      height: 30,
+      height: 20,
       fillColor: "#00ffff",
-      strokeColor: "#000000",
+      strokeColor: "#111111",
       strokeWidth: 2,
     });
+    expect(canvas.getColorAt(25, 20, "activeLayer").hex).toBe("#00ffff");
+    expect(canvas.getColorAt(10, 10, "activeLayer").hex).toBe("#111111");
+    expect(canvas.getColorAt(5, 5, "activeLayer").a).toBe(0);
 
-    const sampleCenter = canvas.getColorAt(15, 15, "activeLayer");
-    expect(sampleCenter.hex).toBe("#00ffff");
-
-    expect(canvas.history.canUndo()).toBe(true);
-  });
-
-  it("should draw ellipse with drawEllipse(options)", () => {
+    // 2. Ellipse
     canvas.drawEllipse({
-      x: 50,
-      y: 50,
-      radiusX: 20,
-      radiusY: 20,
+      x: 70,
+      y: 30,
+      radiusX: 15,
+      radiusY: 10,
       fillColor: "#ff00ff",
+      stroke: false,
     });
+    expect(canvas.getColorAt(70, 30, "activeLayer").hex).toBe("#ff00ff");
+    expect(canvas.getColorAt(55, 20, "activeLayer").a).toBe(0); // outside corner of ellipse AABB
 
-    expect(canvas.history.canUndo()).toBe(true);
-  });
-
-  it("should draw line with drawLine(options)", () => {
+    // 3. Line
     canvas.drawLine({
       x1: 10,
-      y1: 10,
+      y1: 70,
       x2: 90,
-      y2: 10,
+      y2: 70,
       strokeColor: "#123456",
       strokeWidth: 4,
     });
+    expect(canvas.getColorAt(50, 70, "activeLayer").hex).toBe("#123456");
+    expect(canvas.getColorAt(50, 85, "activeLayer").a).toBe(0);
 
-    expect(canvas.history.canUndo()).toBe(true);
-  });
-
-  it("should rasterize text with drawText(text, x, y, style)", () => {
-    canvas.drawText("Test", 10, 10, {
-      fontSize: 20,
-      color: "#000000",
+    // 4. Text
+    canvas.drawText("Test", 10, 80, {
+      fontSize: 16,
+      color: "#abcdef",
     });
-
-    expect(canvas.history.canUndo()).toBe(true);
-    const entries = canvas.history.getEntries();
-    expect(entries[entries.length - 1].description).toContain(
+    expect(canvas.getColorAt(12, 85, "activeLayer").hex).toBe("#abcdef");
+    expect(canvas.history.getEntries().at(-1)?.description).toBe(
       'Draw text "Test"',
     );
+
+    // Undo text clears its pixels cleanly
+    canvas.undo();
+    expect(canvas.getColorAt(12, 85, "activeLayer").a).toBe(0);
+    // Line remains intact
+    expect(canvas.getColorAt(50, 70, "activeLayer").hex).toBe("#123456");
   });
 
-  it("should skip off-document commands without creating invalid history patches", () => {
+  it("skips completely off-document commands without pushing history patches", () => {
     expect(() => {
       canvas.drawRectangle({ x: 200, y: 200, width: 10, height: 10 });
       canvas.drawEllipse({ x: 200, y: 200, radiusX: 10, radiusY: 5 });
       canvas.drawLine({ x1: 200, y1: 200, x2: 300, y2: 300 });
       canvas.drawText("Outside", 200, 200);
+      canvas.drawText("", 10, 10);
     }).not.toThrow();
 
     expect(canvas.history.canUndo()).toBe(false);
+    expect(canvas.getActionLog()).toHaveLength(0);
   });
 });

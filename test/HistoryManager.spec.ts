@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   HistoryManager,
   CanvasStateHistoryEntry,
@@ -6,143 +6,130 @@ import {
   LayerDeletedHistoryEntry,
   LayerPropertyHistoryEntry,
   MoveLayerHistoryEntry,
-  HistoryContext,
+  type HistoryContext,
 } from "../src/HistoryManager";
-import type { Layer } from "../src/Layer";
+import { Layer } from "../src/Layer";
 import type { Brush } from "../src/Brush";
+import {
+  installCanvas2DMock,
+  type Canvas2DMockEnvironment,
+} from "./helpers/mockCanvas2D";
 
 describe("HistoryManager & HistoryEntries", () => {
+  let canvasEnv: Canvas2DMockEnvironment;
+
+  beforeEach(() => {
+    canvasEnv = installCanvas2DMock();
+  });
+
+  afterEach(() => {
+    canvasEnv.restore();
+    vi.restoreAllMocks();
+  });
+
   const createMockContext = () => {
     const layers: Layer[] = [];
+    let activeLayerId = "";
     const brush = {
       loadContext: vi.fn(),
+      isAlphaLocked: false,
     } as unknown as Brush;
 
     const context: HistoryContext = {
       getLayer: vi.fn((id) => layers.find((l) => l.id === id)),
       getLayers: vi.fn(() => layers),
-      getActiveLayer: vi.fn(() => layers[0]),
-      setActiveLayer: vi.fn(),
+      getActiveLayer: vi.fn(
+        () => layers.find((l) => l.id === activeLayerId) ?? layers[0],
+      ),
+      setActiveLayer: vi.fn((id: string) => {
+        activeLayerId = id;
+      }),
       renderLayers: vi.fn(),
       getBrush: vi.fn(() => brush),
-      deleteLayerOnly: vi.fn(),
-      insertLayerOnly: vi.fn(),
+      deleteLayerOnly: vi.fn((id: string) => {
+        const idx = layers.findIndex((l) => l.id === id);
+        if (idx !== -1) layers.splice(idx, 1);
+      }),
+      insertLayerOnly: vi.fn((layer: Layer, index: number) => {
+        layers.splice(index, 0, layer);
+      }),
       moveLayerOnly: vi.fn(),
     };
 
     return { context, layers, brush };
   };
 
-  const createMockLayer = (id: string, name: string) => {
-    const mockCtx = {
-      putImageData: vi.fn(),
-    };
-    const mockCanvas = {
-      getContext: vi.fn(() => mockCtx),
-    } as unknown as HTMLCanvasElement;
-
-    return {
-      id,
-      name,
-      canvas: mockCanvas,
-      visible: true,
-      opacity: 1,
-      blendMode: "source-over",
-      setOpacity: vi.fn(function (this: { opacity: number }, val: number) {
-        this.opacity = val;
-      }),
-    } as unknown as Layer;
-  };
-
-  describe("HistoryManager", () => {
-    it("should push entries and pop them during undo/redo", () => {
+  describe("HistoryManager core stack semantics", () => {
+    it("pushes, undoes, redoes, and clears entries while firing onHistoryChange accurately", () => {
       const manager = new HistoryManager(5);
+      const onChange = vi.fn();
+      manager.onHistoryChange = onChange;
+
       const entry1 = { undo: vi.fn(), redo: vi.fn() };
       const entry2 = { undo: vi.fn(), redo: vi.fn() };
 
       expect(manager.canUndo()).toBe(false);
       expect(manager.canRedo()).toBe(false);
+      expect(manager.getHistoryState()).toEqual({
+        canUndo: false,
+        canRedo: false,
+        index: 0,
+        length: 0,
+      });
 
       manager.push(entry1);
-      expect(manager.canUndo()).toBe(true);
-      expect(manager.canRedo()).toBe(false);
-
       manager.push(entry2);
-      expect(manager.canUndo()).toBe(true);
+      expect(onChange).toHaveBeenCalledTimes(2);
+      expect(manager.getHistoryState()).toEqual({
+        canUndo: true,
+        canRedo: false,
+        index: 2,
+        length: 2,
+      });
 
       manager.undo();
       expect(entry2.undo).toHaveBeenCalledTimes(1);
       expect(manager.canRedo()).toBe(true);
+      expect(onChange).toHaveBeenCalledTimes(3);
 
+      // Undoing on empty redo/undo stack shouldn't crash or fire extra spurious events if nothing happened
       manager.redo();
       expect(entry2.redo).toHaveBeenCalledTimes(1);
+      expect(manager.canRedo()).toBe(false);
+      expect(onChange).toHaveBeenCalledTimes(4);
+
+      // No-op redo when redoStack empty
+      manager.redo();
+      expect(onChange).toHaveBeenCalledTimes(4);
 
       manager.clear();
       expect(manager.canUndo()).toBe(false);
       expect(manager.canRedo()).toBe(false);
+      expect(onChange).toHaveBeenCalledTimes(5);
     });
 
-    it("should respect max stack size limits", () => {
-      const manager = new HistoryManager(2);
-      const entry1 = { undo: vi.fn(), redo: vi.fn() };
-      const entry2 = { undo: vi.fn(), redo: vi.fn() };
-      const entry3 = { undo: vi.fn(), redo: vi.fn() };
-
-      manager.push(entry1);
-      manager.push(entry2);
-      manager.push(entry3);
-
-      manager.undo(); // undoes entry3
-      expect(entry3.undo).toHaveBeenCalledTimes(1);
-
-      manager.undo(); // undoes entry2
-      expect(entry2.undo).toHaveBeenCalledTimes(1);
-
-      manager.undo(); // nothing left (entry1 was shifted out)
-      expect(entry1.undo).not.toHaveBeenCalled();
-    });
-
-    it("should return history summaries via getEntries()", () => {
-      const { context, layers } = createMockContext();
-      const mockLayer = createMockLayer("layer-1", "Layer 1");
-      layers.push(mockLayer);
-
-      const manager = new HistoryManager(10, context);
-      const entry1 = new CanvasStateHistoryEntry(
-        "layer-1",
-        { width: 50, height: 50 } as ImageData,
-        { width: 50, height: 50 } as ImageData,
-        context,
-        0,
-        0,
-        "Initial stroke",
-        "stroke",
-      );
-      const entry2 = new LayerCreatedHistoryEntry(
-        mockLayer,
-        context,
-        0,
-        "Created test layer",
-      );
-
-      manager.push(entry1);
-      manager.push(entry2);
-
-      const entries = manager.getEntries();
-      expect(entries.length).toBe(2);
-      expect(entries[0].type).toBe("stroke");
-      expect(entries[0].description).toBe("Initial stroke");
-      expect(entries[1].type).toBe("layer-create");
-      expect(entries[1].description).toBe("Created test layer");
-
-      manager.undo(); // undo entry2
-      const entriesAfterUndo = manager.getEntries();
-      expect(entriesAfterUndo.length).toBe(2);
-      expect(entriesAfterUndo[1].type).toBe("layer-create");
-    });
-
-    it("should navigate history timeline using goTo(index)", () => {
+    it("clears redoStack when pushing a new entry after undo", () => {
       const manager = new HistoryManager(10);
+      const e1 = { undo: vi.fn(), redo: vi.fn() };
+      const e2 = { undo: vi.fn(), redo: vi.fn() };
+      const e3 = { undo: vi.fn(), redo: vi.fn() };
+
+      manager.push(e1);
+      manager.push(e2);
+      manager.undo();
+      expect(manager.canRedo()).toBe(true);
+
+      manager.push(e3);
+      expect(manager.canRedo()).toBe(false);
+      expect(manager.getEntries()).toHaveLength(2);
+
+      manager.undo();
+      expect(e3.undo).toHaveBeenCalledTimes(1);
+      expect(e2.redo).not.toHaveBeenCalled();
+    });
+
+    it("enforces maxStackSize FIFO eviction in exact order", () => {
+      const manager = new HistoryManager(2);
       const e1 = { undo: vi.fn(), redo: vi.fn() };
       const e2 = { undo: vi.fn(), redo: vi.fn() };
       const e3 = { undo: vi.fn(), redo: vi.fn() };
@@ -151,306 +138,351 @@ describe("HistoryManager & HistoryEntries", () => {
       manager.push(e2);
       manager.push(e3);
 
-      expect(manager.getHistoryState().index).toBe(3);
+      expect(manager.getHistoryState()).toEqual({
+        canUndo: true,
+        canRedo: false,
+        index: 2,
+        length: 2,
+      });
 
-      // Jump to index 1 (undo e3, undo e2)
+      manager.undo();
+      expect(e3.undo).toHaveBeenCalledTimes(1);
+      manager.undo();
+      expect(e2.undo).toHaveBeenCalledTimes(1);
+      expect(manager.canUndo()).toBe(false);
+
+      manager.undo();
+      expect(e1.undo).not.toHaveBeenCalled();
+    });
+
+    it("navigates timeline using goTo(index), clamps out-of-bounds, and avoids firing onHistoryChange on no-op", () => {
+      const manager = new HistoryManager(10);
+      const onChange = vi.fn();
+      manager.onHistoryChange = onChange;
+
+      const e1 = { undo: vi.fn(), redo: vi.fn() };
+      const e2 = { undo: vi.fn(), redo: vi.fn() };
+      const e3 = { undo: vi.fn(), redo: vi.fn() };
+
+      manager.push(e1);
+      manager.push(e2);
+      manager.push(e3);
+      onChange.mockClear();
+
+      // Same index is a strict no-op
+      manager.goTo(3);
+      expect(onChange).not.toHaveBeenCalled();
+
       manager.goTo(1);
       expect(e3.undo).toHaveBeenCalledTimes(1);
       expect(e2.undo).toHaveBeenCalledTimes(1);
+      expect(e1.undo).not.toHaveBeenCalled();
       expect(manager.getHistoryState().index).toBe(1);
+      expect(onChange).toHaveBeenCalledTimes(1);
 
-      // Jump to index 3 (redo e2, redo e3)
       manager.goTo(3);
       expect(e2.redo).toHaveBeenCalledTimes(1);
       expect(e3.redo).toHaveBeenCalledTimes(1);
-      expect(manager.getHistoryState().index).toBe(3);
+      expect(onChange).toHaveBeenCalledTimes(2);
 
-      // Jump to index 0 (undo e3, e2, e1)
-      manager.goTo(0);
+      manager.goTo(-10);
       expect(manager.getHistoryState().index).toBe(0);
-
-      // Jump out of bounds should clamp safely
-      manager.goTo(-5);
-      expect(manager.getHistoryState().index).toBe(0);
+      expect(e1.undo).toHaveBeenCalledTimes(1);
 
       manager.goTo(100);
       expect(manager.getHistoryState().index).toBe(3);
     });
 
-    it("should support pushPatch with options object and positional arguments", () => {
+    it("throws when pushPatch is called without a registered HistoryContext", () => {
+      const manager = new HistoryManager(10);
+      const img = {
+        width: 10,
+        height: 10,
+        data: new Uint8ClampedArray(400),
+      } as ImageData;
+      expect(() => manager.pushPatch(img, img)).toThrow(
+        "Cannot push patch without a registered HistoryContext",
+      );
+    });
+
+    it("supports pushPatch with both options object and positional arguments and defaults to active layer", () => {
       const { context, layers } = createMockContext();
-      const mockLayer = createMockLayer("layer-1", "Layer 1");
-      layers.push(mockLayer);
+      const layer = new Layer({
+        id: "layer-1",
+        name: "Layer 1",
+        width: 50,
+        height: 50,
+      });
+      layers.push(layer);
+      context.setActiveLayer(layer.id);
 
       const manager = new HistoryManager(10, context);
-      const onHistoryChange = vi.fn();
-      manager.onHistoryChange = onHistoryChange;
+      const beforeImg = layer.ctx.getImageData(0, 0, 20, 20);
+      const afterImg = layer.ctx.getImageData(0, 0, 20, 20);
 
-      const beforeImg = { width: 100, height: 100 } as ImageData;
-      const afterImg = { width: 100, height: 100 } as ImageData;
-
-      // Object format
       manager.pushPatch({
-        layerId: "layer-1",
         beforeData: beforeImg,
         afterData: afterImg,
         x: 10,
-        y: 20,
-        description: "Text Tool Patch",
+        y: 15,
+        description: "Auto layer patch",
       });
 
-      expect(manager.canUndo()).toBe(true);
-      expect(onHistoryChange).toHaveBeenCalled();
+      manager.pushPatch(
+        beforeImg,
+        afterImg,
+        5,
+        5,
+        "layer-1",
+        "Positional patch",
+      );
 
-      let entries = manager.getEntries();
-      expect(entries[0].description).toBe("Text Tool Patch");
-      expect(entries[0].type).toBe("patch");
-      expect(entries[0].bounds).toEqual({
-        x: 10,
-        y: 20,
-        width: 100,
-        height: 100,
+      const entries = manager.getEntries();
+      expect(entries).toHaveLength(2);
+      expect(entries[0]).toMatchObject({
+        type: "patch",
+        layerId: "layer-1",
+        description: "Auto layer patch",
+        bounds: { x: 10, y: 15, width: 20, height: 20 },
       });
-
-      // Positional format
-      manager.pushPatch(beforeImg, afterImg, 5, 5, "layer-1", "Filter Patch");
-      entries = manager.getEntries();
-      expect(entries[1].description).toBe("Filter Patch");
-      expect(entries[1].type).toBe("patch");
+      expect(entries[1]).toMatchObject({
+        type: "patch",
+        layerId: "layer-1",
+        description: "Positional patch",
+        bounds: { x: 5, y: 5, width: 20, height: 20 },
+      });
     });
   });
 
-  describe("CanvasStateHistoryEntry", () => {
-    it("should apply sparse image data updates during undo and redo", () => {
-      const { context, layers } = createMockContext();
-      const mockLayer = createMockLayer("layer-1", "Layer 1");
-      layers.push(mockLayer);
+  describe("Entry implementations", () => {
+    it("CanvasStateHistoryEntry restores real pixels and reloads brush context ONLY for active layer", () => {
+      const { context, layers, brush } = createMockContext();
+      const layer1 = new Layer({
+        id: "layer-1",
+        name: "L1",
+        width: 40,
+        height: 40,
+      });
+      const layer2 = new Layer({
+        id: "layer-2",
+        name: "L2",
+        width: 40,
+        height: 40,
+      });
+      layers.push(layer1, layer2);
+      context.setActiveLayer("layer-2");
 
-      const beforeData = {} as ImageData;
-      const afterData = {} as ImageData;
-      const entry = new CanvasStateHistoryEntry(
+      const beforeData = layer1.ctx.getImageData(10, 10, 10, 10);
+      layer1.ctx.fillStyle = "#ff0000";
+      layer1.ctx.fillRect(10, 10, 10, 10);
+      const afterData = layer1.ctx.getImageData(10, 10, 10, 10);
+
+      const entryOnInactive = new CanvasStateHistoryEntry(
         "layer-1",
         beforeData,
         afterData,
         context,
-        15,
-        25,
+        10,
+        10,
       );
 
-      const ctx2d = mockLayer.canvas.getContext("2d") as unknown as {
-        putImageData: ReturnType<typeof vi.fn>;
-      };
-      const putImageDataMock = ctx2d ? ctx2d.putImageData : null;
+      // layer-1 is NOT active -> brush.loadContext must not be called
+      entryOnInactive.undo();
+      expect(canvasEnv.getPixel(layer1.canvas, 12, 12)).toEqual([0, 0, 0, 0]);
+      expect(brush.loadContext).not.toHaveBeenCalled();
 
-      entry.undo();
-      expect(putImageDataMock).toHaveBeenCalledWith(beforeData, 15, 25);
-      expect(context.renderLayers).toHaveBeenCalled();
+      entryOnInactive.redo();
+      expect(canvasEnv.getPixel(layer1.canvas, 12, 12)).toEqual([
+        255, 0, 0, 255,
+      ]);
+      expect(brush.loadContext).not.toHaveBeenCalled();
 
-      entry.redo();
-      expect(putImageDataMock).toHaveBeenCalledWith(afterData, 15, 25);
-      expect(context.renderLayers).toHaveBeenCalled();
+      // Switch active layer to layer-1 -> now brush.loadContext MUST be called
+      context.setActiveLayer("layer-1");
+      entryOnInactive.undo();
+      expect(brush.loadContext).toHaveBeenCalledWith(layer1.canvas);
     });
-  });
 
-  describe("LayerCreatedHistoryEntry", () => {
-    it("should delete layer on undo and insert it on redo", () => {
-      const { context, layers } = createMockContext();
-      const mockLayer = createMockLayer("layer-1", "Layer 1");
-
-      const entry = new LayerCreatedHistoryEntry(mockLayer, context);
-
-      entry.undo();
-      expect(context.deleteLayerOnly).toHaveBeenCalledWith("layer-1");
-
-      entry.redo();
-      expect(context.insertLayerOnly).toHaveBeenCalledWith(
-        mockLayer,
-        layers.length,
-      );
-      expect(context.setActiveLayer).toHaveBeenCalledWith("layer-1");
-    });
-  });
-
-  describe("LayerDeletedHistoryEntry", () => {
-    it("should insert layer back on undo and delete it on redo", () => {
+    it("LayerDeletedHistoryEntry only restores active layer when wasActive is true", () => {
       const { context } = createMockContext();
-      const mockLayer = createMockLayer("layer-1", "Layer 1");
+      const layer = new Layer({
+        id: "l-del",
+        name: "Del",
+        width: 10,
+        height: 10,
+      });
 
-      const entry = new LayerDeletedHistoryEntry(mockLayer, 2, true, context);
+      const inactiveDel = new LayerDeletedHistoryEntry(
+        layer,
+        1,
+        false,
+        context,
+      );
+      inactiveDel.undo();
+      expect(context.insertLayerOnly).toHaveBeenCalledWith(layer, 1);
+      expect(context.setActiveLayer).not.toHaveBeenCalled();
 
-      entry.undo();
-      expect(context.insertLayerOnly).toHaveBeenCalledWith(mockLayer, 2);
-      expect(context.setActiveLayer).toHaveBeenCalledWith("layer-1");
-
-      entry.redo();
-      expect(context.deleteLayerOnly).toHaveBeenCalledWith("layer-1");
+      const activeDel = new LayerDeletedHistoryEntry(layer, 1, true, context);
+      activeDel.undo();
+      expect(context.setActiveLayer).toHaveBeenCalledWith("l-del");
     });
-  });
 
-  describe("LayerPropertyHistoryEntry", () => {
-    it("should undo and redo opacity, name, visible, and blendMode modifications", () => {
-      const { context, layers } = createMockContext();
-      const mockLayer = createMockLayer("layer-1", "Layer 1");
-      layers.push(mockLayer);
+    it("LayerPropertyHistoryEntry syncs brush.isAlphaLocked on active layer and handles all 6 properties", () => {
+      const { context, layers, brush } = createMockContext();
+      const layer1 = new Layer({
+        id: "layer-1",
+        name: "L1",
+        width: 20,
+        height: 20,
+      });
+      const layer2 = new Layer({
+        id: "layer-2",
+        name: "L2",
+        width: 20,
+        height: 20,
+      });
+      layers.push(layer1, layer2);
+      context.setActiveLayer("layer-1");
 
-      // 1. Name
-      const nameEntry = new LayerPropertyHistoryEntry(
+      const alphaEntry = new LayerPropertyHistoryEntry(
         "layer-1",
-        "name",
-        "Old Name",
-        "New Name",
-        context,
-      );
-      nameEntry.undo();
-      expect(mockLayer.name).toBe("Old Name");
-      nameEntry.redo();
-      expect(mockLayer.name).toBe("New Name");
-
-      // 2. Opacity
-      const opacityEntry = new LayerPropertyHistoryEntry(
-        "layer-1",
-        "opacity",
-        0.5,
-        0.8,
-        context,
-      );
-      opacityEntry.undo();
-      expect(mockLayer.opacity).toBe(0.5);
-      opacityEntry.redo();
-      expect(mockLayer.opacity).toBe(0.8);
-
-      // 3. Visible
-      const visibleEntry = new LayerPropertyHistoryEntry(
-        "layer-1",
-        "visible",
+        "alphaLock",
         false,
         true,
         context,
       );
-      visibleEntry.undo();
-      expect(mockLayer.visible).toBe(false);
-      visibleEntry.redo();
-      expect(mockLayer.visible).toBe(true);
+      alphaEntry.redo();
+      expect(layer1.alphaLock).toBe(true);
+      expect(brush.isAlphaLocked).toBe(true);
+      alphaEntry.undo();
+      expect(layer1.alphaLock).toBe(false);
+      expect(brush.isAlphaLocked).toBe(false);
 
-      // 4. BlendMode
-      const blendEntry = new LayerPropertyHistoryEntry(
-        "layer-1",
-        "blendMode",
-        "multiply",
-        "screen",
+      // Inactive layer alphaLock change must NOT mutate brush.isAlphaLocked
+      brush.isAlphaLocked = false;
+      const inactiveAlphaEntry = new LayerPropertyHistoryEntry(
+        "layer-2",
+        "alphaLock",
+        false,
+        true,
         context,
       );
-      blendEntry.undo();
-      expect(mockLayer.blendMode).toBe("multiply");
-      blendEntry.redo();
-      expect(mockLayer.blendMode).toBe("screen");
+      inactiveAlphaEntry.redo();
+      expect(layer2.alphaLock).toBe(true);
+      expect(brush.isAlphaLocked).toBe(false);
+
+      const lockedEntry = new LayerPropertyHistoryEntry(
+        "layer-1",
+        "locked",
+        false,
+        true,
+        context,
+      );
+      lockedEntry.redo();
+      expect(layer1.locked).toBe(true);
+      lockedEntry.undo();
+      expect(layer1.locked).toBe(false);
     });
-  });
 
-  describe("MoveLayerHistoryEntry", () => {
-    it("should reorder layers on undo and redo", () => {
-      const { context } = createMockContext();
-      const entry = new MoveLayerHistoryEntry("layer-1", 1, 3, context);
-
-      entry.undo();
-      expect(context.moveLayerOnly).toHaveBeenCalledWith("layer-1", 1);
-
-      entry.redo();
-      expect(context.moveLayerOnly).toHaveBeenCalledWith("layer-1", 3);
-    });
-  });
-
-  describe("Multi-Layer Global History Regression Suite", () => {
-    it("should correctly route undo and redo across arbitrary active layer switches", () => {
+    it("routes multi-layer undo/redo patches accurately across arbitrary active layer switches", () => {
       const { context, layers } = createMockContext();
-      const layer1 = createMockLayer("layer-1", "Layer 1");
-      const layer2 = createMockLayer("layer-2", "Layer 2");
-      const layer3 = createMockLayer("layer-3", "Layer 3");
-      layers.push(layer1, layer2, layer3);
-
-      let currentActive = layer1;
-      (
-        context.getActiveLayer as unknown as ReturnType<typeof vi.fn>
-      ).mockImplementation(() => currentActive);
-      (
-        context.setActiveLayer as unknown as ReturnType<typeof vi.fn>
-      ).mockImplementation((id: string) => {
-        const found = layers.find((l) => l.id === id);
-        if (found) currentActive = found;
+      const layer1 = new Layer({
+        id: "layer-1",
+        name: "L1",
+        width: 40,
+        height: 40,
       });
+      const layer2 = new Layer({
+        id: "layer-2",
+        name: "L2",
+        width: 40,
+        height: 40,
+      });
+      const layer3 = new Layer({
+        id: "layer-3",
+        name: "L3",
+        width: 40,
+        height: 40,
+      });
+      layers.push(layer1, layer2, layer3);
 
       const manager = new HistoryManager(20, context);
 
-      const imgA1 = { width: 10, height: 10 } as ImageData;
-      const imgA2 = { width: 10, height: 10 } as ImageData;
-      const imgB1 = { width: 10, height: 10 } as ImageData;
-      const imgB2 = { width: 10, height: 10 } as ImageData;
-      const imgC1 = { width: 10, height: 10 } as ImageData;
-      const imgC2 = { width: 10, height: 10 } as ImageData;
+      const recordRectPatch = (
+        layer: Layer,
+        color: string,
+        x: number,
+        y: number,
+      ) => {
+        context.setActiveLayer(layer.id);
+        const beforeData = layer.ctx.getImageData(x, y, 10, 10);
+        layer.ctx.fillStyle = color;
+        layer.ctx.fillRect(x, y, 10, 10);
+        const afterData = layer.ctx.getImageData(x, y, 10, 10);
+        manager.pushPatch({
+          layerId: layer.id,
+          beforeData,
+          afterData,
+          x,
+          y,
+          description: `Rect ${color}`,
+        });
+      };
 
-      // 1. Draw on Layer 1 (active is Layer 1)
-      currentActive = layer1;
-      manager.pushPatch({
-        layerId: "layer-1",
-        beforeData: imgA1,
-        afterData: imgA2,
-        x: 0,
-        y: 0,
-        description: "Stroke on Layer 1",
-      });
+      recordRectPatch(layer1, "#ff0000", 0, 0);
+      recordRectPatch(layer2, "#00ff00", 5, 5);
+      recordRectPatch(layer3, "#0000ff", 15, 15);
 
-      // 2. User switches to Layer 2, draws on Layer 2
-      currentActive = layer2;
-      manager.pushPatch({
-        layerId: "layer-2",
-        beforeData: imgB1,
-        afterData: imgB2,
-        x: 5,
-        y: 5,
-        description: "Stroke on Layer 2",
-      });
+      context.setActiveLayer(layer1.id);
 
-      // 3. User switches to Layer 3, draws on Layer 3
-      currentActive = layer3;
-      manager.pushPatch({
-        layerId: "layer-3",
-        beforeData: imgC1,
-        afterData: imgC2,
-        x: 15,
-        y: 15,
-        description: "Stroke on Layer 3",
-      });
-
-      // 4. Now active layer is Layer 1 again
-      currentActive = layer1;
-
-      // Undo step 1: Undoes stroke on Layer 3
-      const ctxL3 = layer3.canvas.getContext("2d")!;
+      // Undo step 1 -> Layer 3 becomes transparent even while Layer 1 is active
       manager.undo();
-      expect(ctxL3.putImageData).toHaveBeenCalledWith(imgC1, 15, 15);
+      expect(canvasEnv.getPixel(layer3.canvas, 17, 17)).toEqual([0, 0, 0, 0]);
+      expect(canvasEnv.getPixel(layer2.canvas, 7, 7)).toEqual([0, 255, 0, 255]);
 
-      // Undo step 2: Undoes stroke on Layer 2 even though currentActive is Layer 1
-      const ctxL2 = layer2.canvas.getContext("2d")!;
+      // Undo step 2 -> Layer 2 becomes transparent
       manager.undo();
-      expect(ctxL2.putImageData).toHaveBeenCalledWith(imgB1, 5, 5);
+      expect(canvasEnv.getPixel(layer2.canvas, 7, 7)).toEqual([0, 0, 0, 0]);
+      expect(canvasEnv.getPixel(layer1.canvas, 2, 2)).toEqual([255, 0, 0, 255]);
 
-      // Switch active layer to Layer 3 and undo step 3: Undoes stroke on Layer 1
-      currentActive = layer3;
-      const ctxL1 = layer1.canvas.getContext("2d")!;
+      // Undo step 3 -> Layer 1 becomes transparent
       manager.undo();
-      expect(ctxL1.putImageData).toHaveBeenCalledWith(imgA1, 0, 0);
+      expect(canvasEnv.getPixel(layer1.canvas, 2, 2)).toEqual([0, 0, 0, 0]);
 
-      // Redo step 1: Redoes stroke on Layer 1
+      // Redo back sequentially restores exact RGB colors
       manager.redo();
-      expect(ctxL1.putImageData).toHaveBeenCalledWith(imgA2, 0, 0);
+      expect(canvasEnv.getPixel(layer1.canvas, 2, 2)).toEqual([255, 0, 0, 255]);
+      manager.redo();
+      expect(canvasEnv.getPixel(layer2.canvas, 7, 7)).toEqual([0, 255, 0, 255]);
+      manager.redo();
+      expect(canvasEnv.getPixel(layer3.canvas, 17, 17)).toEqual([
+        0, 0, 255, 255,
+      ]);
+    });
 
-      // Redo step 2: Redoes stroke on Layer 2
-      manager.redo();
-      expect(ctxL2.putImageData).toHaveBeenCalledWith(imgB2, 5, 5);
+    it("LayerCreatedHistoryEntry & MoveLayerHistoryEntry invoke context methods with expected indices", () => {
+      const { context, layers } = createMockContext();
+      const layer = new Layer({
+        id: "l-new",
+        name: "Created",
+        width: 10,
+        height: 10,
+      });
+      const created = new LayerCreatedHistoryEntry(layer, context, 1);
 
-      // Redo step 3: Redoes stroke on Layer 3
-      manager.redo();
-      expect(ctxL3.putImageData).toHaveBeenCalledWith(imgC2, 15, 15);
+      created.redo();
+      expect(context.insertLayerOnly).toHaveBeenCalledWith(layer, 1);
+      expect(context.setActiveLayer).toHaveBeenCalledWith("l-new");
+
+      created.undo();
+      expect(context.deleteLayerOnly).toHaveBeenCalledWith("l-new");
+      expect(layers).toHaveLength(0);
+
+      const moveEntry = new MoveLayerHistoryEntry("l-new", 0, 2, context);
+      moveEntry.undo();
+      expect(context.moveLayerOnly).toHaveBeenCalledWith("l-new", 0);
+      moveEntry.redo();
+      expect(context.moveLayerOnly).toHaveBeenCalledWith("l-new", 2);
     });
   });
 });

@@ -1,194 +1,128 @@
-import { describe, expect, it, beforeAll, beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Canvas } from "../src/Canvas";
 import type { CanvasAction, StrokeAction } from "../src/types/actions";
-
-const mockBrushInstance = {
-  isSmooth: true,
-  isSpacing: true,
-  config: { size: 10 },
-  putPoint: vi.fn(),
-  render: vi.fn(),
-  flush: vi.fn(async () => {}),
-  finalizeStroke: vi.fn((cb: () => void) => cb()),
-  clear: vi.fn(),
-  loadConfig: vi.fn(),
-  loadImageAsync: vi.fn(),
-  loadContext: vi.fn(),
-  syncOriCanvas: vi.fn(),
-};
-
-vi.mock("../src/Brush", () => {
-  return {
-    Brush: vi.fn(function () {
-      return mockBrushInstance;
-    }),
-  };
-});
-
-beforeAll(() => {
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
-    function (contextId: string) {
-      if (contextId === "2d") {
-        return {
-          scale: vi.fn(),
-          setTransform: vi.fn(),
-          clearRect: vi.fn(),
-          drawImage: vi.fn(),
-          getImageData: vi.fn(() => ({
-            data: new Uint8ClampedArray(400),
-            width: 10,
-            height: 10,
-          })),
-          putImageData: vi.fn(),
-          save: vi.fn(),
-          restore: vi.fn(),
-          beginPath: vi.fn(),
-          closePath: vi.fn(),
-          fill: vi.fn(),
-          stroke: vi.fn(),
-          ellipse: vi.fn(),
-          rect: vi.fn(),
-          roundRect: vi.fn(),
-          moveTo: vi.fn(),
-          lineTo: vi.fn(),
-          fillText: vi.fn(),
-          measureText: vi.fn(() => ({ width: 50 })),
-          translate: vi.fn(),
-          rotate: vi.fn(),
-          fillRect: vi.fn(),
-        } as unknown as CanvasRenderingContext2D;
-      }
-      return null;
-    },
-  );
-
-  vi.spyOn(
-    HTMLCanvasElement.prototype,
-    "getBoundingClientRect",
-  ).mockImplementation(() => ({
-    left: 0,
-    top: 0,
-    right: 500,
-    bottom: 400,
-    width: 500,
-    height: 400,
-    x: 0,
-    y: 0,
-    toJSON: () => {},
-  }));
-});
+import {
+  installCanvas2DMock,
+  type Canvas2DMockEnvironment,
+} from "./helpers/mockCanvas2D";
 
 describe("Operation Log & Action Replay API", () => {
+  let canvasEnv: Canvas2DMockEnvironment;
   let canvasEl: HTMLCanvasElement;
   let painter: Canvas;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    canvasEnv = installCanvas2DMock();
+    vi.spyOn(
+      HTMLCanvasElement.prototype,
+      "getBoundingClientRect",
+    ).mockImplementation(() => ({
+      left: 0,
+      top: 0,
+      right: 200,
+      bottom: 160,
+      width: 200,
+      height: 160,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    }));
+
     canvasEl = document.createElement("canvas");
     painter = new Canvas({
       canvas: canvasEl,
-      document: { width: 500, height: 400 },
+      document: { width: 200, height: 160 },
     });
   });
 
+  afterEach(() => {
+    canvasEnv.restore();
+    vi.restoreAllMocks();
+  });
+
   describe("Action Recording and Log Management", () => {
-    it("records layer creation and emits action:record", () => {
+    it("records layer creation, metadata updates, duplication, movement, and deletion", () => {
       const actionListener = vi.fn();
       painter.on("action:record", actionListener);
 
-      const layer2 = painter.createLayer("Layer 2");
-
-      expect(actionListener).toHaveBeenCalledTimes(1);
-      const action: CanvasAction = actionListener.mock.calls[0][0];
-      expect(action.type).toBe("createLayer");
-      expect(action.layerId).toBe(layer2.id);
-      if (action.type === "createLayer") {
-        expect(action.name).toBe("Layer 2");
-      }
+      const layer2 = painter.createLayer("Ink");
+      painter.updateLayer(layer2.id, { opacity: 0.6, visible: false });
+      const dup = painter.duplicateLayer(layer2.id);
+      painter.moveLayer(dup.id, 0);
+      painter.deleteLayer(dup.id);
 
       const log = painter.getActionLog();
-      expect(log.length).toBe(1);
-      expect(log[0].id).toBeDefined();
-      expect(log[0].timestamp).toBeDefined();
+      expect(log.map((a) => a.type)).toEqual([
+        "createLayer",
+        "setLayerProperties",
+        "duplicateLayer",
+        "moveLayer",
+        "deleteLayer",
+      ]);
+      expect(actionListener).toHaveBeenCalledTimes(5);
+      expect(log[0].id).toBeTruthy();
+      expect(typeof log[0].timestamp).toBe("number");
     });
 
-    it("records vector shape commands", () => {
-      const activeLayer = painter.getActiveLayer();
+    it("records vector shape commands, fills, and stroke:record events", async () => {
+      const strokeListener = vi.fn();
+      painter.on("stroke:record", strokeListener);
 
       painter.drawRectangle({
         x: 10,
         y: 10,
-        width: 50,
-        height: 50,
+        width: 30,
+        height: 30,
         fillColor: "#ff0000",
       });
-      painter.drawEllipse({ x: 100, y: 100, radiusX: 20, radiusY: 30 });
-      painter.drawLine({ x1: 0, y1: 0, x2: 100, y2: 100 });
-      painter.drawText("Hello", 10, 20);
-
-      const log = painter.getActionLog();
-      expect(log.length).toBe(4);
-      expect(log[0].type).toBe("drawRectangle");
-      expect(log[1].type).toBe("drawEllipse");
-      expect(log[2].type).toBe("drawLine");
-      expect(log[3].type).toBe("drawText");
-
-      const rectangleAction = log[0];
-      if (rectangleAction.type !== "drawRectangle") {
-        throw new Error("Expected first action to be a rectangle");
-      }
-      expect(rectangleAction.layerId).toBe(activeLayer.id);
-    });
-
-    it("records fill and flood fill actions", () => {
+      painter.drawEllipse({ x: 80, y: 80, radiusX: 15, radiusY: 15 });
+      painter.drawLine({ x1: 0, y1: 0, x2: 50, y2: 50 });
+      painter.drawText("Hello", 10, 100);
       painter.fillActiveLayer("#00ff00");
-      painter.floodFill(25, 25, "#0000ff", 10);
+      painter.floodFill(25, 25, "#0000ff", 5);
 
-      const log = painter.getActionLog();
-      expect(log.length).toBe(2);
-      expect(log[0].type).toBe("fillLayer");
-      expect(log[1].type).toBe("floodFill");
-    });
-
-    it("records stroke actions and emits stroke:record event", () => {
-      const strokeListener = vi.fn();
-      painter.on("stroke:record", strokeListener);
-
-      const pointerDown = new PointerEvent("pointerdown", {
-        clientX: 10,
-        clientY: 10,
-      });
-      const pointerMove = new PointerEvent("pointermove", {
-        clientX: 20,
-        clientY: 20,
-      });
-      const pointerUp = new PointerEvent("pointerup", {
-        clientX: 20,
-        clientY: 20,
-      });
-
-      canvasEl.dispatchEvent(pointerDown);
-      canvasEl.dispatchEvent(pointerMove);
-      window.dispatchEvent(pointerUp);
+      canvasEl.dispatchEvent(
+        new PointerEvent("pointerdown", {
+          clientX: 20,
+          clientY: 20,
+          pointerId: 1,
+        }),
+      );
+      canvasEl.dispatchEvent(
+        new PointerEvent("pointermove", {
+          clientX: 60,
+          clientY: 60,
+          pointerId: 1,
+        }),
+      );
+      window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1 }));
+      await painter.brush.flush();
 
       expect(strokeListener).toHaveBeenCalledTimes(1);
       const strokeAction: StrokeAction = strokeListener.mock.calls[0][0];
       expect(strokeAction.type).toBe("stroke");
-      expect(strokeAction.points.length).toBeGreaterThanOrEqual(2);
-    });
+      expect(strokeAction.points).toEqual([
+        { x: 20, y: 20, pressure: 1 },
+        { x: 60, y: 60, pressure: 1 },
+      ]);
 
-    it("clears action log using clearActionLog()", () => {
-      painter.createLayer("Layer 2");
-      painter.fillActiveLayer("#ffffff");
-      expect(painter.getActionLog().length).toBe(2);
+      expect(painter.getActionLog().map((a) => a.type)).toEqual([
+        "drawRectangle",
+        "drawEllipse",
+        "drawLine",
+        "drawText",
+        "fillLayer",
+        "floodFill",
+        "stroke",
+      ]);
 
       painter.clearActionLog();
-      expect(painter.getActionLog().length).toBe(0);
+      expect(painter.getActionLog()).toEqual([]);
     });
   });
 
   describe("Action Replay System", () => {
-    it("replays single actions without appending to action log during replay", async () => {
+    it("replays single actions cleanly with expected pixel effects and without polluting action log", async () => {
       const activeLayer = painter.getActiveLayer();
 
       const action: CanvasAction = {
@@ -196,67 +130,91 @@ describe("Operation Log & Action Replay API", () => {
         id: "rect-1",
         timestamp: Date.now(),
         layerId: activeLayer.id,
-        options: { x: 5, y: 5, width: 20, height: 20, fillColor: "#0000ff" },
+        options: {
+          x: 10,
+          y: 10,
+          width: 30,
+          height: 30,
+          fillColor: "#0000ff",
+          stroke: false,
+        },
       };
 
       await painter.replayAction(action);
 
-      // Verify that replaying did not pollute the recorded action log
-      expect(painter.getActionLog().length).toBe(0);
+      expect(painter.getActionLog()).toHaveLength(0);
+      expect(painter.getColorAt(25, 25, "activeLayer").hex).toBe("#0000ff");
     });
 
-    it("replays a full stream of recorded actions onto another canvas", async () => {
-      painter.createLayer("Background");
+    it("replays a full multi-layer action stream onto another canvas and reproduces identical pixels & hierarchy", async () => {
       painter.fillActiveLayer("#ff0000");
-      painter.drawRectangle({ x: 0, y: 0, width: 100, height: 100 });
+      const ink = painter.createLayer({ name: "Ink", opacity: 1 });
+      painter.drawRectangle({
+        x: 20,
+        y: 20,
+        width: 40,
+        height: 40,
+        fillColor: "#00ff00",
+        stroke: false,
+      });
+      painter.floodFill(30, 30, "#ffff00");
+      painter.updateLayer(ink.id, { opacity: 0.5 });
 
       const recordedLog = painter.getActionLog();
-      expect(recordedLog.length).toBe(3);
 
-      const targetCanvasEl = document.createElement("canvas");
+      const targetEl = document.createElement("canvas");
       const targetPainter = new Canvas({
-        canvas: targetCanvasEl,
-        document: { width: 500, height: 400 },
+        canvas: targetEl,
+        document: { width: 200, height: 160 },
       });
 
       const onAction = vi.fn();
       const onProgress = vi.fn();
 
-      await targetPainter.replay(recordedLog, {
-        onAction,
-        onProgress,
-      });
+      await targetPainter.replay(recordedLog, { onAction, onProgress });
 
-      expect(onAction).toHaveBeenCalledTimes(3);
-      expect(onProgress).toHaveBeenCalledTimes(3);
-      expect(onProgress).toHaveBeenLastCalledWith(1, 3, 3);
-
-      // Verify target canvas has 2 layers now (initial default + created Background)
-      expect(targetPainter.getLayers().length).toBe(2);
+      expect(onAction).toHaveBeenCalledTimes(recordedLog.length);
+      expect(onProgress).toHaveBeenLastCalledWith(
+        1,
+        recordedLog.length,
+        recordedLog.length,
+      );
+      expect(targetPainter.getActionLog()).toHaveLength(0);
+      expect(targetPainter.getLayers()).toHaveLength(2);
+      expect(targetPainter.getLayers()[1].name).toBe("Ink");
+      expect(targetPainter.getLayers()[1].opacity).toBe(0.5);
+      expect(targetPainter.getColorAt(30, 30, "activeLayer").hex).toBe(
+        "#ffff00",
+      );
     });
 
-    it("replays strokes recorded on a different initial layer ID", async () => {
-      const sourceLayer = painter.getActiveLayer();
+    it("replays stroke actions onto a fresh canvas and restores previous brush config afterwards", async () => {
+      const targetEl = document.createElement("canvas");
+      const targetPainter = new Canvas({
+        canvas: targetEl,
+        document: { width: 200, height: 160 },
+        brush: { size: 33, color: "#111111" },
+      });
+
       const action: StrokeAction = {
         type: "stroke",
-        layerId: sourceLayer.id,
-        brushConfig: { size: 10 },
+        layerId: "foreign-layer-id",
+        brushConfig: { size: 12, color: "#ff0000", opacity: 1, flow: 1 },
         points: [
-          { x: 10, y: 10, pressure: 0.5 },
-          { x: 20, y: 20, pressure: 0.8 },
+          { x: 20, y: 20, pressure: 1 },
+          { x: 60, y: 20, pressure: 1 },
         ],
       };
 
-      const targetCanvasEl = document.createElement("canvas");
-      const targetPainter = new Canvas({
-        canvas: targetCanvasEl,
-        document: { width: 500, height: 400 },
-      });
-
       await targetPainter.replay([action]);
 
-      expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(10, 10, 0.5);
-      expect(mockBrushInstance.putPoint).toHaveBeenCalledWith(20, 20, 0.8);
+      // Stroke drew red pixels onto the fallback active layer
+      expect(targetPainter.getColorAt(40, 20, "activeLayer").hex).toBe(
+        "#ff0000",
+      );
+      // Original brush config restored after replay
+      expect(targetPainter.brush.config.size).toBe(33);
+      expect(targetPainter.brush.config.color).toBe("#111111");
       expect(targetPainter.getActionLog()).toHaveLength(0);
     });
   });

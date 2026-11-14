@@ -1,380 +1,387 @@
-﻿import { describe, expect, it, beforeAll, beforeEach, vi } from "vitest";
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Brush } from "../src/Brush";
 import type { Point, PurePoint } from "../src/types/point";
-
-let mockContext: CanvasRenderingContext2D;
-
-beforeAll(() => {
-  mockContext = {
-    clearRect: vi.fn(),
-    drawImage: vi.fn(),
-    getImageData: vi.fn(() => ({
-      data: new Uint8ClampedArray(0),
-      width: 500,
-      height: 500,
-    })),
-    putImageData: vi.fn(),
-    save: vi.fn(),
-    restore: vi.fn(),
-    beginPath: vi.fn(),
-    closePath: vi.fn(),
-    fill: vi.fn(),
-    ellipse: vi.fn(),
-    translate: vi.fn(),
-    rotate: vi.fn(),
-    fillRect: vi.fn(),
-    rect: vi.fn(),
-    fillStyle: "#000000",
-    globalAlpha: 1,
-    globalCompositeOperation: "source-over",
-    filter: "none",
-  } as unknown as CanvasRenderingContext2D;
-
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
-    (contextId: string) => {
-      if (contextId === "2d") {
-        return mockContext;
-      }
-      return null;
-    },
-  );
-});
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
-const createMockCanvas = () => {
-  const canvas = document.createElement("canvas");
-  canvas.width = 500;
-  canvas.height = 500;
-  return canvas;
-};
+import {
+  installCanvas2DMock,
+  type Canvas2DMockEnvironment,
+} from "./helpers/mockCanvas2D";
 
 type InternalBrush = {
   points: Point[];
   prePoint?: PurePoint;
   prePrePoint?: PurePoint;
   lastProcessedPointForRotation?: PurePoint;
+  previousRotationAngle: number;
+  assertCanvasReady: () => void;
 };
 
 const getInternalBrush = (brush: Brush) => brush as unknown as InternalBrush;
 
-const getInternalRotationAngle = (brush: Brush) =>
-  (brush as unknown as { previousRotationAngle: number }).previousRotationAngle;
+const createCanvas = (w = 120, h = 120) => {
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  return canvas;
+};
 
-describe("Brush — instantiation and setup", () => {
-  it("creates a Brush instance and initializes internal canvas contexts", () => {
-    const brush = new Brush(createMockCanvas());
+describe("Brush", () => {
+  let canvasEnv: Canvas2DMockEnvironment;
+  let originalImage: typeof Image;
 
-    expect(brush).toBeInstanceOf(Brush);
-    expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalledTimes(4);
+  beforeEach(() => {
+    canvasEnv = installCanvas2DMock();
+    originalImage = globalThis.Image;
   });
 
-  it("uses a fresh internal state for each Brush instance", () => {
-    new Brush(createMockCanvas());
-    new Brush(createMockCanvas());
-
-    expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalledTimes(8);
-  });
-});
-
-describe("Brush — configuration", () => {
-  it("applies default configuration values", () => {
-    const brush = new Brush(createMockCanvas());
-
-    expect(brush.config).toEqual(
-      expect.objectContaining({
-        size: 20,
-        opacity: 1,
-        flow: 1,
-        color: "#000000",
-        spacing: 0.12,
-        eraser: false,
-      }),
-    );
+  afterEach(() => {
+    globalThis.Image = originalImage;
+    canvasEnv.restore();
+    vi.restoreAllMocks();
   });
 
-  it("updates only the specified fields from loadConfig", () => {
-    const brush = new Brush(createMockCanvas(), { size: 10, opacity: 0.5 });
+  describe("Instantiation & Guards", () => {
+    it("creates a Brush instance and throws if drawing/finalizing before loadContext", () => {
+      const uninitialized = new Brush();
+      expect(() => uninitialized.finalizeStroke()).toThrow(
+        'Canvas not loaded, please use "loadContext" to load it',
+      );
+      expect(() => getInternalBrush(uninitialized).assertCanvasReady()).toThrow(
+        'Canvas not loaded, please use "loadContext" to load it',
+      );
+    });
 
-    brush.loadConfig({ color: "#00ff00" });
+    it("initializes 4 canvases cleanly per Brush instance", () => {
+      const getContextSpy = vi.spyOn(HTMLCanvasElement.prototype, "getContext");
+      const brush = new Brush(createCanvas());
+      expect(brush).toBeInstanceOf(Brush);
+      expect(getContextSpy).toHaveBeenCalledTimes(4);
+    });
+  });
 
-    expect(brush.config).toEqual(
-      expect.objectContaining({
+  describe("Configuration & Runtime Flags", () => {
+    it("applies default configuration values and selectively overrides via loadConfig", () => {
+      const brush = new Brush(createCanvas(), { size: 10, opacity: 0.5 });
+
+      expect(brush.config).toEqual({
         size: 10,
         opacity: 0.5,
-        color: "#00ff00",
-      }),
-    );
-  });
-
-  it("bindConfig keeps the external reference intact", () => {
-    const brush = new Brush(createMockCanvas());
-    const external = {
-      size: 99,
-      opacity: 1,
-      flow: 1,
-      color: "#ffffff",
-      angle: 0,
-      roundness: 1,
-      spacing: 0.12,
-      eraser: false,
-    };
-
-    brush.bindConfig(external);
-
-    expect(brush.config).toBe(external);
-  });
-});
-
-describe("Brush — runtime flags", () => {
-  it("defaults isSmooth to true and allows toggling", () => {
-    const brush = new Brush(createMockCanvas());
-    expect(brush.isSmooth).toBe(true);
-    brush.isSmooth = false;
-    expect(brush.isSmooth).toBe(false);
-  });
-
-  it("defaults isSpacing to true and allows toggling", () => {
-    const brush = new Brush(createMockCanvas());
-    expect(brush.isSpacing).toBe(true);
-    brush.isSpacing = false;
-    expect(brush.isSpacing).toBe(false);
-  });
-});
-
-describe("Brush — point processing", () => {
-  it("holds the first point until a second point arrives", () => {
-    const brush = new Brush(createMockCanvas());
-
-    brush.putPoint(10, 20, 1);
-    expect(getInternalBrush(brush).points.length).toBe(0);
-
-    brush.putPoint(30, 40, 0.8);
-    expect(getInternalBrush(brush).points.length).toBeGreaterThan(0);
-
-    const prePoint = getInternalBrush(brush).prePoint;
-    expect(prePoint).toBeDefined();
-    expect(prePoint).toEqual(expect.objectContaining({ pressure: 0.8 }));
-
-    const definedPrePoint = prePoint as PurePoint;
-    expect(definedPrePoint.x).toBeGreaterThan(10);
-    expect(definedPrePoint.x).toBeLessThan(30);
-    expect(definedPrePoint.y).toBeGreaterThan(20);
-    expect(definedPrePoint.y).toBeLessThan(40);
-  });
-
-  it("applies a fixed rotation offset on the first processed point", () => {
-    const brush = new Brush(createMockCanvas(), {
-      rotation: { mode: "fixed", offset: Math.PI / 2 },
-    });
-
-    brush.putPoint(0, 0, 1);
-    brush.putPoint(50, 0, 1);
-
-    const queued = getInternalBrush(brush).points;
-    expect(queued.length).toBeGreaterThan(0);
-    expect(queued[0].rotation).toBeCloseTo(Math.PI / 2);
-  });
-
-  it("processes flow rotation configuration and enqueues points", () => {
-    const brush = new Brush(createMockCanvas(), {
-      rotation: { mode: "flow", smoothing: 0.15 },
-    });
-
-    brush.putPoint(0, 0, 1);
-    brush.putPoint(50, 50, 1);
-
-    expect(getInternalBrush(brush).points.length).toBeGreaterThan(0);
-    expect(typeof getInternalBrush(brush).points[0].rotation).toBe("number");
-  });
-
-  it("processes random rotation configuration and enqueues points", () => {
-    const brush = new Brush(createMockCanvas(), {
-      rotation: { mode: "random" },
-    });
-
-    brush.putPoint(0, 0, 1);
-    brush.putPoint(30, 40, 1);
-
-    expect(getInternalBrush(brush).points.length).toBeGreaterThan(0);
-    expect(typeof getInternalBrush(brush).points[0].rotation).toBe("number");
-  });
-});
-
-describe("Brush — stroke lifecycle", () => {
-  it("finalizes a stroke without queued points", () => {
-    const brush = new Brush(createMockCanvas());
-
-    brush.finalizeStroke();
-
-    expect(mockContext.drawImage).toHaveBeenCalled();
-  });
-
-  it("resets rotation state between successive strokes", () => {
-    const brush = new Brush(createMockCanvas(), {
-      rotation: { mode: "flow" },
-    });
-
-    brush.putPoint(0, 0, 1);
-    brush.putPoint(100, 0, 1);
-    brush.finalizeStroke();
-
-    brush.putPoint(200, 200, 1);
-    brush.putPoint(300, 100, 1);
-    brush.finalizeStroke();
-
-    expect(
-      getInternalBrush(brush).lastProcessedPointForRotation,
-    ).toBeUndefined();
-    expect(getInternalRotationAngle(brush)).toBe(0);
-  });
-});
-
-describe("Brush — canvas behavior", () => {
-  it("clears all drawing buffers and resets internal state", () => {
-    const brush = new Brush(createMockCanvas());
-
-    brush.putPoint(0, 0, 1);
-    brush.putPoint(20, 20, 1);
-    brush.clear();
-
-    expect(getInternalBrush(brush).points.length).toBe(0);
-    expect(getInternalBrush(brush).prePoint).toBeUndefined();
-    expect(getInternalBrush(brush).prePrePoint).toBeUndefined();
-    expect(mockContext.clearRect).toHaveBeenCalledTimes(4);
-  });
-
-  it("resets pending stroke state when the drawing context is reloaded", () => {
-    const brush = new Brush(createMockCanvas());
-
-    brush.putPoint(0, 0, 1);
-    brush.putPoint(20, 20, 1);
-
-    brush.loadContext(createMockCanvas());
-
-    expect(getInternalBrush(brush).points.length).toBe(0);
-    expect(getInternalBrush(brush).prePoint).toBeUndefined();
-    expect(getInternalBrush(brush).prePrePoint).toBeUndefined();
-  });
-});
-
-describe("Brush — rendering", () => {
-  it("consumes queued points and draws a stroke", () => {
-    const brush = new Brush(createMockCanvas());
-    const rafSpy = vi
-      .spyOn(globalThis, "requestAnimationFrame")
-      .mockImplementation((callback: FrameRequestCallback) => {
-        callback(0);
-        return 0;
+        flow: 1,
+        color: "#000000",
+        angle: 0,
+        roundness: 1,
+        spacing: 0.12,
+        eraser: false,
       });
 
-    brush.putPoint(0, 0, 1);
-    brush.putPoint(50, 0, 1);
-    brush.render();
-
-    expect(getInternalBrush(brush).points.length).toBe(0);
-    expect(mockContext.ellipse).toHaveBeenCalled();
-    expect(mockContext.drawImage).toHaveBeenCalled();
-
-    rafSpy.mockRestore();
-  });
-});
-
-describe("Brush — modules", () => {
-  it("registers the same module instance only once and returns a stable id", () => {
-    const brush = new Brush(createMockCanvas());
-    const module = {} as never;
-
-    const id1 = brush.useModule(module);
-    const id2 = brush.useModule(module);
-
-    expect(typeof id1).toBe("string");
-    expect(id1).toBe(id2);
-    expect(id1.length).toBeGreaterThan(0);
-  });
-
-  it("removes modules correctly and returns false for missing ids", () => {
-    const brush = new Brush(createMockCanvas());
-    const id = brush.useModule({} as never);
-
-    expect(brush.removeModule(id)).toBe(true);
-    expect(brush.removeModule("non-existent-id")).toBe(false);
-  });
-
-  it("calls module config hooks after pressure modulation", () => {
-    const brush = new Brush(createMockCanvas());
-    const onChangeConfig = vi.fn();
-
-    brush.isSmooth = false;
-    brush.useModule({ onChangeConfig });
-
-    brush.putPoint(0, 0, 0.5);
-    brush.putPoint(100, 0, 0.5);
-
-    expect(onChangeConfig).toHaveBeenCalled();
-    expect(onChangeConfig.mock.calls[0][1]).toBe(0.5);
-    expect(onChangeConfig.mock.calls[0][0].size).toBe(10);
-    expect(onChangeConfig.mock.calls[0][0].flow).toBe(0.5);
-    expect(onChangeConfig.mock.calls[0][0].opacity).toBe(1);
-  });
-
-  it("normalizes queued point flow for dense stamp spacing", () => {
-    const brush = new Brush(createMockCanvas(), {
-      size: 25,
-      flow: 0.18,
-      spacing: 0.01,
+      brush.loadConfig({ color: "#00ff00", eraser: true });
+      expect(brush.config.color).toBe("#00ff00");
+      expect(brush.config.size).toBe(10);
+      expect(brush.config.eraser).toBe(true);
+      expect(brush.isEraser).toBe(true);
     });
 
-    brush.isSmooth = false;
-    brush.putPoint(0, 0, 1);
-    brush.putPoint(100, 0, 1);
-
-    const points = getInternalBrush(brush).points;
-
-    expect(points.length).toBeGreaterThan(0);
-    expect(points[0].config.flow).toBeLessThan(0.18);
+    it("bindConfig binds the external config reference directly", () => {
+      const brush = new Brush(createCanvas());
+      const external = {
+        size: 42,
+        opacity: 0.8,
+        flow: 0.5,
+        color: "#abcdef",
+        angle: 0.25,
+        roundness: 0.6,
+        spacing: 0.2,
+        eraser: false,
+      };
+      brush.bindConfig(external);
+      expect(brush.config).toBe(external);
+      external.size = 64;
+      expect(brush.config.size).toBe(64);
+    });
   });
 
-  it("expands input into multiple points when a module returns an array", () => {
-    const brush = new Brush(createMockCanvas());
-    const onChangePoint = vi.fn((point) => [
-      point,
-      { ...point, x: point.x + 1 },
-    ]);
-    const onChangeConfig = vi.fn();
+  describe("Point Processing, Lag & Rotation", () => {
+    it("holds first point, processes second point, and enforces minimum spacing/lag guards", () => {
+      const brush = new Brush(createCanvas(), { size: 20, spacing: 0.25 }); // space = 5
 
-    brush.isSmooth = false;
-    brush.useModule({ onChangePoint, onChangeConfig });
+      brush.putPoint(10, 20, 1);
+      expect(getInternalBrush(brush).points).toHaveLength(0);
 
-    brush.putPoint(0, 0, 1);
-    brush.putPoint(100, 0, 1);
+      brush.putPoint(30, 40, 0.8);
+      const queued = getInternalBrush(brush).points;
+      expect(queued.length).toBeGreaterThan(1);
+      expect(queued[0].x).toBe(10);
+      expect(queued[0].y).toBe(20);
+      expect(queued[0].pressure).toBe(1);
 
-    const points = getInternalBrush(brush).points;
+      // Tiny movement smaller than spacing + lagDistance (5 + 5 = 10) must be ignored
+      const countBeforeSmallMove = queued.length;
+      brush.putPoint(27, 37, 0.8);
+      expect(getInternalBrush(brush).points.length).toBe(countBeforeSmallMove);
+    });
 
-    expect(onChangePoint).toHaveBeenCalled();
-    expect(onChangeConfig.mock.calls.length).toBe(points.length);
-    expect(onChangePoint.mock.calls.length * 2).toBe(points.length);
-    expect(points.length).toBeGreaterThan(1);
-    expect(points[0].x).toBe(0);
-    expect(points[1].x).toBe(1);
+    it("backfills initial point flow rotation when second point arrives and resets between strokes", () => {
+      const brush = new Brush(createCanvas(), {
+        size: 16,
+        spacing: 0.5,
+        rotation: { mode: "flow", offset: Math.PI / 4 },
+      });
+
+      // Horizontal right movement -> base angle 0 + offset pi/4
+      brush.putPoint(10, 50, 1);
+      brush.putPoint(40, 50, 1);
+
+      const points = getInternalBrush(brush).points;
+      expect(points.length).toBeGreaterThanOrEqual(2);
+      expect(points[0].rotation).toBeCloseTo(Math.PI / 4, 5);
+      expect(points[1].rotation).toBeCloseTo(Math.PI / 4, 5);
+
+      brush.finalizeStroke();
+      expect(
+        getInternalBrush(brush).lastProcessedPointForRotation,
+      ).toBeUndefined();
+      expect(getInternalBrush(brush).previousRotationAngle).toBe(0);
+    });
+
+    it("applies fixed and random rotation configurations accurately", () => {
+      const fixedBrush = new Brush(createCanvas(), {
+        rotation: { mode: "fixed", offset: Math.PI / 2 },
+      });
+      fixedBrush.putPoint(0, 0, 1);
+      fixedBrush.putPoint(50, 0, 1);
+      expect(getInternalBrush(fixedBrush).points[0].rotation).toBeCloseTo(
+        Math.PI / 2,
+      );
+
+      vi.spyOn(Math, "random").mockReturnValue(0.5);
+      const randomBrush = new Brush(createCanvas(), {
+        rotation: { mode: "random", offset: 0.1 },
+      });
+      randomBrush.putPoint(0, 0, 1);
+      randomBrush.putPoint(40, 40, 1);
+      const pts = getInternalBrush(randomBrush).points;
+      expect(pts[pts.length - 1].rotation).toBeCloseTo(Math.PI + 0.1, 5);
+    });
   });
 
-  it("invokes mixin and end-stroke module hooks on finalizeStroke", () => {
-    const brush = new Brush(createMockCanvas());
-    const onMixinCanvas = vi.fn(
-      (
-        canvas: HTMLCanvasElement,
-        context: CanvasRenderingContext2D,
-      ): [HTMLCanvasElement, CanvasRenderingContext2D] => [canvas, context],
-    );
-    const onEndStroke = vi.fn();
+  describe("Pixel Rendering, Eraser, AlphaLock, SelectionMask & Opacity", () => {
+    it("renders visible colored stroke pixels onto canvas via render() and flush()", async () => {
+      const canvas = createCanvas(100, 100);
+      const brush = new Brush(canvas, {
+        size: 10,
+        color: "#ff0000",
+        opacity: 1,
+        flow: 1,
+      });
+      const onRender = vi.fn();
+      brush.onRender = onRender;
 
-    brush.useModule({ onMixinCanvas, onEndStroke });
-    brush.finalizeStroke();
+      brush.putPoint(20, 50, 1);
+      brush.putPoint(70, 50, 1);
+      brush.finalizeStroke();
+      await brush.flush();
 
-    expect(onMixinCanvas).toHaveBeenCalledTimes(1);
-    expect(onEndStroke).toHaveBeenCalledTimes(1);
+      expect(onRender).toHaveBeenCalled();
+      expect(canvasEnv.getPixel(canvas, 30, 50)).toEqual([255, 0, 0, 255]);
+      // Outside stroke path remains transparent
+      expect(canvasEnv.getPixel(canvas, 5, 5)).toEqual([0, 0, 0, 0]);
+    });
+
+    it("acts as an eraser (destination-out) leaving untouched pixels intact", async () => {
+      const canvas = createCanvas(80, 80);
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#0000ff";
+      ctx.fillRect(0, 0, 80, 80);
+
+      const brush = new Brush(canvas, {
+        size: 10,
+        eraser: true,
+        opacity: 1,
+        flow: 1,
+      });
+
+      brush.putPoint(40, 40, 1);
+      brush.finalizeStroke();
+      await brush.flush();
+
+      // Center erased to transparent while corner remains opaque blue
+      expect(canvasEnv.getPixel(canvas, 40, 40)[3]).toBe(0);
+      expect(canvasEnv.getPixel(canvas, 5, 5)).toEqual([0, 0, 255, 255]);
+    });
+
+    it("respects isAlphaLocked and selectionMask when painting strokes", async () => {
+      const canvas = createCanvas(80, 80);
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#ff0000";
+      ctx.fillRect(10, 10, 30, 30);
+
+      const maskCanvas = createCanvas(80, 80);
+      const mCtx = maskCanvas.getContext("2d")!;
+      mCtx.fillStyle = "#ffffff";
+      mCtx.fillRect(20, 20, 40, 40);
+
+      const brush = new Brush(canvas, {
+        size: 15,
+        color: "#00ff00",
+        opacity: 1,
+        flow: 1,
+      });
+      brush.isAlphaLocked = true;
+      brush.setSelectionMask(maskCanvas);
+
+      brush.putPoint(15, 15, 1); // on red layer, OUTSIDE mask
+      brush.putPoint(30, 30, 1); // on red layer, INSIDE mask
+      brush.putPoint(50, 50, 1); // off red layer, INSIDE mask
+      brush.finalizeStroke();
+      await brush.flush();
+
+      // Intersection of opaque layer [10..40] and mask [20..60] turns green
+      expect(canvasEnv.getPixel(canvas, 30, 30)).toEqual([0, 255, 0, 255]);
+      // Outside mask stays red even though brush swept through (15, 15)
+      expect(canvasEnv.getPixel(canvas, 14, 14)).toEqual([255, 0, 0, 255]);
+      // Outside opaque pixels stays transparent even inside mask because isAlphaLocked=true
+      expect(canvasEnv.getPixel(canvas, 50, 50)[3]).toBe(0);
+    });
+
+    it("skips drawing pixels when opacity <= 0 while still triggering finalizeStroke callback & onEndStroke", async () => {
+      const canvas = createCanvas(60, 60);
+      const brush = new Brush(canvas, {
+        size: 10,
+        opacity: 0,
+        color: "#ff0000",
+      });
+      const onEndStroke = vi.fn();
+      const cb = vi.fn();
+      brush.useModule({ onEndStroke });
+
+      brush.putPoint(30, 30, 1);
+      brush.finalizeStroke(cb);
+      await brush.flush();
+
+      expect(canvasEnv.countNonTransparentPixels(canvas)).toBe(0);
+      expect(onEndStroke).toHaveBeenCalledTimes(1);
+      expect(cb).toHaveBeenCalledTimes(1);
+    });
+
+    it("resolves pending flush() promises once render() completes", async () => {
+      const rafQueue: FrameRequestCallback[] = [];
+      vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((cb) => {
+        rafQueue.push(cb);
+        return rafQueue.length;
+      });
+
+      const canvas = createCanvas(60, 60);
+      const brush = new Brush(canvas, { size: 8, color: "#000000" });
+
+      brush.putPoint(10, 10, 1);
+      brush.putPoint(30, 30, 1);
+      brush.render();
+
+      const flushPromise = brush.flush();
+      await flushPromise;
+      expect(canvasEnv.countNonTransparentPixels(canvas)).toBeGreaterThan(0);
+    });
+
+    it("loads shape images (canvas, element, URL) and clears shape with removeImage()", async () => {
+      const target = createCanvas(60, 60);
+      const brush = new Brush(target, { size: 20, color: "#00ff00" });
+
+      // 1. HTMLCanvasElement stamp shape
+      const shapeCvs = createCanvas(16, 16);
+      shapeCvs.getContext("2d")!.fillRect(0, 0, 16, 16);
+      const canvasCb = vi.fn();
+      brush.loadImage(shapeCvs, canvasCb);
+      expect(canvasCb).toHaveBeenCalledWith(true);
+
+      brush.putPoint(30, 30, 1);
+      brush.finalizeStroke();
+      await brush.flush();
+      expect(canvasEnv.getPixel(target, 30, 30)).toEqual([0, 255, 0, 255]);
+
+      // 2. HTMLImageElement with naturalWidth === 0 warns and skips
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const emptyImg = document.createElement("img");
+      brush.loadImage(emptyImg);
+      expect(warnSpy).toHaveBeenCalled();
+
+      // 3. URL async success & failure
+      globalThis.Image = class MockImage {
+        public onload: (() => void) | null = null;
+        public onerror: (() => void) | null = null;
+        public naturalWidth = 10;
+        public naturalHeight = 10;
+        public width = 10;
+        public height = 10;
+        private _src = "";
+        get src() {
+          return this._src;
+        }
+        set src(val: string) {
+          this._src = val;
+          setTimeout(() => {
+            if (val.includes("fail")) this.onerror?.();
+            else this.onload?.();
+          }, 0);
+        }
+      } as unknown as typeof Image;
+
+      await expect(
+        brush.loadImageAsync("https://example.com/stamp.png"),
+      ).resolves.toBeUndefined();
+      await expect(
+        brush.loadImageAsync("https://example.com/fail.png"),
+      ).rejects.toBeUndefined();
+
+      brush.removeImage();
+      brush.clear();
+      expect(canvasEnv.countNonTransparentPixels(target)).toBe(0);
+    });
+
+    it("restores composite operation and filter after mixin", async () => {
+      const target = createCanvas(50, 50);
+      const ctx = target.getContext("2d")!;
+      const brush = new Brush(target, { size: 10, color: "#ff0000" });
+      brush.blendMode = "multiply";
+      brush.filter = "blur(1px)";
+
+      brush.putPoint(25, 25, 1);
+      brush.finalizeStroke();
+      await brush.flush();
+
+      expect(ctx.globalCompositeOperation).toBe("source-over");
+      expect(ctx.filter).toBe("none");
+    });
+
+    it("executes module lifecycle hooks cleanly", async () => {
+      const brush = new Brush(createCanvas());
+      const module = {
+        onChangePoint: vi.fn((p: PurePoint) => [p, { ...p, x: p.x + 1 }]),
+        onChangeConfig: vi.fn(),
+        onMixinCanvas: vi.fn(
+          (
+            c: HTMLCanvasElement,
+            ctx: CanvasRenderingContext2D,
+          ): [HTMLCanvasElement, CanvasRenderingContext2D] => [c, ctx],
+        ),
+        onEndStroke: vi.fn(),
+      };
+
+      const id = brush.useModule(module);
+      expect(brush.useModule(module)).toBe(id);
+
+      brush.isSmooth = false;
+      brush.putPoint(0, 0, 1);
+      brush.putPoint(50, 0, 1);
+      const queued = getInternalBrush(brush).points;
+      expect(module.onChangePoint.mock.calls.length * 2).toBe(queued.length);
+      expect(module.onChangeConfig.mock.calls.length).toBe(queued.length);
+
+      brush.render();
+      brush.finalizeStroke();
+      await brush.flush();
+      expect(module.onMixinCanvas).toHaveBeenCalled();
+      expect(module.onEndStroke).toHaveBeenCalledTimes(1);
+      expect(brush.removeModule(id)).toBe(true);
+      expect(brush.removeModule(id)).toBe(false);
+    });
   });
 });

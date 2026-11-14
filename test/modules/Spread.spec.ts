@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-
 import { SpreadModule } from "../../src/modules";
 import type { BrushBasicConfig, PurePoint } from "../../src/types";
 
@@ -11,12 +10,13 @@ const createConfig = (): BrushBasicConfig => ({
   angle: 0,
   roundness: 1,
   spacing: 0.5,
+  eraser: false,
 });
 
-const createPoint = (): PurePoint => ({
+const createPoint = (pressure = 0.5): PurePoint => ({
   x: 10,
   y: 20,
-  pressure: 0.5,
+  pressure,
 });
 
 describe("SpreadModule", () => {
@@ -24,15 +24,25 @@ describe("SpreadModule", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses defaults when no config is provided", () => {
-    const module = new SpreadModule();
+  it("uses defaults and ignores nullish overrides", () => {
+    const defaults = new SpreadModule();
+    expect(defaults.config).toEqual({
+      spreadRange: 0.25,
+      spreadTrigger: "none",
+      count: 1,
+      countJitter: 0,
+      countJitterTrigger: "none",
+    });
 
-    expect(module.config.spreadRange).toBe(0.25);
-    expect(module.config.spreadTrigger).toBe("none");
-    expect(module.config.count).toBe(1);
+    const partial = new SpreadModule({
+      spreadRange: null as unknown as number,
+      count: 4,
+    });
+    expect(partial.config.spreadRange).toBe(0.25);
+    expect(partial.config.count).toBe(4);
   });
 
-  it("bindConfig replaces the live config reference", () => {
+  it("bindConfig replaces live config reference", () => {
     const module = new SpreadModule();
     const config = {
       spreadRange: 0.5,
@@ -43,45 +53,57 @@ describe("SpreadModule", () => {
     };
 
     module.bindConfig(config);
-
     expect(module.config).toBe(config);
   });
 
-  it("returns the original point when spread is disabled", () => {
-    const module = new SpreadModule({ spreadRange: 0 });
+  it("returns only original point when spreadRange <= 0", () => {
     const point = createPoint();
-
-    expect(module.onChangePoint(point, createConfig())).toEqual([point]);
+    expect(
+      new SpreadModule({ spreadRange: 0 }).onChangePoint(point, createConfig()),
+    ).toEqual([point]);
+    expect(
+      new SpreadModule({ spreadRange: -0.5 }).onChangePoint(
+        point,
+        createConfig(),
+      ),
+    ).toEqual([point]);
   });
 
-  it("adds configured spread points", () => {
+  it("appends configured spread points and preserves pressure", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.5);
 
     const module = new SpreadModule({ count: 3, spreadRange: 0.5 });
-    const point = createPoint();
+    const point = createPoint(0.7);
     const points = module.onChangePoint(point, createConfig());
 
     expect(points).toHaveLength(4);
     expect(points[0]).toBe(point);
-    expect(points.slice(1).every((p) => p.pressure === point.pressure)).toBe(
-      true,
-    );
+    expect(points.slice(1).every((p) => p.pressure === 0.7)).toBe(true);
   });
 
-  it("can drive count from pressure but keeps at least one spread point", () => {
-    vi.spyOn(Math, "random").mockReturnValue(0.5);
+  it("scales count with countJitter and pressure while keeping at least 1 spread point", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
 
-    const module = new SpreadModule({
+    const jitterModule = new SpreadModule({ count: 5, countJitter: 1 });
+    expect(
+      jitterModule.onChangePoint(createPoint(), createConfig()),
+    ).toHaveLength(2);
+
+    const pressureModule = new SpreadModule({
       count: 5,
       countJitterTrigger: "pressure",
     });
-    const point = { ...createPoint(), pressure: 0 };
-    const points = module.onChangePoint(point, createConfig());
+    expect(
+      pressureModule.onChangePoint(createPoint(0), createConfig()),
+    ).toHaveLength(2);
 
-    expect(points).toHaveLength(2);
+    // At pressure = 0.5, pressure factor leaves count unchanged (5) -> total 6
+    expect(
+      pressureModule.onChangePoint(createPoint(0.5), createConfig()),
+    ).toHaveLength(6);
   });
 
-  it("uses pressure to reduce spread distance", () => {
+  it("scales dispersion standard deviation with pressure when spreadTrigger is pressure", () => {
     vi.spyOn(Math, "random")
       .mockReturnValueOnce(Math.exp(-0.5))
       .mockReturnValueOnce(0)
@@ -93,10 +115,14 @@ describe("SpreadModule", () => {
       spreadRange: 1,
       spreadTrigger: "pressure",
     });
-    const point = { ...createPoint(), pressure: 0.25 };
-    const points = module.onChangePoint(point, createConfig());
 
-    expect(points[1].x).toBeCloseTo(15);
-    expect(points[1].y).toBeCloseTo(25);
+    const pLow = module.onChangePoint(createPoint(0.25), createConfig());
+    expect(pLow[1].x).toBeCloseTo(15);
+    expect(pLow[1].y).toBeCloseTo(25);
+
+    // At pressure = 0, stdDev is 0 -> spread point equals original coordinates
+    const pZero = module.onChangePoint(createPoint(0), createConfig());
+    expect(pZero[1].x).toBe(10);
+    expect(pZero[1].y).toBe(20);
   });
 });

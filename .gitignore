@@ -12,7 +12,6 @@ out/
 
 # local library build scratch at repo root only
 /lib/
-playground/next-js/package-lock.json
 
 # test and coverage artifacts
 coverage/

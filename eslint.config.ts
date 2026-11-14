@@ -12,10 +12,12 @@ export default defineConfig([
   },
   tseslint.configs.recommended,
   globalIgnores([
+    "apps",
     "dist",
     "build",
     "coverage",
     "playground",
+    "**/apps/**",
     "**/dist/**",
     "**/build/**",
     "**/coverage/**",

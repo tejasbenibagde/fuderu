@@ -5,17 +5,18 @@ const sidebars: SidebarsConfig = {
     "intro",
     {
       type: "category",
-      label: "🚀 Getting Started",
+      label: "Getting Started",
       collapsed: false,
       items: [
         "getting-started/installation",
         "getting-started/quick-start",
         "getting-started/mental-model",
+        "guides/canvas-wrapper",
       ],
     },
     {
       type: "category",
-      label: "🎨 Core Drawing & Layers",
+      label: "Core Drawing & Layers",
       collapsed: false,
       items: [
         "guides/basic-drawing",
@@ -25,7 +26,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "✂️ Artist Tools (v1.5.0)",
+      label: "Artist Tools",
       collapsed: false,
       items: [
         "guides/selection-tools",
@@ -35,13 +36,13 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "💾 Storage, Export & Replay",
+      label: "Storage, Export & Replay",
       collapsed: true,
       items: ["guides/document-persistence", "guides/action-replay"],
     },
     {
       type: "category",
-      label: "🖌️ Custom Brushes & Dynamics",
+      label: "Custom Brushes & Dynamics",
       collapsed: true,
       items: [
         "guides/image-brushes",
@@ -53,7 +54,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "🧩 Framework Integrations",
+      label: "Framework Integrations",
       collapsed: true,
       items: [
         "guides/integration-react",
@@ -63,12 +64,13 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "📖 Complete API Reference",
+      label: "API Reference",
       collapsed: true,
       items: [
         "api/canvas",
         "api/brush",
         "api/layer",
+        "api/layer-manager",
         "api/blend-modes",
         "api/selection",
         "api/transform",
@@ -81,7 +83,6 @@ const sidebars: SidebarsConfig = {
       ],
     },
     "troubleshooting",
-    "documentation-guide",
   ],
 };
 
